@@ -34,7 +34,7 @@ describe("modelsFor", () => {
     expect(providers).toEqual(new Set(["google", "anthropic", "openai"]));
   });
   test("AI_MODEL turns routing off; the direct API gets one model", () => {
-    expect(modelsFor("simple", "gateway", { AI_MODEL: "openai/gpt-6-astra" })).toEqual(["openai/gpt-6-astra"]);
+    expect(modelsFor("simple", "gateway", { AI_MODEL: "openai/gpt-5.5" })).toEqual(["openai/gpt-5.5"]);
     expect(modelsFor("complex", "anthropic", { AI_MODEL_COMPLEX: "claude-sonnet-5-5,claude-opus-5-5" })).toEqual(["claude-sonnet-5-5"]);
   });
 });

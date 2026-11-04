@@ -128,7 +128,7 @@ test("generateTrip calls Claude with a JSON schema and saves the tree", async ()
 test("through the gateway, a weekend goes to the cheap tier with cross-provider fallbacks", async () => {
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");
-  generateText.mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "google/gemini-3.6-flash" } });
+  generateText.mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "google/gemini-3.5-flash" } });
 
   const t = convexTest(schema, modules);
   const tripId = await t.action(api.ai.generateTrip, { prompt: "A weekend in Lisbon" });
@@ -136,35 +136,35 @@ test("through the gateway, a weekend goes to the cheap tier with cross-provider 
   expect(requests).toHaveLength(0); // nothing went to the Anthropic API
   expect(generateText).toHaveBeenCalledTimes(1);
   const call = generateText.mock.calls[0]![0];
-  expect(call.model).toBe("google/gemini-3.6-flash");
+  expect(call.model).toBe("google/gemini-3.5-flash");
   expect(call.providerOptions).toEqual({ gateway: { models: ["anthropic/claude-haiku-5.5"] } });
-  expect(await t.query(api.trips.get, { tripId })).toMatchObject({ title: "Lisbon Long Weekend", aiModel: "google/gemini-3.6-flash" });
+  expect(await t.query(api.trips.get, { tripId })).toMatchObject({ title: "Lisbon Long Weekend", aiModel: "google/gemini-3.5-flash" });
 });
 
 test("through the gateway, a cut-off answer is retried one tier up", async () => {
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");
   generateText
-    .mockResolvedValueOnce({ output: fakeTrip, finishReason: "length", response: { modelId: "google/gemini-3.6-flash" } })
+    .mockResolvedValueOnce({ output: fakeTrip, finishReason: "length", response: { modelId: "google/gemini-3.5-flash" } })
     .mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "anthropic/claude-sonnet-5.5" } });
 
   const t = convexTest(schema, modules);
   const tripId = await t.action(api.ai.generateTrip, { prompt: "2 days in Lisbon" });
 
-  expect(generateText.mock.calls.map((c) => c[0].model)).toEqual(["google/gemini-3.6-flash", "anthropic/claude-sonnet-5.5"]);
+  expect(generateText.mock.calls.map((c) => c[0].model)).toEqual(["google/gemini-3.5-flash", "anthropic/claude-sonnet-5.5"]);
   expect((await t.query(api.trips.get, { tripId }))?.aiModel).toBe("anthropic/claude-sonnet-5.5");
 });
 
 test("per-tier env overrides pick any provider's models", async () => {
   vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");
-  vi.stubEnv("AI_MODEL_COMPLEX", "openai/gpt-6-astra, google/gemini-3.1-pro-preview");
-  generateText.mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "openai/gpt-6-astra" } });
+  vi.stubEnv("AI_MODEL_COMPLEX", "openai/gpt-5.5, google/gemini-3.5-flash");
+  generateText.mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "openai/gpt-5.5" } });
 
   const t = convexTest(schema, modules);
   await t.action(api.ai.generateTrip, { prompt: "Two weeks backpacking Rome, Florence and Venice" });
   const call = generateText.mock.calls[0]![0];
-  expect(call.model).toBe("openai/gpt-6-astra");
-  expect(call.providerOptions).toEqual({ gateway: { models: ["google/gemini-3.1-pro-preview"] } });
+  expect(call.model).toBe("openai/gpt-5.5");
+  expect(call.providerOptions).toEqual({ gateway: { models: ["google/gemini-3.5-flash"] } });
 });
 
 test("generateTrip explains what to set when no AI key is configured", async () => {

@@ -21,9 +21,9 @@ const MODELS: Record<Via, Record<Tier, readonly string[]>> = {
   // Mixed providers: a cheap fast model for weekends, strong mid-tier models for
   // typical trips, frontier models for long multi-city planning.
   gateway: {
-    simple: ["google/gemini-3.6-flash", "anthropic/claude-haiku-5.5"],
-    standard: ["anthropic/claude-sonnet-5.5", "google/gemini-3.1-pro-preview"],
-    complex: ["anthropic/claude-opus-5.5", "openai/gpt-6-astra"],
+    simple: ["google/gemini-3.5-flash", "anthropic/claude-haiku-5.5"],
+    standard: ["anthropic/claude-sonnet-5.5", "openai/gpt-5.5"],
+    complex: ["anthropic/claude-opus-5.5", "openai/gpt-5.5"],
   },
   anthropic: {
     simple: ["claude-haiku-5-5"],
@@ -91,7 +91,7 @@ const parseList = (value: string) => value.split(",").map((m) => m.trim()).filte
  * Models for a tier, primary first. Env overrides (comma-separated lists), checked in order:
  *   AI_MODEL            one model list for every request (turns routing off)
  *   AI_MODEL_SIMPLE / AI_MODEL_STANDARD / AI_MODEL_COMPLEX   per-tier lists
- * e.g. AI_MODEL_SIMPLE="google/gemini-3.6-flash,openai/gpt-6-astra"
+ * e.g. AI_MODEL_SIMPLE="google/gemini-3.5-flash,openai/gpt-5.5"
  */
 export function modelsFor(tier: Tier, via: Via, env: Record<string, string | undefined> = process.env): string[] {
   const override = env.AI_MODEL || env[`AI_MODEL_${tier.toUpperCase()}`];

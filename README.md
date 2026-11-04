@@ -79,22 +79,22 @@ Create the gateway key in the Vercel dashboard under **AI Gateway → API Keys**
 
 | Tier | When | Gateway models (first = primary, rest = fallbacks) | Direct Claude API |
 | --- | --- | --- | --- |
-| simple | ≤ 3 days, one place, short request | `google/gemini-3.6-flash`, `anthropic/claude-haiku-5.5` | `claude-haiku-5-5` |
-| standard | everything else | `anthropic/claude-sonnet-5.5`, `google/gemini-3.1-pro-preview` | `claude-sonnet-5-5` |
-| complex | 8+ days, several cities, road trips, long detailed requests | `anthropic/claude-opus-5.5`, `openai/gpt-6-astra` | `claude-opus-5-5` |
+| simple | ≤ 3 days, one place, short request | `google/gemini-3.5-flash`, `anthropic/claude-haiku-5.5` | `claude-haiku-5-5` |
+| standard | everything else | `anthropic/claude-sonnet-5.5`, `openai/gpt-5.5` | `claude-sonnet-5-5` |
+| complex | 8+ days, several cities, road trips, long detailed requests | `anthropic/claude-opus-5.5`, `openai/gpt-5.5` | `claude-opus-5-5` |
 
 Through the gateway the call uses the Vercel AI SDK (`generateText` with `Output.object` and the same Zod schema), and the gateway falls back through the tier's list if the primary model is down. If an answer is cut off or doesn't match the schema, the action retries once per tier upward. The model that actually produced each trip is saved on it as `aiModel`.
 
 Change the models without touching code (comma-separated, primary first):
 
 ```bash
-npx convex env set AI_MODEL_SIMPLE "openai/gpt-6-astra,google/gemini-3.6-flash"
-npx convex env set AI_MODEL_STANDARD "google/gemini-3.1-pro-preview"
+npx convex env set AI_MODEL_SIMPLE "google/gemini-3.5-flash,openai/gpt-5.5"
+npx convex env set AI_MODEL_STANDARD "openai/gpt-5.5"
 npx convex env set AI_MODEL_COMPLEX "anthropic/claude-opus-5.5"
 npx convex env set AI_MODEL "anthropic/claude-sonnet-5.5"   # one model for everything, routing off
 ```
 
-Check the slugs against the [AI Gateway model catalog](https://vercel.com/ai-gateway/models); the defaults above haven't been verified against the live catalog.
+`google/gemini-3.5-flash`, `openai/gpt-5.5` and `anthropic/claude-sonnet-5.5` were checked against the live gateway model list; check `anthropic/claude-haiku-5.5` and `anthropic/claude-opus-5.5` in the [AI Gateway model catalog](https://vercel.com/ai-gateway/models) and override a tier if one is missing.
 
 Either way the output is a Zod-validated structured itinerary. The model returns no photos, so each activity gets a free Unsplash photo picked from a pool for its category (`convex/lib/photos.ts`). Swap in a places/photos API later for exact pictures.
 
