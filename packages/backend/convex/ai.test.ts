@@ -1,6 +1,13 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
+// The gateway path goes through the Vercel AI SDK; stub its generateText.
+const { generateText } = vi.hoisted(() => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  generateText: vi.fn<(opts: any) => Promise<any>>(),
+}));
+vi.mock("ai", async (importOriginal) => ({ ...(await importOriginal<typeof import("ai")>()), generateText }));
 import { api } from "./_generated/api";
 import type { GeneratedTrip } from "./lib/tripSchema";
 import schema from "./schema";
@@ -93,6 +100,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+  generateText.mockReset();
 });
 
 test("generateTrip calls Claude with a JSON schema and saves the tree", async () => {
@@ -101,9 +109,11 @@ test("generateTrip calls Claude with a JSON schema and saves the tree", async ()
 
   expect(requests).toHaveLength(1);
   const { body, headers } = requests[0]!;
-  expect(body.model).toBe("claude-opus-5-5");
+  // A 2-day, one-city trip is routed to the cheap tier, which has no server-side fallback.
+  expect(body.model).toBe("claude-haiku-5-5");
+  expect(body).not.toHaveProperty("fallbacks");
   expect(body.output_config).toMatchObject({ format: { type: "json_schema" } });
-  expect(headers.get("anthropic-beta")).toContain("server-side-fallback-2026-07-01");
+  expect(headers.get("anthropic-beta") ?? "").not.toContain("server-side-fallback");
 
   const trip = await t.query(api.trips.get, { tripId });
   expect(trip).toMatchObject({ title: "Lisbon Long Weekend", isAIGenerated: true, prompt: "2 days in Lisbon, moderate budget" });
@@ -115,21 +125,46 @@ test("generateTrip calls Claude with a JSON schema and saves the tree", async ()
   expect(lunch).toMatchObject({ category: "food", websiteUrl: "https://www.timeoutmarket.com/lisboa/", order: 1 });
 });
 
-test("generateTrip goes through the Vercel AI Gateway when AI_GATEWAY_API_KEY is set", async () => {
+test("through the gateway, a weekend goes to the cheap tier with cross-provider fallbacks", async () => {
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");
+  generateText.mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "google/gemini-3.6-flash" } });
+
+  const t = convexTest(schema, modules);
+  const tripId = await t.action(api.ai.generateTrip, { prompt: "A weekend in Lisbon" });
+
+  expect(requests).toHaveLength(0); // nothing went to the Anthropic API
+  expect(generateText).toHaveBeenCalledTimes(1);
+  const call = generateText.mock.calls[0]![0];
+  expect(call.model).toBe("google/gemini-3.6-flash");
+  expect(call.providerOptions).toEqual({ gateway: { models: ["anthropic/claude-haiku-5.5"] } });
+  expect(await t.query(api.trips.get, { tripId })).toMatchObject({ title: "Lisbon Long Weekend", aiModel: "google/gemini-3.6-flash" });
+});
+
+test("through the gateway, a cut-off answer is retried one tier up", async () => {
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
+  vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");
+  generateText
+    .mockResolvedValueOnce({ output: fakeTrip, finishReason: "length", response: { modelId: "google/gemini-3.6-flash" } })
+    .mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "anthropic/claude-sonnet-5.5" } });
+
   const t = convexTest(schema, modules);
   const tripId = await t.action(api.ai.generateTrip, { prompt: "2 days in Lisbon" });
 
-  expect(requests).toHaveLength(1);
-  const { url, body, headers } = requests[0]!;
-  expect(url).toBe("https://ai-gateway.vercel.sh/v1/messages");
-  expect(body.model).toBe("anthropic/claude-opus-5.5");
-  expect(body).not.toHaveProperty("fallbacks");
-  expect(headers.get("authorization")).toBe("Bearer gateway-key");
-  expect(headers.get("x-api-key")).toBeNull();
-  expect(body.output_config).toMatchObject({ effort: "medium", format: { type: "json_schema" } });
-  expect(await t.query(api.trips.get, { tripId })).toMatchObject({ title: "Lisbon Long Weekend" });
+  expect(generateText.mock.calls.map((c) => c[0].model)).toEqual(["google/gemini-3.6-flash", "anthropic/claude-sonnet-5.5"]);
+  expect((await t.query(api.trips.get, { tripId }))?.aiModel).toBe("anthropic/claude-sonnet-5.5");
+});
+
+test("per-tier env overrides pick any provider's models", async () => {
+  vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");
+  vi.stubEnv("AI_MODEL_COMPLEX", "openai/gpt-6-astra, google/gemini-3.1-pro-preview");
+  generateText.mockResolvedValueOnce({ output: fakeTrip, finishReason: "stop", response: { modelId: "openai/gpt-6-astra" } });
+
+  const t = convexTest(schema, modules);
+  await t.action(api.ai.generateTrip, { prompt: "Two weeks backpacking Rome, Florence and Venice" });
+  const call = generateText.mock.calls[0]![0];
+  expect(call.model).toBe("openai/gpt-6-astra");
+  expect(call.providerOptions).toEqual({ gateway: { models: ["google/gemini-3.1-pro-preview"] } });
 });
 
 test("generateTrip explains what to set when no AI key is configured", async () => {
@@ -137,6 +172,15 @@ test("generateTrip explains what to set when no AI key is configured", async () 
   const t = convexTest(schema, modules);
   await expect(t.action(api.ai.generateTrip, { prompt: "2 days in Lisbon" })).rejects.toThrow("AI_GATEWAY_API_KEY");
   expect(requests).toHaveLength(0);
+});
+
+test("directly against Claude, a long multi-city trip goes to Opus with the refusal fallback", async () => {
+  const t = convexTest(schema, modules);
+  await t.action(api.ai.generateTrip, { prompt: "10 days: Tokyo, then Kyoto and Osaka" });
+  const { body, headers } = requests[0]!;
+  expect(body.model).toBe("claude-opus-5-5");
+  expect(body.fallbacks).toBe("default");
+  expect(headers.get("anthropic-beta")).toContain("server-side-fallback-2026-07-01");
 });
 
 test("generateTrip rejects an empty prompt without calling the API", async () => {

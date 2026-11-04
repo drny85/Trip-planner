@@ -136,7 +136,7 @@ export const remove = mutation({
 
 /** Saves a trip tree produced by `ai.generateTrip`. Internal: only the action calls it. */
 export const saveGenerated = internalMutation({
-  args: { userId: v.string(), prompt: v.string(), tree: tripTreeInput },
-  handler: (ctx, { userId, prompt, tree }) =>
-    insertTripTree(ctx, { userId, tree, prompt, isAIGenerated: true }),
+  args: { userId: v.string(), prompt: v.string(), model: v.string(), tree: tripTreeInput },
+  handler: (ctx, { userId, prompt, model, tree }) =>
+    insertTripTree(ctx, { userId, tree, prompt, aiModel: model, isAIGenerated: true }),
 });

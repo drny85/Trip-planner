@@ -45,6 +45,9 @@ pnpm install
 
 # 1. Backend: logs you in to Convex, creates a dev deployment and writes packages/backend/.env.local
 pnpm dev:backend
+#    If the first push says CLERK_JWT_ISSUER_DOMAIN "is used in auth config file but its value
+#    was not set", keep demo mode by setting it empty, then run dev:backend again:
+#    cd packages/backend && npx convex env set CLERK_JWT_ISSUER_DOMAIN ""
 
 # 2. Point the apps at it (use the CONVEX_URL from packages/backend/.env.local)
 cp apps/web/.env.example apps/web/.env.local          # set NEXT_PUBLIC_CONVEX_URL
@@ -63,14 +66,35 @@ Pick one. If both are set, the gateway wins.
 ```bash
 cd packages/backend
 
-# Option A: Vercel AI Gateway (one key, usage and spend in your Vercel dashboard)
+# Option A (recommended): Vercel AI Gateway — any provider's models, usage and spend in Vercel
 npx convex env set AI_GATEWAY_API_KEY <your AI Gateway key>
 
-# Option B: Anthropic API directly
+# Option B: Claude API directly
 npx convex env set ANTHROPIC_API_KEY sk-ant-...
 ```
 
-Create the gateway key in the Vercel dashboard under **AI Gateway → API Keys**. Through the gateway, requests use the Anthropic SDK pointed at `https://ai-gateway.vercel.sh` (its Anthropic-compatible Messages API) with the model `anthropic/claude-opus-5.5`. Directly, they use `claude-opus-5-5` plus the API's server-side refusal fallback (`fallbacks: "default"`), which the gateway doesn't need because it does its own provider failover. Set `AI_MODEL` on Convex to use a different model id in either mode, for example `npx convex env set AI_MODEL anthropic/claude-sonnet-5`.
+Create the gateway key in the Vercel dashboard under **AI Gateway → API Keys**.
+
+**Model routing.** Each request is sorted into a tier by `convex/lib/modelRouter.ts`, with no extra model call: it reads the trip length and how many places the request spans. Cheap models handle short simple trips; frontier models only plan long multi-city ones.
+
+| Tier | When | Gateway models (first = primary, rest = fallbacks) | Direct Claude API |
+| --- | --- | --- | --- |
+| simple | ≤ 3 days, one place, short request | `google/gemini-3.6-flash`, `anthropic/claude-haiku-5.5` | `claude-haiku-5-5` |
+| standard | everything else | `anthropic/claude-sonnet-5.5`, `google/gemini-3.1-pro-preview` | `claude-sonnet-5-5` |
+| complex | 8+ days, several cities, road trips, long detailed requests | `anthropic/claude-opus-5.5`, `openai/gpt-6-astra` | `claude-opus-5-5` |
+
+Through the gateway the call uses the Vercel AI SDK (`generateText` with `Output.object` and the same Zod schema), and the gateway falls back through the tier's list if the primary model is down. If an answer is cut off or doesn't match the schema, the action retries once per tier upward. The model that actually produced each trip is saved on it as `aiModel`.
+
+Change the models without touching code (comma-separated, primary first):
+
+```bash
+npx convex env set AI_MODEL_SIMPLE "openai/gpt-6-astra,google/gemini-3.6-flash"
+npx convex env set AI_MODEL_STANDARD "google/gemini-3.1-pro-preview"
+npx convex env set AI_MODEL_COMPLEX "anthropic/claude-opus-5.5"
+npx convex env set AI_MODEL "anthropic/claude-sonnet-5.5"   # one model for everything, routing off
+```
+
+Check the slugs against the [AI Gateway model catalog](https://vercel.com/ai-gateway/models); the defaults above haven't been verified against the live catalog.
 
 Either way the output is a Zod-validated structured itinerary. The model returns no photos, so each activity gets a free Unsplash photo picked from a pool for its category (`convex/lib/photos.ts`). Swap in a places/photos API later for exact pictures.
 
