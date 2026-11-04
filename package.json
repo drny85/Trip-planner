@@ -1,0 +1,19 @@
+{
+  "name": "trip-planner",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=@trip/backend",
+    "dev:web": "turbo run dev --filter=@trip/web --filter=@trip/backend",
+    "dev:mobile": "turbo run dev --filter=@trip/mobile --filter=@trip/backend",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.10",
+    "typescript": "^7.0.2"
+  }
+}

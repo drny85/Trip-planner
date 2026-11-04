@@ -1,0 +1,27 @@
+{
+  "name": "@trip/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api": "./convex/_generated/api.js",
+    "./dataModel": "./convex/_generated/dataModel.d.ts",
+    "./types": "./convex/lib/types.ts"
+  },
+  "scripts": {
+    "dev": "convex dev",
+    "setup": "convex dev --until-success",
+    "seed": "convex run seed:demoTrip",
+    "typecheck": "tsc --noEmit -p convex",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "convex": "^1.49.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "convex-test": "^0.0.67",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
