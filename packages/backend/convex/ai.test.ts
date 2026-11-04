@@ -115,6 +115,30 @@ test("generateTrip calls Claude with a JSON schema and saves the tree", async ()
   expect(lunch).toMatchObject({ category: "food", websiteUrl: "https://www.timeoutmarket.com/lisboa/", order: 1 });
 });
 
+test("generateTrip goes through the Vercel AI Gateway when AI_GATEWAY_API_KEY is set", async () => {
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
+  vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");
+  const t = convexTest(schema, modules);
+  const tripId = await t.action(api.ai.generateTrip, { prompt: "2 days in Lisbon" });
+
+  expect(requests).toHaveLength(1);
+  const { url, body, headers } = requests[0]!;
+  expect(url).toBe("https://ai-gateway.vercel.sh/v1/messages");
+  expect(body.model).toBe("anthropic/claude-opus-5.5");
+  expect(body).not.toHaveProperty("fallbacks");
+  expect(headers.get("authorization")).toBe("Bearer gateway-key");
+  expect(headers.get("x-api-key")).toBeNull();
+  expect(body.output_config).toMatchObject({ effort: "medium", format: { type: "json_schema" } });
+  expect(await t.query(api.trips.get, { tripId })).toMatchObject({ title: "Lisbon Long Weekend" });
+});
+
+test("generateTrip explains what to set when no AI key is configured", async () => {
+  vi.stubEnv("ANTHROPIC_API_KEY", "");
+  const t = convexTest(schema, modules);
+  await expect(t.action(api.ai.generateTrip, { prompt: "2 days in Lisbon" })).rejects.toThrow("AI_GATEWAY_API_KEY");
+  expect(requests).toHaveLength(0);
+});
+
 test("generateTrip rejects an empty prompt without calling the API", async () => {
   const t = convexTest(schema, modules);
   await expect(t.action(api.ai.generateTrip, { prompt: " " })).rejects.toThrow("Describe the trip");

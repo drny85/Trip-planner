@@ -58,12 +58,21 @@ Open the web app or the Expo app and choose **Load demo trip** to explore with f
 
 ### Turn on AI generation
 
+Pick one. If both are set, the gateway wins.
+
 ```bash
 cd packages/backend
+
+# Option A: Vercel AI Gateway (one key, usage and spend in your Vercel dashboard)
+npx convex env set AI_GATEWAY_API_KEY <your AI Gateway key>
+
+# Option B: Anthropic API directly
 npx convex env set ANTHROPIC_API_KEY sk-ant-...
 ```
 
-`ai.generateTrip` uses `claude-opus-5-5` with a Zod schema as structured output. It also turns on the API's server-side refusal fallback (`fallbacks: "default"`), so a declined request is retried on a fallback model automatically. Remove those two lines in `convex/ai.ts` if you don't want that. The model returns no photos, so each activity gets a free Unsplash photo picked from a pool for its category (`convex/lib/photos.ts`). Swap in a places/photos API later for exact pictures.
+Create the gateway key in the Vercel dashboard under **AI Gateway → API Keys**. Through the gateway, requests use the Anthropic SDK pointed at `https://ai-gateway.vercel.sh` (its Anthropic-compatible Messages API) with the model `anthropic/claude-opus-5.5`. Directly, they use `claude-opus-5-5` plus the API's server-side refusal fallback (`fallbacks: "default"`), which the gateway doesn't need because it does its own provider failover. Set `AI_MODEL` on Convex to use a different model id in either mode, for example `npx convex env set AI_MODEL anthropic/claude-sonnet-5`.
+
+Either way the output is a Zod-validated structured itinerary. The model returns no photos, so each activity gets a free Unsplash photo picked from a pool for its category (`convex/lib/photos.ts`). Swap in a places/photos API later for exact pictures.
 
 ### Turn on sign-in (Clerk)
 
