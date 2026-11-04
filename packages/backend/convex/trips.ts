@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { getOptionalUserId, getOwnedTrip } from "./lib/auth";
@@ -137,6 +138,10 @@ export const remove = mutation({
 /** Saves a trip tree produced by `ai.generateTrip`. Internal: only the action calls it. */
 export const saveGenerated = internalMutation({
   args: { userId: v.string(), prompt: v.string(), model: v.string(), tree: tripTreeInput },
-  handler: (ctx, { userId, prompt, model, tree }) =>
-    insertTripTree(ctx, { userId, tree, prompt, aiModel: model, isAIGenerated: true }),
+  handler: async (ctx, { userId, prompt, model, tree }) => {
+    const tripId = await insertTripTree(ctx, { userId, tree, prompt, aiModel: model, isAIGenerated: true });
+    // Real photos of each place replace the stock ones in the background.
+    await ctx.scheduler.runAfter(0, internal.photos.enrichTrip, { tripId });
+    return tripId;
+  },
 });
