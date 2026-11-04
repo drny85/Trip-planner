@@ -1,15 +1,31 @@
 import type { Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 
 /**
- * Used until Clerk is wired up (step 3), so the app works with no keys.
- * Once auth is on, remove the fallback in `getUserId` so anonymous calls fail.
+ * Demo mode: until CLERK_JWT_ISSUER_DOMAIN is set on the deployment, every
+ * caller is treated as this user, so the apps work with no keys at all.
+ * Once Clerk is configured, anonymous calls are rejected.
  */
 export const DEMO_USER_ID = "demo-user";
 
-export async function getUserId(ctx: QueryCtx | MutationCtx): Promise<string> {
+export const authEnabled = () => Boolean(process.env.CLERK_JWT_ISSUER_DOMAIN);
+
+/** The caller's user id, or null when auth is on and nobody is signed in. */
+export async function getOptionalUserId(
+  ctx: Pick<QueryCtx | MutationCtx | ActionCtx, "auth">,
+): Promise<string | null> {
   const identity = await ctx.auth.getUserIdentity();
-  return identity?.subject ?? DEMO_USER_ID;
+  if (identity) return identity.subject;
+  return authEnabled() ? null : DEMO_USER_ID;
+}
+
+/** Like getOptionalUserId but throws when nobody is signed in. Use in mutations and actions. */
+export async function getUserId(
+  ctx: Pick<QueryCtx | MutationCtx | ActionCtx, "auth">,
+): Promise<string> {
+  const userId = await getOptionalUserId(ctx);
+  if (!userId) throw new Error("Not signed in");
+  return userId;
 }
 
 /** Loads a trip and throws unless it belongs to the caller. */

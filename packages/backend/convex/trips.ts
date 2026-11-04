@@ -1,13 +1,16 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { getOwnedTrip, getUserId } from "./lib/auth";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { getOptionalUserId, getOwnedTrip } from "./lib/auth";
+import { insertTripTree } from "./lib/insertTripTree";
+import { tripTreeInput } from "./lib/validators";
 import type { TripDetails } from "./lib/types";
 
 /** The caller's trips, soonest first. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
+    if (!userId) return [];
     return ctx.db
       .query("trips")
       .withIndex("by_userId_startDate", (q) => q.eq("userId", userId))
@@ -20,9 +23,9 @@ export const list = query({
 export const get = query({
   args: { tripId: v.id("trips") },
   handler: async (ctx, { tripId }): Promise<TripDetails | null> => {
-    const userId = await getUserId(ctx);
+    const userId = await getOptionalUserId(ctx);
     const trip = await ctx.db.get("trips", tripId);
-    if (!trip || trip.userId !== userId) return null;
+    if (!trip || !userId || trip.userId !== userId) return null;
 
     const subTrips = await ctx.db
       .query("subTrips")
@@ -83,4 +86,11 @@ export const remove = mutation({
     ]);
     await ctx.db.delete("trips", tripId);
   },
+});
+
+/** Saves a trip tree produced by `ai.generateTrip`. Internal: only the action calls it. */
+export const saveGenerated = internalMutation({
+  args: { userId: v.string(), prompt: v.string(), tree: tripTreeInput },
+  handler: (ctx, { userId, prompt, tree }) =>
+    insertTripTree(ctx, { userId, tree, prompt, isAIGenerated: true }),
 });

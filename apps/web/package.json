@@ -1,0 +1,32 @@
+{
+  "name": "@trip/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.9.24",
+    "@trip/backend": "workspace:*",
+    "@trip/ui": "workspace:*",
+    "convex": "^1.49.0",
+    "geist": "^1.9.1",
+    "next": "16.4.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4.3.4",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^10.14.0",
+    "eslint-config-next": "16.4.5",
+    "tailwindcss": "^4.3.4",
+    "typescript": "^6.0.3"
+  }
+}

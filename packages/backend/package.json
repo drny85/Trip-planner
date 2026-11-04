@@ -6,17 +6,21 @@
   "exports": {
     "./api": "./convex/_generated/api.js",
     "./dataModel": "./convex/_generated/dataModel.d.ts",
-    "./types": "./convex/lib/types.ts"
+    "./types": "./convex/lib/types.ts",
+    "./optimistic": "./src/optimistic.ts",
+    "./schemas": "./src/tripSchema.ts"
   },
   "scripts": {
     "dev": "convex dev",
     "setup": "convex dev --until-success",
     "seed": "convex run seed:demoTrip",
-    "typecheck": "tsc --noEmit -p convex",
+    "typecheck": "tsc --noEmit -p convex && tsc --noEmit -p .",
     "test": "vitest run"
   },
   "dependencies": {
-    "convex": "^1.49.0"
+    "@anthropic-ai/sdk": "^1.4.0",
+    "convex": "^1.49.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",

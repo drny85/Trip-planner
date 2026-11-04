@@ -10,13 +10,16 @@
   
   import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
   import type * as activities from "../activities.js";
+import type * as ai from "../ai.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
+import type * as lib_tripSchema from "../lib/tripSchema.js";
 import type * as lib_types from "../lib/types.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as seed from "../seed.js";
 import type * as trips from "../trips.js";
+import type * as users from "../users.js";
 
   /**
    * A utility for referencing Convex functions in your app's API.
@@ -28,13 +31,16 @@ import type * as trips from "../trips.js";
    */
   declare const fullApi: ApiFromModules<{
     "activities": typeof activities,
+"ai": typeof ai,
 "lib/auth": typeof lib_auth,
 "lib/fakeData": typeof lib_fakeData,
 "lib/insertTripTree": typeof lib_insertTripTree,
+"lib/tripSchema": typeof lib_tripSchema,
 "lib/types": typeof lib_types,
 "lib/validators": typeof lib_validators,
 "seed": typeof seed,
 "trips": typeof trips,
+"users": typeof users,
   }>;
   export declare const api: FilterApi<typeof fullApi, FunctionReference<any, "public">>;
   export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, "internal">>;
