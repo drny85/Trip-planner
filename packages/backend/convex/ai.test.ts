@@ -71,6 +71,8 @@ let requests: Array<{ url: string; body: Record<string, unknown>; headers: Heade
 
 beforeEach(() => {
   vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+  // Start every test from a known config, whatever the shell exports.
+  for (const name of ["AI_GATEWAY_API_KEY", "AI_MODEL", "AI_MODEL_SIMPLE", "AI_MODEL_STANDARD", "AI_MODEL_COMPLEX"]) vi.stubEnv(name, "");
   requests = [];
   vi.stubGlobal(
     "fetch",
