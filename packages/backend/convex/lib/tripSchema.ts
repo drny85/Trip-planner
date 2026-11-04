@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { photoFor } from "./photos";
 import type { TripTreeInput } from "./validators";
 
 /**
@@ -7,7 +8,8 @@ import type { TripTreeInput } from "./validators";
  * reply that doesn't match never reaches the database.
  *
  * Photo URLs are not asked for: a model can't know real image URLs, so
- * `toTripTree` fills them with placeholders. Swap in a places/photos API later.
+ * `toTripTree` picks free Unsplash photos by category (photos.ts).
+ * Swap in a places/photos API later for photos of the actual place.
  */
 // Structured outputs can't enforce enums/patterns here, so the schema stays loose
 // and `toTripTree` normalizes the values instead of rejecting the whole trip.
@@ -59,8 +61,6 @@ export const generatedTripSchema = z.object({
 
 export type GeneratedTrip = z.infer<typeof generatedTripSchema>;
 
-const placeholderPhoto = (seed: string) =>
-  `https://picsum.photos/seed/${encodeURIComponent(seed.toLowerCase().replace(/[^a-z0-9]+/g, "-"))}/800/600`;
 
 /** Only keep links that are real http(s) URLs. */
 const safeUrl = (url?: string) => (url && /^https?:\/\//i.test(url) ? url : undefined);
@@ -69,18 +69,21 @@ const safeUrl = (url?: string) => (url && /^https?:\/\//i.test(url) ? url : unde
 export function toTripTree(trip: GeneratedTrip): TripTreeInput {
   return {
     ...trip,
-    imageUrl: placeholderPhoto(trip.destination),
+    imageUrl: photoFor("hero", trip.destination, 1600),
     subTrips: trip.subTrips.map((subTrip) => ({
       ...subTrip,
       dayNumber: Math.max(1, Math.round(subTrip.dayNumber)),
-      activities: subTrip.activities.map((activity) => ({
-        ...activity,
-        category: toCategory(activity.category),
-        durationMinutes: Math.max(0, Math.round(activity.durationMinutes)),
-        bookingUrl: safeUrl(activity.bookingUrl),
-        websiteUrl: safeUrl(activity.websiteUrl),
-        photoUrl: placeholderPhoto(`${trip.destination}-${activity.title}`),
-      })),
+      activities: subTrip.activities.map((activity) => {
+        const category = toCategory(activity.category);
+        return {
+          ...activity,
+          category,
+          durationMinutes: Math.max(0, Math.round(activity.durationMinutes)),
+          bookingUrl: safeUrl(activity.bookingUrl),
+          websiteUrl: safeUrl(activity.websiteUrl),
+          photoUrl: photoFor(category, `${trip.destination}-${activity.title}`, 1000),
+        };
+      }),
     })),
   };
 }

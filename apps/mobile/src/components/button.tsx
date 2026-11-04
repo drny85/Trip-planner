@@ -1,7 +1,8 @@
 import { cn } from "@trip/ui";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, Text, type PressableProps } from "react-native";
+import { ActivityIndicator, Text, type PressableProps } from "react-native";
 import { Icon, type IconName } from "./icon";
+import { PressableScale } from "./pressable-scale";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -24,7 +25,7 @@ const iconColor: Record<Variant, `--color-${string}`> = {
   danger: "--color-danger",
 };
 
-type Props = Omit<PressableProps, "children"> & {
+type Props = Omit<PressableProps, "children" | "style"> & {
   children: ReactNode;
   variant?: Variant;
   icon?: IconName;
@@ -44,11 +45,11 @@ export function Button({
   ...props
 }: Props) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       disabled={disabled || loading}
       className={cn(
-        "flex-row items-center justify-center gap-2 rounded-full active:opacity-70",
+        "flex-row items-center justify-center gap-2 rounded-full",
         size === "md" ? "px-5 py-3" : "px-3 py-1.5",
         container[variant],
         (disabled || loading) && "opacity-50",
@@ -64,6 +65,6 @@ export function Button({
       <Text className={cn("font-semibold", size === "md" ? "text-base" : "text-sm", label[variant])}>
         {children}
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }

@@ -4,6 +4,7 @@ import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { api } from "@trip/backend/api";
 import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { MotionConfig } from "motion/react";
 import { useEffect, type ReactNode } from "react";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -15,6 +16,15 @@ export const authEnabled = Boolean(clerkKey);
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 export function Providers({ children }: { children: ReactNode }) {
+  // Motion respects the OS "reduce motion" setting everywhere.
+  return (
+    <MotionConfig reducedMotion="user">
+      <ConvexProviders>{children}</ConvexProviders>
+    </MotionConfig>
+  );
+}
+
+function ConvexProviders({ children }: { children: ReactNode }) {
   if (!convex) return <MissingConfig />;
   if (!clerkKey) return <ConvexProvider client={convex}>{children}</ConvexProvider>;
   return (

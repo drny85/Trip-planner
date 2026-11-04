@@ -63,7 +63,7 @@ cd packages/backend
 npx convex env set ANTHROPIC_API_KEY sk-ant-...
 ```
 
-`ai.generateTrip` uses `claude-opus-5-5` with a Zod schema as structured output. It also turns on the API's server-side refusal fallback (`fallbacks: "default"`), so a declined request is retried on a fallback model automatically. Remove those two lines in `convex/ai.ts` if you don't want that. The model returns no photos, so activities get placeholder images from picsum.photos until a places/photos API is added.
+`ai.generateTrip` uses `claude-opus-5-5` with a Zod schema as structured output. It also turns on the API's server-side refusal fallback (`fallbacks: "default"`), so a declined request is retried on a fallback model automatically. Remove those two lines in `convex/ai.ts` if you don't want that. The model returns no photos, so each activity gets a free Unsplash photo picked from a pool for its category (`convex/lib/photos.ts`). Swap in a places/photos API later for exact pictures.
 
 ### Turn on sign-in (Clerk)
 
@@ -84,6 +84,13 @@ pnpm test        # Convex functions + AI action (convex-test, fetch mocked)
 pnpm lint
 pnpm build       # Next.js production build
 ```
+
+## Photos and motion
+
+- Photos are free Unsplash URLs (`images.unsplash.com`, no API key). If one fails to load, the app falls back to a seeded picsum.photos image, then to a tinted emoji placeholder (`SmartImage` in both apps).
+- Mobile motion uses Reanimated 4: hero parallax and stretch, staggered card entrances, layout transitions on reorder, a check "pop", and press-scale on buttons (`apps/mobile/src/lib/motion.ts`).
+- Web motion uses Motion (`motion/react`): staggered entrances, a Ken Burns hero, layout animations when activities move (also across days), a sliding day-tab pill, an animated progress bar, and an animated AI "planning" state (`apps/web/lib/motion.ts`).
+- Both respect the OS "reduce motion" setting.
 
 ## Notes
 

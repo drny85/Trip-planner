@@ -1,11 +1,31 @@
 import type { TripTreeInput } from "./validators";
 
+import { unsplash } from "./photos";
+
 /**
  * Dummy trip used to build the UI before AI generation exists.
- * Addresses and phone numbers are for real places but may be out of date;
- * photos are placeholder images.
+ * Addresses and phone numbers are for real places but may be out of date.
+ * Photos are free Unsplash images (see photos.ts).
  */
-const photo = (seed: string) => `https://picsum.photos/seed/${seed}/800/600`;
+const PHOTOS: Record<string, string> = {
+  "tokyo-skyline": "1540959733332-eab4deabeeaf",
+  sensoji: "1545569341-9eb8b30979d9",
+  tempura: "1579584425555-c3ce17fd4351",
+  "ueno-park": "1522383225653-ed111181a951",
+  skytree: "1536098561742-ca998e48cbcc",
+  "meiji-jingu": "1528360983277-13d401cdc186",
+  takeshita: "1503899036084-c55cdd92da26",
+  "shibuya-sky": "1542051841857-5f90071e7989",
+  "omoide-yokocho": "1554797589-7241bb691973",
+  tsukiji: "1553621042-f6e147245754",
+  teamlab: "1513407030348-c983a97b98d8",
+  shinkansen: "1474487548417-781cb71495f3",
+  "fushimi-inari": "1478436127897-769e1b3f0f36",
+  arashiyama: "1524413840807-0c3cb6fa808d",
+  kaiseki: "1617196034796-73dfa7b1fd56",
+  kinkakuji: "1493976040374-85c8e12f0c0e",
+};
+const photo = (key: string) => unsplash(PHOTOS[key]!, 1000);
 
 export const tokyoAdventure: TripTreeInput = {
   title: "Tokyo Adventure",
@@ -13,7 +33,7 @@ export const tokyoAdventure: TripTreeInput = {
   description: "Five days of temples, street food and neon, with a two-day Kyoto leg.",
   startDate: "2027-04-02",
   endDate: "2027-04-06",
-  imageUrl: photo("tokyo-skyline"),
+  imageUrl: unsplash(PHOTOS["tokyo-skyline"]!, 1600),
   currency: "JPY",
   subTrips: [
     {

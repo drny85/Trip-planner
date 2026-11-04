@@ -6,16 +6,27 @@ import { optimisticMove } from "@trip/backend/optimistic";
 import type { TripDetails } from "@trip/backend/types";
 import { cn, formatDateRange, formatDay } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
-import Image from "next/image";
+import { AnimatePresence, LayoutGroup, motion, useScroll, useTransform } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { SmartImage } from "@/components/smart-image";
+import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
 import { ActivityItem } from "./activity-item";
 
 export function TripView({ tripId }: { tripId: Id<"trips"> }) {
   const trip = useQuery(api.trips.get, { tripId });
-  if (trip === undefined) return <p className="p-8 text-center text-muted-foreground">Loading trip…</p>;
+  if (trip === undefined) return <TripSkeleton />;
   if (trip === null) return <p className="p-8 text-center text-muted-foreground">This trip doesn&apos;t exist anymore.</p>;
   return <Itinerary trip={trip} />;
+}
+
+function TripSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="h-[26rem] bg-muted" />
+      <div className="mx-auto -mt-10 h-28 max-w-4xl rounded-3xl bg-card shadow-sm" />
+    </div>
+  );
 }
 
 type DragState = { activityId: Id<"activities"> } | null;
@@ -24,8 +35,7 @@ function Itinerary({ trip }: { trip: TripDetails }) {
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const [dragging, setDragging] = useState<DragState>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
-  const { completed, total } = trip.progress;
-  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+  const activeDay = useActiveDay(trip.subTrips.map((s) => s._id));
 
   const drop = (toSubTripId: Id<"subTrips">, toIndex: number) => {
     if (dragging) void move({ activityId: dragging.activityId, toSubTripId, toIndex });
@@ -34,104 +44,124 @@ function Itinerary({ trip }: { trip: TripDetails }) {
   };
 
   return (
-    <main className="pb-20">
-      <section className="relative h-80 w-full overflow-hidden sm:h-96">
-        <Image src={trip.imageUrl} alt="" fill priority sizes="100vw" className="object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-14 text-white">
-          {trip.isAIGenerated && (
-            <span className="mb-2 inline-block rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold">✨ AI generated</span>
-          )}
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{trip.title}</h1>
-          <p className="mt-1 text-white/90">
-            {trip.destination} · {formatDateRange(trip.startDate, trip.endDate)}
-          </p>
-        </div>
-      </section>
+    <main className="pb-24">
+      <Hero trip={trip} />
 
       <div className="mx-auto max-w-4xl px-4">
-        <div className="relative -mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-baseline justify-between">
-            <span className="font-semibold">Trip progress</span>
-            <span className="text-sm text-muted-foreground">
-              {completed} of {total} done
-            </span>
-          </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${percent}%` }} />
-          </div>
-          {trip.description && <p className="mt-3 text-muted-foreground">{trip.description}</p>}
-          <p className="mt-3 text-xs text-muted-foreground">Tip: drag activities to reorder them or move them to another day.</p>
-        </div>
+        <Stats trip={trip} />
 
-        {trip.subTrips.map((subTrip) => (
-          <section key={subTrip._id} className="mt-10">
-            <header className="mb-4 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-primary font-bold text-primary-foreground">
-                {subTrip.dayNumber}
-              </span>
-              <div>
-                <h2 className="text-xl font-bold">{subTrip.title}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {[subTrip.date && formatDay(subTrip.date), subTrip.location].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-            </header>
+        {/* Sticky day tabs with a sliding pill on the day in view */}
+        <nav className="sticky top-16 z-20 -mx-4 mt-8 overflow-x-auto bg-background/80 px-4 py-3 backdrop-blur-xl [scrollbar-width:none]">
+          <ul className="flex gap-2">
+            {trip.subTrips.map((s) => (
+              <li key={s._id}>
+                <a
+                  href={`#day-${s._id}`}
+                  className={cn(
+                    "relative block whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                    activeDay === s._id ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {activeDay === s._id && (
+                    <motion.span layoutId="day-pill" transition={layoutSpring} className="absolute inset-0 -z-10 rounded-full bg-primary shadow-md shadow-primary/30" />
+                  )}
+                  Day {s.dayNumber}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-            <ol className="relative ml-5 border-l-2 border-border pl-8">
-              {subTrip.activities.map((activity, index) => (
+        <LayoutGroup>
+          {trip.subTrips.map((subTrip, dayIndex) => (
+            <motion.section
+              key={subTrip._id}
+              id={`day-${subTrip._id}`}
+              data-day={subTrip._id}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.5, ease: EASE_OUT }}
+              className="mt-10"
+            >
+              <header className="mb-5 flex items-center gap-4">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-primary-foreground shadow-lg shadow-primary/25">
+                  <span className="text-[10px] font-semibold uppercase leading-none tracking-wider opacity-80">Day</span>
+                  <span className="-mt-2 text-xl font-extrabold leading-none">{subTrip.dayNumber}</span>
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-2xl font-bold tracking-tight">{subTrip.title.replace(/^Day \d+\s*·\s*/, "")}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {[subTrip.date && formatDay(subTrip.date), subTrip.location, `${subTrip.activities.length} stops`]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
+              </header>
+
+              <ol className="relative ml-7 border-l-2 border-dashed border-border pl-8">
+                <AnimatePresence initial={false}>
+                  {subTrip.activities.map((activity, index) => (
+                    <motion.li
+                      key={activity._id}
+                      layout
+                      layoutId={activity._id}
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
+                      transition={layoutSpring}
+                      onDragOver={(e) => {
+                        if (!dragging) return;
+                        e.preventDefault();
+                        setDropTarget(activity._id);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        drop(subTrip._id, index);
+                      }}
+                      className="relative pb-6"
+                    >
+                      {dropTarget === activity._id && dragging?.activityId !== activity._id && (
+                        <motion.span layoutId="drop-line" className="absolute -top-3 left-0 right-0 h-1 rounded-full bg-primary" />
+                      )}
+                      <ActivityItem
+                        activity={activity}
+                        trip={trip}
+                        index={index}
+                        count={subTrip.activities.length}
+                        isDragging={dragging?.activityId === activity._id}
+                        onDragStart={() => setDragging({ activityId: activity._id })}
+                        onDragEnd={() => {
+                          setDragging(null);
+                          setDropTarget(null);
+                        }}
+                      />
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+                {/* Drop zone at the end of the day (also lets you drop into an empty day) */}
                 <li
-                  key={activity._id}
                   onDragOver={(e) => {
                     if (!dragging) return;
                     e.preventDefault();
-                    setDropTarget(activity._id);
+                    setDropTarget(`end-${subTrip._id}`);
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
-                    drop(subTrip._id, index);
+                    drop(subTrip._id, subTrip.activities.length);
                   }}
                   className={cn(
-                    "relative pb-5",
-                    dropTarget === activity._id && dragging?.activityId !== activity._id && "before:absolute before:-top-2 before:left-0 before:right-0 before:h-1 before:rounded-full before:bg-primary",
+                    "rounded-2xl border-2 border-dashed border-transparent py-3 text-center text-sm text-muted-foreground transition-colors",
+                    dragging && "border-border",
+                    dropTarget === `end-${subTrip._id}` && "border-primary bg-primary/5 text-primary",
                   )}
                 >
-                  <ActivityItem
-                    activity={activity}
-                    trip={trip}
-                    index={index}
-                    count={subTrip.activities.length}
-                    isDragging={dragging?.activityId === activity._id}
-                    onDragStart={() => setDragging({ activityId: activity._id })}
-                    onDragEnd={() => {
-                      setDragging(null);
-                      setDropTarget(null);
-                    }}
-                  />
+                  {dragging ? "Drop here" : subTrip.activities.length === 0 ? "Nothing planned for this day yet." : null}
                 </li>
-              ))}
-              {/* Drop zone at the end of the day (also lets you drop into an empty day) */}
-              <li
-                onDragOver={(e) => {
-                  if (!dragging) return;
-                  e.preventDefault();
-                  setDropTarget(`end-${subTrip._id}`);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  drop(subTrip._id, subTrip.activities.length);
-                }}
-                className={cn(
-                  "rounded-xl border-2 border-dashed border-transparent py-3 text-center text-sm text-muted-foreground",
-                  dragging && "border-border",
-                  dropTarget === `end-${subTrip._id}` && "border-primary text-primary",
-                )}
-              >
-                {dragging ? "Drop here" : subTrip.activities.length === 0 ? "Nothing planned for this day yet." : null}
-              </li>
-            </ol>
-          </section>
-        ))}
+              </ol>
+            </motion.section>
+          ))}
+        </LayoutGroup>
 
         <DeleteTrip tripId={trip._id} title={trip.title} />
       </div>
@@ -139,18 +169,114 @@ function Itinerary({ trip }: { trip: TripDetails }) {
   );
 }
 
+function Hero({ trip }: { trip: TripDetails }) {
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 500], [0, 120]);
+  const fade = useTransform(scrollY, [0, 300], [1, 0]);
+
+  return (
+    <section className="relative h-[26rem] w-full overflow-hidden sm:h-[30rem]">
+      <motion.div style={{ y }} className="absolute inset-0">
+        <SmartImage
+          src={trip.imageUrl}
+          seed={trip.destination}
+          emoji="🌍"
+          priority
+          className="h-full w-full"
+          imgClassName="animate-kenburns"
+        />
+      </motion.div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
+      <motion.div style={{ opacity: fade }} className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-20 text-white">
+        <motion.div {...rise(0)} className="mb-3 flex flex-wrap gap-2">
+          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">📍 {trip.destination}</span>
+          {trip.isAIGenerated && <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">✨ AI generated</span>}
+        </motion.div>
+        <motion.h1 {...rise(1)} className="text-4xl font-extrabold tracking-tight drop-shadow-sm sm:text-6xl">
+          {trip.title}
+        </motion.h1>
+        <motion.p {...rise(2)} className="mt-2 text-lg text-white/90">
+          {formatDateRange(trip.startDate, trip.endDate)}
+        </motion.p>
+      </motion.div>
+    </section>
+  );
+}
+
+function Stats({ trip }: { trip: TripDetails }) {
+  const { completed, total } = trip.progress;
+  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+  const stats = [
+    { label: "Days", value: trip.subTrips.length },
+    { label: "Activities", value: total },
+    { label: "Done", value: `${percent}%` },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.15 }}
+      className="relative -mt-12 rounded-3xl border border-border/70 bg-card/90 p-5 shadow-xl shadow-black/5 backdrop-blur-xl sm:p-6"
+    >
+      <div className="grid grid-cols-3 divide-x divide-border">
+        {stats.map((s) => (
+          <div key={s.label} className="px-2 text-center">
+            <motion.p key={String(s.value)} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-extrabold tabular-nums sm:text-3xl">
+              {s.value}
+            </motion.p>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{s.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-muted">
+        <motion.div
+          className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-400"
+          initial={{ width: 0 }}
+          animate={{ width: `${percent}%` }}
+          transition={{ duration: 0.8, ease: EASE_OUT }}
+        />
+      </div>
+      <p className="mt-2 text-right text-xs text-muted-foreground">
+        {completed} of {total} done
+      </p>
+      {trip.description && <p className="mt-3 text-muted-foreground">{trip.description}</p>}
+      <p className="mt-3 text-xs text-muted-foreground">Tip: drag activities to reorder them or move them to another day.</p>
+    </motion.div>
+  );
+}
+
+/** Tracks which day section is in view, for the sticky tab pill. */
+function useActiveDay(ids: string[]) {
+  const [active, setActive] = useState(ids[0]);
+  const key = ids.join(",");
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        const id = visible[0]?.target.getAttribute("data-day");
+        if (id) setActive(id);
+      },
+      { rootMargin: "-140px 0px -55% 0px" },
+    );
+    document.querySelectorAll("[data-day]").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [key]);
+  return active;
+}
+
 function DeleteTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
   const remove = useMutation(api.trips.remove);
   const router = useRouter();
   return (
-    <div className="mt-12 flex justify-center">
+    <div className="mt-14 flex justify-center">
       <button
         onClick={async () => {
           if (!confirm(`Delete "${title}"? This removes every day and activity in the trip.`)) return;
           router.push("/trips");
           await remove({ tripId });
         }}
-        className="rounded-full bg-danger/10 px-5 py-2.5 text-sm font-semibold text-danger hover:bg-danger/20"
+        className="rounded-full bg-danger/10 px-5 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger/20 active:scale-[0.97]"
       >
         Delete trip
       </button>

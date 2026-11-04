@@ -111,7 +111,7 @@ test("generateTrip calls Claude with a JSON schema and saves the tree", async ()
   const [tram, lunch] = trip!.subTrips[0]!.activities;
   expect(tram).toMatchObject({ category: "transport", durationMinutes: 45, order: 0 });
   expect(tram?.bookingUrl).toBeUndefined();
-  expect(tram?.photoUrl).toMatch(/^https:\/\/picsum\.photos\/seed\//);
+  expect(tram?.photoUrl).toMatch(/^https:\/\/images\.unsplash\.com\/photo-/);
   expect(lunch).toMatchObject({ category: "food", websiteUrl: "https://www.timeoutmarket.com/lisboa/", order: 1 });
 });
 
