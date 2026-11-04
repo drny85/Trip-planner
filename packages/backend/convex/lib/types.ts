@@ -6,6 +6,9 @@ export type TripDetails = Doc<"trips"> & {
   progress: { completed: number; total: number };
 };
 
+/** What a share link exposes: the itinerary without owner fields. */
+export type PublicTripDetails = Omit<TripDetails, "userId" | "prompt" | "shareToken">;
+
 export type Trip = Doc<"trips">;
 export type SubTrip = Doc<"subTrips">;
 export type Activity = Doc<"activities">;

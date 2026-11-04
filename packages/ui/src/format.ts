@@ -14,7 +14,20 @@ export function formatDateRange(start: string, end: string, locale = "en-US") {
 }
 
 /** Link builders for the activity action buttons, shared by web and mobile. */
+type Place = { address: string; latitude?: number; longitude?: number };
+const placeQuery = (p: Place) => (p.latitude != null && p.longitude != null ? `${p.latitude},${p.longitude}` : p.address);
+
 export const links = {
+  /** Google Maps directions through every stop of a day, in order (up to 9 waypoints). */
+  route: (places: Place[]) => {
+    if (places.length === 0) return "https://www.google.com/maps";
+    const stops = places.slice(0, 10).map(placeQuery);
+    const destination = stops.at(-1)!;
+    const waypoints = stops.slice(0, -1);
+    const params = new URLSearchParams({ api: "1", destination, travelmode: "walking" });
+    if (waypoints.length) params.set("waypoints", waypoints.join("|"));
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
+  },
   phone: (phone: string) => `tel:${phone.replace(/[^\d+]/g, "")}`,
   directions: (place: { address: string; latitude?: number; longitude?: number }) => {
     const destination =

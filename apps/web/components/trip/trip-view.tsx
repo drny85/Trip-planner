@@ -3,15 +3,18 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticMove } from "@trip/backend/optimistic";
-import type { TripDetails } from "@trip/backend/types";
+import type { PublicTripDetails, TripDetails } from "@trip/backend/types";
 import { cn, formatDateRange, formatDay } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, LayoutGroup, motion, useScroll, useTransform } from "motion/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
 import { ActivityItem } from "./activity-item";
+import { DayMap } from "./day-map";
+import { ShareButton } from "./share-button";
 
 export function TripView({ tripId }: { tripId: Id<"trips"> }) {
   const trip = useQuery(api.trips.get, { tripId });
@@ -20,7 +23,25 @@ export function TripView({ tripId }: { tripId: Id<"trips"> }) {
   return <Itinerary trip={trip} />;
 }
 
-function TripSkeleton() {
+/** Public, read-only view behind a share link. */
+export function SharedTripView({ token }: { token: string }) {
+  const trip = useQuery(api.trips.getShared, { token });
+  if (trip === undefined) return <TripSkeleton />;
+  if (trip === null)
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center">
+        <span className="text-5xl">🔒</span>
+        <h1 className="text-2xl font-bold">This link isn&apos;t active</h1>
+        <p className="text-muted-foreground">The owner may have stopped sharing this trip.</p>
+        <Link href="/trips/new" className="rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground">
+          ✨ Plan your own trip
+        </Link>
+      </div>
+    );
+  return <Itinerary trip={trip} readOnly />;
+}
+
+export function TripSkeleton() {
   return (
     <div className="animate-pulse">
       <div className="h-[26rem] bg-muted" />
@@ -31,7 +52,7 @@ function TripSkeleton() {
 
 type DragState = { activityId: Id<"activities"> } | null;
 
-function Itinerary({ trip }: { trip: TripDetails }) {
+function Itinerary({ trip, readOnly = false }: { trip: PublicTripDetails | TripDetails; readOnly?: boolean }) {
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const [dragging, setDragging] = useState<DragState>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -45,10 +66,20 @@ function Itinerary({ trip }: { trip: TripDetails }) {
 
   return (
     <main className="pb-24">
-      <Hero trip={trip} />
+      <Hero trip={trip} action={readOnly ? undefined : <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />} />
 
       <div className="mx-auto max-w-4xl px-4">
-        <Stats trip={trip} />
+        <Stats trip={trip} readOnly={readOnly} />
+        {readOnly && (
+          <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
+            <p className="text-sm">
+              <span className="font-semibold">Shared itinerary.</span> <span className="text-muted-foreground">You&apos;re viewing a read-only copy.</span>
+            </p>
+            <Link href="/trips/new" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 active:scale-[0.97]">
+              ✨ Plan your own
+            </Link>
+          </motion.div>
+        )}
 
         {/* Sticky day tabs with a sliding pill on the day in view */}
         <nav className="sticky top-16 z-20 -mx-4 mt-8 overflow-x-auto bg-background/80 px-4 py-3 backdrop-blur-xl [scrollbar-width:none]">
@@ -73,7 +104,7 @@ function Itinerary({ trip }: { trip: TripDetails }) {
         </nav>
 
         <LayoutGroup>
-          {trip.subTrips.map((subTrip, dayIndex) => (
+          {trip.subTrips.map((subTrip) => (
             <motion.section
               key={subTrip._id}
               id={`day-${subTrip._id}`}
@@ -99,6 +130,8 @@ function Itinerary({ trip }: { trip: TripDetails }) {
                 </div>
               </header>
 
+              <DayMap activities={subTrip.activities} />
+
               <ol className="relative ml-7 border-l-2 border-dashed border-border pl-8">
                 <AnimatePresence initial={false}>
                   {subTrip.activities.map((activity, index) => (
@@ -111,7 +144,7 @@ function Itinerary({ trip }: { trip: TripDetails }) {
                       exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
                       transition={layoutSpring}
                       onDragOver={(e) => {
-                        if (!dragging) return;
+                        if (!dragging || readOnly) return;
                         e.preventDefault();
                         setDropTarget(activity._id);
                       }}
@@ -130,6 +163,7 @@ function Itinerary({ trip }: { trip: TripDetails }) {
                         index={index}
                         count={subTrip.activities.length}
                         isDragging={dragging?.activityId === activity._id}
+                        readOnly={readOnly}
                         onDragStart={() => setDragging({ activityId: activity._id })}
                         onDragEnd={() => {
                           setDragging(null);
@@ -163,13 +197,13 @@ function Itinerary({ trip }: { trip: TripDetails }) {
           ))}
         </LayoutGroup>
 
-        <DeleteTrip tripId={trip._id} title={trip.title} />
+        {!readOnly && <DeleteTrip tripId={trip._id} title={trip.title} />}
       </div>
     </main>
   );
 }
 
-function Hero({ trip }: { trip: TripDetails }) {
+function Hero({ trip, action }: { trip: PublicTripDetails; action?: React.ReactNode }) {
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 500], [0, 120]);
   const fade = useTransform(scrollY, [0, 300], [1, 0]);
@@ -187,6 +221,7 @@ function Hero({ trip }: { trip: TripDetails }) {
         />
       </motion.div>
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
+      {action && <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">{action}</div>}
       <motion.div style={{ opacity: fade }} className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-20 text-white">
         <motion.div {...rise(0)} className="mb-3 flex flex-wrap gap-2">
           <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">📍 {trip.destination}</span>
@@ -203,7 +238,7 @@ function Hero({ trip }: { trip: TripDetails }) {
   );
 }
 
-function Stats({ trip }: { trip: TripDetails }) {
+function Stats({ trip, readOnly }: { trip: PublicTripDetails; readOnly: boolean }) {
   const { completed, total } = trip.progress;
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
   const stats = [
@@ -241,7 +276,7 @@ function Stats({ trip }: { trip: TripDetails }) {
         {completed} of {total} done
       </p>
       {trip.description && <p className="mt-3 text-muted-foreground">{trip.description}</p>}
-      <p className="mt-3 text-xs text-muted-foreground">Tip: drag activities to reorder them or move them to another day.</p>
+      {!readOnly && <p className="mt-3 text-xs text-muted-foreground">Tip: drag activities to reorder them or move them to another day.</p>}
     </motion.div>
   );
 }

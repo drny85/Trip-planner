@@ -31,6 +31,25 @@ describe("trips", () => {
     await expect(asOther.mutation(api.trips.remove, { tripId })).rejects.toThrow();
   });
 
+  test("share links give read-only access and can be revoked", async () => {
+    const { t, tripId } = await seeded();
+    const token = await t.mutation(api.trips.share, { tripId });
+    expect(token).toMatch(/^[0-9a-f]{32}$/);
+    expect(await t.mutation(api.trips.share, { tripId })).toBe(token);
+
+    const stranger = t.withIdentity({ subject: "stranger" });
+    const shared = await stranger.query(api.trips.getShared, { token });
+    expect(shared?.title).toBe("Tokyo Adventure");
+    expect(shared?.subTrips).toHaveLength(4);
+    expect(shared).not.toHaveProperty("userId");
+    expect(shared).not.toHaveProperty("shareToken");
+    await expect(stranger.mutation(api.trips.share, { tripId })).rejects.toThrow();
+    expect(await stranger.query(api.trips.getShared, { token: "0".repeat(32) })).toBeNull();
+
+    await t.mutation(api.trips.unshare, { tripId });
+    expect(await stranger.query(api.trips.getShared, { token })).toBeNull();
+  });
+
   test("remove deletes days and activities", async () => {
     const { t, tripId } = await seeded();
     await t.mutation(api.trips.remove, { tripId });

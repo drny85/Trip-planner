@@ -2,7 +2,7 @@
 
 import { api } from "@trip/backend/api";
 import { optimisticMove, optimisticRemove, optimisticSetCompleted } from "@trip/backend/optimistic";
-import type { Activity, TripDetails } from "@trip/backend/types";
+import type { Activity, PublicTripDetails } from "@trip/backend/types";
 import { cn, formatDuration, getCategory, links } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
@@ -13,7 +13,8 @@ import { ActivityEditor } from "./activity-editor";
 
 type Props = {
   activity: Activity;
-  trip: TripDetails;
+  trip: PublicTripDetails;
+  readOnly?: boolean;
   index: number;
   count: number;
   isDragging: boolean;
@@ -21,7 +22,7 @@ type Props = {
   onDragEnd: () => void;
 };
 
-export function ActivityItem({ activity, trip, index, count, isDragging, onDragStart, onDragEnd }: Props) {
+export function ActivityItem({ activity, trip, index, count, isDragging, onDragStart, onDragEnd, readOnly = false }: Props) {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const remove = useMutation(api.activities.remove).withOptimisticUpdate(optimisticRemove);
@@ -37,10 +38,12 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
         aria-checked={done}
         aria-label={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
         onClick={() => void setCompleted({ activityId: activity._id, isCompleted: !done })}
-        whileTap={{ scale: 0.85 }}
+        disabled={readOnly}
+        whileTap={readOnly ? undefined : { scale: 0.85 }}
         className={cn(
           "absolute -left-[3.15rem] top-5 z-10 grid h-8 w-8 place-items-center rounded-full border-2 text-sm font-bold shadow-sm transition-colors duration-200",
-          done ? "border-success bg-success text-card" : "border-border bg-card hover:border-primary",
+          done ? "border-success bg-success text-card" : "border-border bg-card",
+          !readOnly && !done && "hover:border-primary",
         )}
       >
         <AnimatePresence initial={false}>
@@ -70,7 +73,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
       </motion.button>
 
       <article
-        draggable={!editing}
+        draggable={!editing && !readOnly}
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";
           onDragStart();
@@ -78,7 +81,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
         onDragEnd={onDragEnd}
         className={cn(
           "group relative overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/5",
-          !editing && "cursor-grab active:cursor-grabbing",
+          !editing && !readOnly && "cursor-grab active:cursor-grabbing",
           isDragging && "scale-[0.98] opacity-40",
         )}
       >
@@ -149,7 +152,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
             </div>
 
             {/* Edit / reorder controls (keyboard-friendly alternative to drag and drop) */}
-            <div className="flex shrink-0 gap-1 px-5 pb-4 sm:absolute sm:right-3 sm:top-3 sm:translate-y-1 sm:rounded-2xl sm:border sm:border-border sm:bg-card/95 sm:p-1 sm:opacity-0 sm:shadow-lg sm:backdrop-blur sm:transition sm:duration-200 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:focus-within:translate-y-0 sm:focus-within:opacity-100">
+            {!readOnly && <div className="flex shrink-0 gap-1 px-5 pb-4 sm:absolute sm:right-3 sm:top-3 sm:translate-y-1 sm:rounded-2xl sm:border sm:border-border sm:bg-card/95 sm:p-1 sm:opacity-0 sm:shadow-lg sm:backdrop-blur sm:transition sm:duration-200 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:focus-within:translate-y-0 sm:focus-within:opacity-100">
               <IconButton label="Edit" onClick={() => setEditing(true)}>
                 ✎
               </IconButton>
@@ -190,7 +193,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               >
                 🗑
               </IconButton>
-            </div>
+            </div>}
           </div>
         )}
       </article>

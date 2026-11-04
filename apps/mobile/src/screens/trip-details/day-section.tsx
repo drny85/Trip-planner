@@ -2,6 +2,9 @@ import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails } from "@trip/backend/types";
 import { formatDay } from "@trip/ui";
 import { Text, View } from "react-native";
+import { Icon } from "@/components/icon";
+import { PressableScale } from "@/components/pressable-scale";
+import { openDayRoute } from "@/lib/open";
 import Animated from "react-native-reanimated";
 import { enterUp, reflow } from "@/lib/motion";
 import { ActivityCard } from "./activity-card";
@@ -20,9 +23,23 @@ export function DaySection({ subTrip, tripId, sectionIndex }: Props) {
           </Text>
           <Text className="text-2xl font-extrabold tracking-tight text-foreground">{subTrip.title.replace(/^Day \d+\s*·\s*/, "")}</Text>
         </View>
-        <Text className="pb-1 text-sm text-muted-foreground">
-          {done}/{subTrip.activities.length}
-        </Text>
+        <View className="flex-row items-center gap-2 pb-0.5">
+          <Text className="text-sm text-muted-foreground">
+            {done}/{subTrip.activities.length}
+          </Text>
+          {subTrip.activities.length > 0 && (
+            <PressableScale
+              onPress={() => void openDayRoute(subTrip.activities)}
+              accessibilityRole="link"
+              accessibilityLabel={`Route for day ${subTrip.dayNumber}`}
+              hitSlop={8}
+              className="flex-row items-center gap-1 rounded-full bg-muted px-3 py-1.5"
+            >
+              <Icon name="route" size={14} colorVar="--color-primary" />
+              <Text className="text-xs font-semibold text-primary">Route</Text>
+            </PressableScale>
+          )}
+        </View>
       </View>
 
       {subTrip.activities.length === 0 ? (

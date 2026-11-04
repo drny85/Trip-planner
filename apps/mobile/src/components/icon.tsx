@@ -19,6 +19,8 @@ const icons = {
   clock: { ios: "clock", android: "schedule", web: "schedule" },
   calendar: { ios: "calendar", android: "calendar_today", web: "calendar_today" },
   chevron: { ios: "chevron.right", android: "chevron_right", web: "chevron_right" },
+  share: { ios: "square.and.arrow.up", android: "share", web: "share" },
+  route: { ios: "point.topleft.down.to.point.bottomright.curvepath.fill", android: "route", web: "route" },
   logout: { ios: "rectangle.portrait.and.arrow.right", android: "logout", web: "logout" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 

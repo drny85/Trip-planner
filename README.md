@@ -85,6 +85,12 @@ pnpm lint
 pnpm build       # Next.js production build
 ```
 
+## Sharing and maps
+
+- **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.
+- **Day map (web):** "Show map" under each day opens an OpenStreetMap (Leaflet) with numbered pins in visiting order. The public OSM tile server is fine for development; switch to a tile provider before heavy production use.
+- **Route for the day:** opens Google Maps walking directions through all of that day's stops, in order (web and mobile).
+
 ## Photos and motion
 
 - Photos are free Unsplash URLs (`images.unsplash.com`, no API key). If one fails to load, the app falls back to a seeded picsum.photos image, then to a tinted emoji placeholder (`SmartImage` in both apps).

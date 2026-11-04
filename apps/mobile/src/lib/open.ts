@@ -27,3 +27,9 @@ export const openInAppBrowser = (url: string) =>
   WebBrowser.openBrowserAsync(url, {
     presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
   });
+
+/** Walking route through every stop of a day, in order, in Google Maps (app or web). */
+export const openDayRoute = (places: Place[]) => Linking.openURL(links.route(places));
+
+/** Base URL of the web app, used to build share links. */
+export const webUrl = process.env.EXPO_PUBLIC_WEB_URL ?? "http://localhost:3000";

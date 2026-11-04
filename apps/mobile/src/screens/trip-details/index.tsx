@@ -4,7 +4,7 @@ import type { TripDetails as TripDetailsData } from "@trip/backend/types";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useRouter } from "expo-router";
 import { useRef } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Share, Text, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -15,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
+import { webUrl } from "@/lib/open";
 import { DaySection } from "./day-section";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
@@ -83,6 +84,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
             <DaySection subTrip={subTrip} tripId={trip._id} sectionIndex={index} />
           </View>
         ))}
+        <ShareTrip tripId={trip._id} title={trip.title} isShared={Boolean(trip.shareToken)} />
         <DeleteTrip tripId={trip._id} title={trip.title} />
       </Animated.ScrollView>
 
@@ -95,6 +97,37 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
           {trip.title}
         </Text>
       </Animated.View>
+    </View>
+  );
+}
+
+/** Creates (or reuses) the read-only web link and opens the system share sheet. */
+function ShareTrip({ tripId, title, isShared }: { tripId: Id<"trips">; title: string; isShared: boolean }) {
+  const share = useMutation(api.trips.share);
+  const unshare = useMutation(api.trips.unshare);
+
+  const onShare = async () => {
+    const token = await share({ tripId });
+    const url = `${webUrl}/share/${token}`;
+    await Share.share({ title, message: `${title}: ${url}`, url });
+  };
+
+  const onStop = () =>
+    Alert.alert("Stop sharing?", "People with the link won't be able to see this trip anymore.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Stop sharing", style: "destructive", onPress: () => void unshare({ tripId }) },
+    ]);
+
+  return (
+    <View className="mt-10 gap-2 px-4">
+      <Button icon="share" onPress={() => void onShare()}>
+        Share trip
+      </Button>
+      {isShared && (
+        <Button variant="ghost" size="sm" onPress={onStop}>
+          Stop sharing
+        </Button>
+      )}
     </View>
   );
 }
@@ -117,7 +150,7 @@ function DeleteTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
     ]);
 
   return (
-    <View className="mt-8 px-4">
+    <View className="mt-4 px-4">
       <Button variant="danger" icon="trash" onPress={confirm}>
         Delete trip
       </Button>
