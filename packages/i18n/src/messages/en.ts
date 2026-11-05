@@ -218,6 +218,8 @@ export const en = {
     addToCalendar: "Add to calendar",
   },
   activity: {
+    /** Credit on a Google Places photo, which Google requires. */
+    photoBy: "Photo: {name} · Google",
     markDone: "Mark {title} as done",
     markNotDone: "Mark {title} as not done",
     done: "Done",

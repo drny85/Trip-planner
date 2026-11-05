@@ -9,6 +9,7 @@ const modules = import.meta.glob("./**/*.ts");
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.useRealTimers();
 });
 
@@ -70,6 +71,61 @@ test("enrichTrip swaps in Wikipedia photos only when the page matches the place"
   expect(searched).toContain("senso temple Tokyo");
   // Transport legs aren't searched.
   expect(searched.some((q) => /shinkansen/i.test(q))).toBe(false);
+});
+
+test("Google Places fills in places Wikipedia doesn't know, and /place-photo serves them", async () => {
+  vi.stubEnv("GOOGLE_PLACES_API_KEY", "test-key");
+  vi.stubEnv("CONVEX_SITE_URL", "https://demo.convex.site");
+  const textQueries: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("wikipedia.org")) return new Response(JSON.stringify({ query: { pages: [] } }));
+      if (url.endsWith("/places:searchText")) {
+        const { textQuery } = JSON.parse(String(init?.body)) as { textQuery: string };
+        textQueries.push(textQuery);
+        // Only the tempura place has Google photos in this test.
+        const places = textQuery.startsWith("Tempura lunch at Daikokuya")
+          ? [{ id: "ChIJdaikokuya", photos: [{ name: "places/ChIJdaikokuya/photos/abc", authorAttributions: [{ displayName: "Aiko T." }] }] }]
+          : [];
+        return new Response(JSON.stringify({ places }));
+      }
+      if (url.endsWith("/places/ChIJdaikokuya")) {
+        return new Response(JSON.stringify({ photos: [{ name: "places/ChIJdaikokuya/photos/fresh" }] }));
+      }
+      if (url.includes("/places/ChIJdaikokuya/photos/fresh/media")) {
+        expect(url).toContain("maxWidthPx=1000");
+        return new Response(JSON.stringify({ photoUri: "https://lh3.googleusercontent.com/tempura" }));
+      }
+      return new Response("unexpected", { status: 500 });
+    }),
+  );
+
+  vi.useFakeTimers();
+  const t = convexTest(schema, modules);
+  const tripId = await t.mutation(api.seed.demoTrip, {});
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  const after = await t.query(api.trips.get, { tripId });
+  const all = after!.subTrips.flatMap((s) => s.activities);
+
+  const tempura = all.find((a) => a.title === "Tempura lunch at Daikokuya")!;
+  expect(tempura.photoUrl).toBe("https://demo.convex.site/place-photo/ChIJdaikokuya?w=1000");
+  expect(tempura.photoCredit).toBe("Aiko T.");
+  // Hotels are looked up on Google (not on Wikipedia); train rides on neither.
+  expect(textQueries.some((q) => q.startsWith("Stay in a Gion machiya"))).toBe(true);
+  expect(textQueries.some((q) => /shinkansen/i.test(q))).toBe(false);
+
+  const res = await t.fetch("/place-photo/ChIJdaikokuya?w=1000");
+  expect(res.status).toBe(302);
+  expect(res.headers.get("Location")).toBe("https://lh3.googleusercontent.com/tempura");
+  // A place we never matched isn't served, so the route can't spend our quota.
+  expect((await t.fetch("/place-photo/ChIJsomewhereElse")).status).toBe(404);
+
+  // Picking a new photo drops the old photographer's credit.
+  await t.withIdentity({ subject: "demo-user" }).mutation(api.activities.update, { activityId: tempura._id, patch: { photoUrl: "https://example.com/mine.jpg" } });
+  const edited = (await t.query(api.trips.get, { tripId }))!.subTrips.flatMap((s) => s.activities).find((a) => a._id === tempura._id)!;
+  expect(edited.photoCredit).toBeUndefined();
 });
 
 test("decodeEntities turns HTML entities back into text", async () => {

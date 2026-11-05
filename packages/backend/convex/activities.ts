@@ -99,7 +99,9 @@ export const update = mutation({
     if (patch.category !== undefined || patch.subcategory !== undefined) {
       next.subcategory = checkedSubcategory(patch.category ?? activity.category, patch.subcategory ?? activity.subcategory);
     }
-    await ctx.db.patch("activities", activityId, next);
+    // A new photo isn't by the photographer credited for the old one.
+    const photoCredit = patch.photoUrl !== undefined && patch.photoUrl !== activity.photoUrl ? undefined : activity.photoCredit;
+    await ctx.db.patch("activities", activityId, { ...next, photoCredit });
   },
 });
 

@@ -221,6 +221,8 @@ export const ja: Shape<typeof en> = {
     addToCalendar: "カレンダーに追加",
   },
   activity: {
+    /** Credit on a Google Places photo, which Google requires. */
+    photoBy: "写真: {name} · Google",
     markDone: "{title}を完了にする",
     markNotDone: "{title}を未完了にする",
     done: "完了",
