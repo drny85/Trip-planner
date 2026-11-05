@@ -55,7 +55,7 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
       </View>
 
       <View className="h-2 overflow-hidden rounded-full bg-muted">
-        <View className={cn("absolute bottom-0 left-0 top-0 rounded-full", over ? "bg-danger" : "bg-primary")} style={[{ width: `${spentPct}%` }, bar]} />
+        <Animated.View className={cn("absolute bottom-0 left-0 top-0 rounded-full", over ? "bg-danger" : "bg-primary")} style={[{ width: `${spentPct}%` }, bar]} />
       </View>
 
       <View className="gap-3">
@@ -69,8 +69,8 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
               </Text>
             </View>
             <View className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <View className="absolute bottom-0 left-0 top-0 rounded-full opacity-30" style={[{ width: `${(r.estimated / max) * 100}%`, backgroundColor: r.color }, bar]} />
-              <View className="absolute bottom-0 left-0 top-0 rounded-full" style={[{ width: `${(r.actual / max) * 100}%`, backgroundColor: r.color }, bar]} />
+              <Animated.View className="absolute bottom-0 left-0 top-0 rounded-full opacity-30" style={[{ width: `${(r.estimated / max) * 100}%`, backgroundColor: r.color }, bar]} />
+              <Animated.View className="absolute bottom-0 left-0 top-0 rounded-full" style={[{ width: `${(r.actual / max) * 100}%`, backgroundColor: r.color }, bar]} />
             </View>
           </View>
         ))}

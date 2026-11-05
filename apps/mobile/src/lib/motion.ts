@@ -1,9 +1,10 @@
-import { Easing, FadeInDown, Keyframe, LinearTransition } from "react-native-reanimated";
+import { cubicBezier, Easing, FadeInDown, Keyframe, LinearTransition } from "react-native-reanimated";
 
 /** Curves from the animation guidelines: strong ease-out for UI, ease-in-out for on-screen moves. */
 export const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 export const EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
-export const CSS_EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
+/** The same ease-out for Reanimated CSS transitions and animations. */
+export const CSS_EASE_OUT = cubicBezier(0.23, 1, 0.32, 1);
 
 /** Cards slide up into place when a screen first shows them. Stagger caps out so long lists don't wait. */
 export const enterUp = (index: number) =>

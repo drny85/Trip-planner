@@ -69,12 +69,12 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
               accessibilityState={{ checked: item.isPacked }}
               className="flex-1 flex-row items-center gap-3"
             >
-              <View
+              <Animated.View
                 className={cn("h-6 w-6 items-center justify-center rounded-lg border-2", item.isPacked ? "border-success bg-success" : "border-border")}
                 style={{ transitionProperty: ["backgroundColor", "borderColor"], transitionDuration: 180, transitionTimingFunction: CSS_EASE_OUT }}
               >
                 {item.isPacked && <Text className="text-xs font-bold text-white">✓</Text>}
-              </View>
+              </Animated.View>
               <Text className={cn("flex-1 text-base text-foreground", item.isPacked && "text-muted-foreground line-through")} numberOfLines={1}>
                 {item.text}
               </Text>
