@@ -25,7 +25,8 @@ export default function RootLayout() {
               name="generate"
               options={{ title: "Plan with AI", presentation: "modal", headerLeft: cancel }}
             />
-            <Stack.Screen name="trips/[tripId]/index" options={{ title: "", headerTransparent: true }} />
+            {/* Opens from the bottom; on iOS a tap on a trip card zooms its photo in instead (Link.AppleZoom). */}
+            <Stack.Screen name="trips/[tripId]/index" options={{ title: "", headerTransparent: true, animation: "slide_from_bottom" }} />
             <Stack.Screen
               name="trips/[tripId]/activity/[activityId]"
               options={{
