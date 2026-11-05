@@ -1,4 +1,4 @@
-import { describeWeather } from "./weather";
+import { describeWeather , type WeatherKind } from "./weather";
 
 /**
  * Live "today" mode: which day of the trip is today, what's next, how far behind
@@ -112,8 +112,8 @@ export function leaveBy(next: TodayStop, travelMinutes: number) {
 
 /* ---------- Hourly weather (Open-Meteo, free, no key) ---------- */
 
-export type HourWeather = { time: string; temp: number; rainChance: number; emoji: string; label: string };
-export type LiveWeather = { now: { temp: number; emoji: string; label: string }; hours: HourWeather[] };
+export type HourWeather = { time: string; temp: number; rainChance: number; emoji: string; label: string; kind: WeatherKind };
+export type LiveWeather = { now: { temp: number; emoji: string; label: string; kind: WeatherKind }; hours: HourWeather[] };
 
 /** Current conditions and the next `hours` hours, in the place's own time zone. */
 export function hourlyForecastUrl(latitude: number, longitude: number, hours = 12) {

@@ -3,6 +3,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticSetCompleted } from "@trip/backend/optimistic";
+import { useI18n } from "@trip/i18n/react";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
@@ -19,12 +20,13 @@ const UndoContext = createContext<(message: string, onUndo: () => void) => void>
 
 export function UndoToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast | null>(null);
+  const { t } = useI18n();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const show = useCallback((message: string, onUndo: () => void) => {
     if (timer.current) clearTimeout(timer.current);
     const id = Date.now();
     setToast({ id, message, onUndo });
-    timer.current = setTimeout(() => setToast((t) => (t?.id === id ? null : t)), UNDO_MS);
+    timer.current = setTimeout(() => setToast((cur) => (cur?.id === id ? null : cur)), UNDO_MS);
   }, []);
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 
@@ -53,7 +55,7 @@ export function UndoToastProvider({ children }: { children: ReactNode }) {
                   }}
                   className="rounded-full bg-background/15 px-4 py-1.5 text-sm font-bold transition-transform active:scale-[0.97] hover:bg-background/25"
                 >
-                  Undo
+                  {t("common.undo")}
                 </button>
               </div>
               <motion.div
@@ -75,14 +77,15 @@ export function useToggleDone() {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const restore = useMutation(api.activities.restoreCompleted);
   const show = useContext(UndoContext);
+  const { t } = useI18n();
   return useCallback(
     async (activity: { _id: Id<"activities">; title: string }, isCompleted: boolean) => {
       const changed = await setCompleted({ activityId: activity._id, isCompleted });
       if (isCompleted && changed.length > 0) {
         const steps = changed.length - 1;
-        show(`${activity.title} done${steps > 0 ? ` (+${steps} step${steps === 1 ? "" : "s"})` : ""}`, () => void restore({ activityIds: changed, isCompleted: false }));
+        show(steps > 0 ? t("undo.doneWithSteps", { title: activity.title, count: steps }) : t("undo.done", { title: activity.title }), () => void restore({ activityIds: changed, isCompleted: false }));
       }
     },
-    [setCompleted, restore, show],
+    [setCompleted, restore, show, t],
   );
 }

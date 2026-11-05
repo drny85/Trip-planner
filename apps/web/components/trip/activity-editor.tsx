@@ -3,6 +3,8 @@
 import { api } from "@trip/backend/api";
 import { CATEGORIES, CATEGORY_TREE, type Category } from "@trip/backend/categories";
 import type { Activity } from "@trip/backend/types";
+import type { Messages } from "@trip/i18n";
+import { useI18n } from "@trip/i18n/react";
 import { categoryMeta, cn, subcategoryMeta } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { useState } from "react";
@@ -11,6 +13,7 @@ import { useState } from "react";
 export function ActivityEditor({ activity, onDone, compact = false }: { activity: Activity; onDone: () => void; compact?: boolean }) {
   const update = useMutation(api.activities.update);
   const [saving, setSaving] = useState(false);
+  const { t } = useI18n();
   const [form, setForm] = useState({
     title: activity.title,
     description: activity.description,
@@ -63,11 +66,11 @@ export function ActivityEditor({ activity, onDone, compact = false }: { activity
   return (
     <form onSubmit={save} onKeyDown={(e) => e.key === "Escape" && onDone()} className={cn("grid gap-3 sm:grid-cols-2", compact ? "p-3" : "p-4")}>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground sm:col-span-2">
-        Title
+        {t("editor.title")}
         <input autoFocus required className={input} {...field("title")} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
-        Category
+        {t("editor.category")}
         <select
           className={input}
           value={form.category}
@@ -75,62 +78,62 @@ export function ActivityEditor({ activity, onDone, compact = false }: { activity
         >
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
-              {categoryMeta[c].emoji} {categoryMeta[c].label}
+              {categoryMeta[c].emoji} {t(`categories.${c}`)}
             </option>
           ))}
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
-        Type
+        {t("editor.type")}
         <select className={input} disabled={subOptions.length === 0} {...field("subcategory")}>
-          <option value="">Any</option>
+          <option value="">{t("editor.any")}</option>
           {subOptions.map((s) => (
             <option key={s} value={s}>
-              {subcategoryMeta[s]?.emoji} {subcategoryMeta[s]?.label ?? s}
+              {subcategoryMeta[s]?.emoji} {t(`subcategories.${s as keyof Messages["subcategories"]}`)}
             </option>
           ))}
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground sm:col-span-2">
-        Description
+        {t("editor.description")}
         <textarea rows={3} className={input} {...field("description")} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
-        Start time
+        {t("editor.startTime")}
         <input type="time" className={input} {...field("startTime")} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
-        Estimated cost
-        <input type="number" min={0} step="any" inputMode="decimal" placeholder="Per person" className={input} {...field("estimatedCost")} />
+        {t("editor.estimatedCost")}
+        <input type="number" min={0} step="any" inputMode="decimal" placeholder={t("editor.perPerson")} className={input} {...field("estimatedCost")} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
-        Actually spent
-        <input type="number" min={0} step="any" inputMode="decimal" placeholder="Per person" className={input} {...field("actualCost")} />
+        {t("editor.actuallySpent")}
+        <input type="number" min={0} step="any" inputMode="decimal" placeholder={t("editor.perPerson")} className={input} {...field("actualCost")} />
       </label>
       {!compact && <>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
-        Phone
+        {t("editor.phone")}
         <input type="tel" className={input} {...field("phone")} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground sm:col-span-2">
-        Address
+        {t("editor.address")}
         <input className={input} {...field("address")} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground sm:col-span-2">
-        Reservation link
+        {t("editor.reservationLink")}
         <input type="url" placeholder="https://" className={input} {...field("bookingUrl")} />
       </label>
       </>}
       <div className="flex justify-end gap-2 sm:col-span-2">
         <button type="button" onClick={onDone} className="rounded-full px-4 py-2 font-semibold text-muted-foreground hover:bg-muted">
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           type="submit"
           disabled={saving}
           className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("common.saving") : t("common.save")}
         </button>
       </div>
     </form>

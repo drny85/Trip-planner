@@ -1,6 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticSetCompleted } from "@trip/backend/optimistic";
+import { useI18n } from "@trip/i18n/react";
 import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
@@ -51,6 +52,7 @@ function ToastView({ message, onUndo }: { message: string; onUndo: () => void })
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const left = useSharedValue(1);
+  const { t } = useI18n();
   useEffect(() => {
     left.set(withTiming(0, { duration: UNDO_MS, easing: Easing.linear }));
   }, [left]);
@@ -72,8 +74,8 @@ function ToastView({ message, onUndo }: { message: string; onUndo: () => void })
           <Text className="flex-1 text-sm font-semibold text-background" numberOfLines={2}>
             {message}
           </Text>
-          <Pressable onPress={onUndo} hitSlop={10} accessibilityRole="button" accessibilityLabel="Undo" className="rounded-full bg-background/15 px-4 py-2 active:opacity-70">
-            <Text className="text-sm font-bold text-background">Undo</Text>
+          <Pressable onPress={onUndo} hitSlop={10} accessibilityRole="button" accessibilityLabel={t("common.undo")} className="rounded-full bg-background/15 px-4 py-2 active:opacity-70">
+            <Text className="text-sm font-bold text-background">{t("common.undo")}</Text>
           </Pressable>
         </View>
         <Animated.View className="h-1 bg-success" style={[{ transformOrigin: "left" }, bar]} />
@@ -87,14 +89,15 @@ export function useToggleDone() {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const restore = useMutation(api.activities.restoreCompleted);
   const show = useContext(UndoContext);
+  const { t } = useI18n();
   return useCallback(
     async (activity: { _id: Id<"activities">; title: string }, isCompleted: boolean) => {
       const changed = await setCompleted({ activityId: activity._id, isCompleted });
       if (isCompleted && changed.length > 0) {
         const steps = changed.length - 1;
-        show(`${activity.title} done${steps > 0 ? ` (+${steps} step${steps === 1 ? "" : "s"})` : ""}`, () => void restore({ activityIds: changed, isCompleted: false }));
+        show(steps > 0 ? t("undo.doneWithSteps", { title: activity.title, count: steps }) : t("undo.done", { title: activity.title }), () => void restore({ activityIds: changed, isCompleted: false }));
       }
     },
-    [setCompleted, restore, show],
+    [setCompleted, restore, show, t],
   );
 }

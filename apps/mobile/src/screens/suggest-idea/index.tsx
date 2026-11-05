@@ -1,6 +1,8 @@
 import { api } from "@trip/backend/api";
 import { CATEGORIES, CATEGORY_TREE, type Category } from "@trip/backend/categories";
 import type { Id } from "@trip/backend/dataModel";
+import type { Messages } from "@trip/i18n";
+import { useI18n } from "@trip/i18n/react";
 import { categoryMeta, fallbackPhoto, parseTime, subcategoryMeta } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
@@ -16,6 +18,7 @@ export function SuggestIdea({ tripId }: { tripId: Id<"trips"> }) {
   const create = useMutation(api.suggestions.create);
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const { t, f } = useI18n();
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -26,15 +29,15 @@ export function SuggestIdea({ tripId }: { tripId: Id<"trips"> }) {
     startTime: "",
     estimatedCost: "",
   });
-  const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof typeof form) => (value: string) => setForm((prev) => ({ ...prev, [key]: value }));
   if (!trip) return <ActivityIndicator className="mt-10" />;
   const dayId = form.subTripId || trip.subTrips[0]?._id || "";
   const subs = CATEGORY_TREE[form.category] as readonly string[];
 
   const submit = async () => {
-    if (!form.title.trim()) return Alert.alert("What's the idea?");
+    if (!form.title.trim()) return Alert.alert(t("ideas.whatsTheIdea"));
     const startTime = form.startTime.trim() ? parseTime(form.startTime) : undefined;
-    if (startTime === null) return Alert.alert("Check the time", "Try something like 7:30 PM.");
+    if (startTime === null) return Alert.alert(t("mobileSheets.checkTime"), t("mobileSheets.checkTimeExample", { example: f.time("19:30") }));
     setSaving(true);
     try {
       const cost = Number(form.estimatedCost);
@@ -59,35 +62,35 @@ export function SuggestIdea({ tripId }: { tripId: Id<"trips"> }) {
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
-      <Text className="text-sm text-muted-foreground">Everyone on the trip can vote. It&apos;s added once more than half say yes.</Text>
-      <Field label="What's the idea?" value={form.title} onChangeText={set("title")} placeholder="Sunset drinks with a view" autoFocus />
+      <Text className="text-sm text-muted-foreground">{t("mobileSheets.voteHint")}</Text>
+      <Field label={t("ideas.whatsTheIdea")} value={form.title} onChangeText={set("title")} placeholder={t("ideas.ideaPlaceholder")} autoFocus />
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-muted-foreground">Day</Text>
-        <Chips options={trip.subTrips.map((d) => ({ value: d._id, label: `Day ${d.dayNumber}` }))} selected={dayId} onSelect={set("subTripId")} />
+        <Text className="text-sm font-semibold text-muted-foreground">{t("ideas.day")}</Text>
+        <Chips options={trip.subTrips.map((d) => ({ value: d._id, label: t("time.dayN", { day: d.dayNumber }) }))} selected={dayId} onSelect={set("subTripId")} />
       </View>
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-muted-foreground">Category</Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{t("editor.category")}</Text>
         <Chips
-          options={CATEGORIES.map((c) => ({ value: c, label: `${categoryMeta[c].emoji} ${categoryMeta[c].label}` }))}
+          options={CATEGORIES.map((c) => ({ value: c, label: `${categoryMeta[c].emoji} ${t(`categories.${c}`)}` }))}
           selected={form.category}
-          onSelect={(c) => setForm((f) => ({ ...f, category: c as Category, subcategory: "" }))}
+          onSelect={(c) => setForm((prev) => ({ ...prev, category: c as Category, subcategory: "" }))}
         />
         {subs.length > 0 && (
           <Chips
-            options={subs.map((s) => ({ value: s, label: `${subcategoryMeta[s]?.emoji ?? ""} ${subcategoryMeta[s]?.label ?? s}` }))}
+            options={subs.map((s) => ({ value: s, label: `${subcategoryMeta[s]?.emoji ?? ""} ${t(`subcategories.${s as keyof Messages["subcategories"]}`)}` }))}
             selected={form.subcategory}
-            onSelect={(s) => setForm((f) => ({ ...f, subcategory: f.subcategory === s ? "" : s }))}
+            onSelect={(s) => setForm((prev) => ({ ...prev, subcategory: prev.subcategory === s ? "" : s }))}
           />
         )}
       </View>
       <View className="flex-row gap-3">
-        <Field label="Time" value={form.startTime} onChangeText={set("startTime")} placeholder="7:30 PM" autoCapitalize="characters" className="w-32" />
-        <Field label="Cost per person" value={form.estimatedCost} onChangeText={set("estimatedCost")} keyboardType="decimal-pad" className="flex-1" />
+        <Field label={t("ideas.time")} value={form.startTime} onChangeText={set("startTime")} placeholder={f.time("19:30")} autoCapitalize="characters" className="w-32" />
+        <Field label={t("ideas.costPerPerson")} value={form.estimatedCost} onChangeText={set("estimatedCost")} keyboardType="decimal-pad" className="flex-1" />
       </View>
-      <Field label="Why it's worth it" value={form.description} onChangeText={set("description")} multiline />
-      <Field label="Address" value={form.address} onChangeText={set("address")} />
+      <Field label={t("ideas.whyWorth")} value={form.description} onChangeText={set("description")} multiline />
+      <Field label={t("editor.address")} value={form.address} onChangeText={set("address")} />
       <Button onPress={() => void submit()} loading={saving} icon="sparkles" className="mt-2">
-        Post for a vote
+        {t("ideas.post")}
       </Button>
     </ScrollView>
   );

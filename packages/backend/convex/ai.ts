@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { defaultLocale, isLocale, languageInEnglish, translator, type Locale } from "@trip/i18n";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { v } from "convex/values";
@@ -13,6 +14,8 @@ import { type GeneratedTrip, generatedTripSchema, replanSchema, toNewActivity, t
 type Result<T> = { trip: T | null; truncated: boolean; refused: boolean; model: string };
 type Generated = Result<GeneratedTrip>;
 type Spec<S extends z.ZodType> = { system: string; schema: S };
+/** A PDF or image sent along with the text, as base64. */
+export type AiFile = { data: string; mediaType: string; filename?: string };
 
 /**
  * How requests reach a model:
@@ -24,12 +27,24 @@ type Spec<S extends z.ZodType> = { system: string; schema: S };
 export const aiVia = (env: Record<string, string | undefined> = process.env): Via | null =>
   env.AI_GATEWAY_API_KEY ? "gateway" : env.ANTHROPIC_API_KEY ? "anthropic" : null;
 
-async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
+async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
   const [primary, ...fallbacks] = models;
   const result = await generateText({
     model: primary!,
     system: spec.system,
-    prompt: content,
+    ...(file
+      ? {
+          messages: [
+            {
+              role: "user" as const,
+              content: [
+                { type: "file" as const, mediaType: file.mediaType, filename: file.filename, data: { type: "data" as const, data: file.data } },
+                { type: "text" as const, text: content },
+              ],
+            },
+          ],
+        }
+      : { prompt: content }),
     output: Output.object({ schema: spec.schema }),
     maxOutputTokens: MAX_TOKENS[tier],
     providerOptions: fallbacks.length ? { gateway: { models: fallbacks } } : undefined,
@@ -53,7 +68,16 @@ async function generateViaGateway<S extends z.ZodType>(models: string[], tier: T
   };
 }
 
-async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
+/** The Claude API content block for a file: a document for PDFs, an image otherwise. */
+const anthropicFileBlock = (file: AiFile) =>
+  file.mediaType === "application/pdf"
+    ? { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: file.data } }
+    : {
+        type: "image" as const,
+        source: { type: "base64" as const, media_type: file.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: file.data },
+      };
+
+async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const response = await client.beta.messages.parse({
     model,
@@ -64,7 +88,7 @@ async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Ti
       : {}),
     output_config: { effort: "medium", format: betaZodOutputFormat(spec.schema) },
     system: spec.system,
-    messages: [{ role: "user", content }],
+    messages: [{ role: "user", content: file ? [anthropicFileBlock(file), { type: "text" as const, text: content }] : content }],
   });
   return {
     trip: (response.parsed_output as z.infer<S> | null) ?? null,
@@ -74,6 +98,15 @@ async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Ti
   };
 }
 
+/**
+ * One structured request on the given tier, through whichever path is configured.
+ * Shared by trip generation, day re-plans and booking import.
+ */
+export const generateStructured = <S extends z.ZodType>(via: Via, tier: Tier, content: string, spec: Spec<S>, file?: AiFile) => {
+  const models = modelsFor(tier, via);
+  return via === "gateway" ? generateViaGateway(models, tier, content, spec, file) : generateViaAnthropic(models[0]!, tier, content, spec, file);
+};
+
 const SYSTEM_PROMPT = `You are an expert travel planner. Turn the traveller's request into a complete, realistic itinerary.
 
 - Use real, currently operating places with accurate street addresses.
@@ -82,7 +115,16 @@ const SYSTEM_PROMPT = `You are an expert travel planner. Turn the traveller's re
 - Only include a phone number, booking URL or website when you are confident it is correct; leave them out otherwise.
 - If the request has no dates, start the trip 30 days after today's date.`;
 
-const TRIP_SPEC = { system: SYSTEM_PROMPT, schema: generatedTripSchema };
+/**
+ * Tells the model which language to write in. Place names stay as travellers
+ * would search for them, and addresses stay in their local form so maps find them.
+ */
+export function languageInstruction(locale: Locale) {
+  return `\n- Write every human-readable field (trip title, description, day titles, activity titles, descriptions, tips and summaries) in ${languageInEnglish[locale]}, whatever language the request is in. Keep proper names of places recognisable (use the name commonly used by ${languageInEnglish[locale]} speakers, or the local name), and keep street addresses in their local form so maps can find them.`;
+}
+
+const tripSpec = (locale: Locale) => ({ system: SYSTEM_PROMPT + languageInstruction(locale), schema: generatedTripSchema });
+const toLocaleArg = (language?: string): Locale => (isLocale(language) ? language : defaultLocale);
 
 /**
  * Generates a full Trip -> SubTrip -> Activity tree from a free-text prompt
@@ -93,16 +135,23 @@ const TRIP_SPEC = { system: SYSTEM_PROMPT, schema: generatedTripSchema };
  *   npx convex env set ANTHROPIC_API_KEY sk-ant-...   (Claude API directly)
  */
 export const generateTrip = action({
-  args: { prompt: v.string() },
-  handler: async (ctx, { prompt }): Promise<Id<"trips">> => {
+  args: {
+    prompt: v.string(),
+    /** App language ("es", "ja", …). The itinerary is written in it. Defaults to English. */
+    language: v.optional(v.string()),
+  },
+  handler: async (ctx, { prompt, language }): Promise<Id<"trips">> => {
     const userId = await getUserId(ctx);
+    const locale = toLocaleArg(language);
+    const t = translator(locale);
     const request = prompt.trim();
-    if (request.length < 3) throw new Error("Describe the trip you want");
-    if (request.length > 2000) throw new Error("Keep the trip description under 2000 characters");
+    if (request.length < 3) throw new Error(t("errors.describeTrip"));
+    if (request.length > 2000) throw new Error(t("errors.tooLong"));
     const via = aiVia();
     if (!via) {
       throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
     }
+    const TRIP_SPEC = tripSpec(locale);
 
     const today = new Date().toISOString().slice(0, 10);
     const content = `Today is ${today}.\n\nTrip request: ${request}`;
@@ -110,7 +159,7 @@ export const generateTrip = action({
     // Start on the cheapest tier that fits the request; if its answer is cut off or
     // incomplete, retry once per tier upward instead of failing.
     let tier: Tier | null = classifyRequest(request).tier;
-    let lastError = "The generated itinerary was incomplete. Please try again.";
+    let lastError = t("errors.incomplete");
 
     while (tier) {
       const models = modelsFor(tier, via);
@@ -120,7 +169,7 @@ export const generateTrip = action({
           : await generateViaAnthropic(models[0]!, tier, content, TRIP_SPEC);
 
       if (result.refused) {
-        throw new Error("The trip planner couldn't help with that request. Try rephrasing it.");
+        throw new Error(t("errors.refused"));
       }
       if (result.trip && !result.truncated && result.trip.subTrips.length > 0) {
         return ctx.runMutation(internal.trips.saveGenerated, {
@@ -130,7 +179,7 @@ export const generateTrip = action({
           tree: toTripTree(result.trip),
         });
       }
-      if (result.truncated) lastError = "That trip is too long to generate in one go. Try fewer days.";
+      if (result.truncated) lastError = t("errors.tooManyDays");
       tier = process.env.AI_MODEL ? null : nextTier(tier);
     }
     throw new Error(lastError);
@@ -194,12 +243,16 @@ export const replanDay = action({
     weather: v.optional(v.object({ label: v.string(), high: v.number(), low: v.number(), rainChance: v.number() })),
     /** Local "HH:MM" when re-planning the rest of a day that's under way (today mode). */
     now: v.optional(v.string()),
+    /** App language; new stops and the summary are written in it. */
+    language: v.optional(v.string()),
   },
   returns: replanResult,
-  handler: async (ctx, { subTripId, reason, weather, now }): Promise<ReplanProposal> => {
+  handler: async (ctx, { subTripId, reason, weather, now, language }): Promise<ReplanProposal> => {
     const userId = await getUserId(ctx);
+    const locale = toLocaleArg(language);
+    const t = translator(locale);
     const day: ReplanDay | null = await ctx.runQuery(internal.activities.dayForReplan, { subTripId, userId });
-    if (!day) throw new Error("Only the organizer can re-plan a day");
+    if (!day) throw new Error(t("errors.organizerOnly"));
     const via = aiVia();
     if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
 
@@ -209,9 +262,9 @@ export const replanDay = action({
     let tier: Tier | null = "standard";
     while (tier) {
       const models = modelsFor(tier, via);
-      const spec = { system: REPLAN_PROMPT, schema: replanSchema };
+      const spec = { system: REPLAN_PROMPT + languageInstruction(locale), schema: replanSchema };
       const result = via === "gateway" ? await generateViaGateway(models, tier, content, spec) : await generateViaAnthropic(models[0]!, tier, content, spec);
-      if (result.refused) throw new Error("The planner couldn't help with that. Try a different reason.");
+      if (result.refused) throw new Error(t("errors.replanRefused"));
       const plan = result.trip;
       if (plan && !result.truncated && plan.activities.length > 0) {
         const known = new Set(day.activities.map((a) => a.id));
@@ -230,6 +283,6 @@ export const replanDay = action({
       }
       tier = process.env.AI_MODEL ? null : nextTier(tier);
     }
-    throw new Error("The new plan came back incomplete. Please try again.");
+    throw new Error(t("errors.replanIncomplete"));
   },
 });

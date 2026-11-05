@@ -2,7 +2,8 @@
 
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { cn } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, dayTitle } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
@@ -44,6 +45,7 @@ export function usePhotoUpload(activityId: Id<"activities">) {
   const add = useMutation(api.memories.add);
   const input = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(0);
+  const { t } = useI18n();
 
   useEffect(() => {
     const el = document.createElement("input");
@@ -62,7 +64,7 @@ export function usePhotoUpload(activityId: Id<"activities">) {
             const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
             await add({ activityId, storageId });
           } catch (e) {
-            alert(e instanceof Error ? e.message : "Couldn't upload that photo");
+            alert(e instanceof Error ? e.message : t("memories.uploadFailed"));
           } finally {
             setUploading((n) => n - 1);
           }
@@ -70,7 +72,7 @@ export function usePhotoUpload(activityId: Id<"activities">) {
       );
     };
     input.current = el;
-  }, [activityId, add, generateUploadUrl]);
+  }, [activityId, add, generateUploadUrl, t]);
 
   return [() => input.current?.click(), uploading > 0] as const;
 }
@@ -78,6 +80,7 @@ export function usePhotoUpload(activityId: Id<"activities">) {
 /** Thumbnails on an activity card plus the "Add photos" button. */
 export function ActivityPhotos({ activityId, compact = false }: { activityId: Id<"activities">; compact?: boolean }) {
   const { byActivity, canAdd, open } = useMemories();
+  const { t } = useI18n();
   const photos = byActivity.get(activityId) ?? [];
   const [pick, uploading] = usePhotoUpload(activityId);
   if (!canAdd && photos.length === 0) return null;
@@ -96,7 +99,7 @@ export function ActivityPhotos({ activityId, compact = false }: { activityId: Id
             transition={{ duration: 0.2, ease: EASE_OUT }}
             onClick={() => open(photos, i)}
             className={cn("relative overflow-hidden rounded-xl ring-1 ring-border transition hover:brightness-110 active:scale-95", compact ? "h-9 w-9" : "h-12 w-12")}
-            aria-label={`Open photo ${i + 1} of ${photos.length}`}
+            aria-label={t("memories.openPhoto", { n: i + 1, total: photos.length })}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- Convex storage URL */}
             <img src={p.url} alt={p.caption ?? ""} className="h-full w-full object-cover" />
@@ -114,8 +117,8 @@ export function ActivityPhotos({ activityId, compact = false }: { activityId: Id
             "grid place-items-center rounded-xl border-2 border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-primary disabled:animate-pulse",
             compact ? "h-9 w-9 text-sm" : "h-12 w-12",
           )}
-          aria-label="Add photos"
-          title="Add photos"
+          aria-label={t("memories.addPhotos")}
+          title={t("memories.addPhotos")}
         >
           {uploading ? "…" : "📷"}
         </button>
@@ -127,6 +130,7 @@ export function ActivityPhotos({ activityId, compact = false }: { activityId: Id
 /** The trip's photo album, grouped by day. */
 export function MemoriesGallery({ subTrips }: { subTrips: { _id: string; dayNumber: number; title: string }[] }) {
   const { photos, open, canAdd } = useMemories();
+  const { t } = useI18n();
   if (!canAdd) return null;
   const groups = subTrips
     .map((d) => ({ day: d, photos: photos.filter((p) => p.subTripId === d._id) }))
@@ -134,19 +138,19 @@ export function MemoriesGallery({ subTrips }: { subTrips: { _id: string; dayNumb
 
   return (
     <motion.section {...rise(0)} className="mt-16" aria-labelledby="memories-title">
-      <p className="text-sm font-semibold uppercase tracking-widest text-primary">Relive it</p>
+      <p className="text-sm font-semibold uppercase tracking-widest text-primary">{t("memories.eyebrow")}</p>
       <h2 id="memories-title" className="mt-1 text-3xl font-extrabold tracking-tight">
-        Memories
+        {t("memories.title")}
       </h2>
       {groups.length === 0 ? (
         <div className="mt-6 rounded-3xl border border-dashed border-border p-8 text-center text-muted-foreground">
-          📷 Add photos to any activity with the camera button. They&apos;ll collect here, day by day.
+          📷 {t("memories.empty")}
         </div>
       ) : (
         groups.map(({ day, photos: dayPhotos }) => (
           <div key={day._id} className="mt-6">
             <p className="text-sm font-semibold text-muted-foreground">
-              Day {day.dayNumber} · {day.title.replace(/^Day \d+\s*·\s*/, "")}
+              {t("time.dayN", { day: day.dayNumber })} · {dayTitle(day.title)}
             </p>
             <ul className="mt-3 columns-2 gap-3 sm:columns-3 lg:columns-4">
               {dayPhotos.map((p, i) => (
@@ -177,6 +181,7 @@ export function MemoriesGallery({ subTrips }: { subTrips: { _id: string; dayNumb
 
 function Lightbox({ photos, index: start, onClose }: { photos: Photo[]; index: number; onClose: () => void }) {
   const [index, setIndex] = useState(start);
+  const { t } = useI18n();
   const [dir, setDir] = useState(0);
   const remove = useMutation(api.memories.remove);
   const setCaption = useMutation(api.memories.setCaption);
@@ -206,27 +211,27 @@ function Lightbox({ photos, index: start, onClose }: { photos: Photo[]; index: n
       className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm"
       role="dialog"
       aria-modal
-      aria-label="Photo viewer"
+      aria-label={t("memories.viewer")}
       onClick={onClose}
     >
       <div className="flex items-center justify-between p-4 text-sm text-white/80" onClick={(e) => e.stopPropagation()}>
         <span>
-          {photo.activityTitle} · added by {photo.uploaderName} · {index + 1}/{photos.length}
+          {t("memories.addedBy", { activity: photo.activityTitle, name: photo.uploaderName, n: index + 1, total: photos.length })}
         </span>
         <div className="flex gap-2">
           {photo.canDelete && (
             <button
               onClick={async () => {
-                if (!confirm("Delete this photo?")) return;
+                if (!confirm(t("memories.deleteConfirm"))) return;
                 onClose();
                 await remove({ memoryId: photo._id });
               }}
               className="rounded-full bg-white/10 px-3 py-1.5 hover:bg-danger"
             >
-              Delete
+              {t("common.delete")}
             </button>
           )}
-          <button onClick={onClose} className="rounded-full bg-white/10 px-3 py-1.5 hover:bg-white/20" aria-label="Close">
+          <button onClick={onClose} className="rounded-full bg-white/10 px-3 py-1.5 hover:bg-white/20" aria-label={t("common.close")}>
             ✕
           </button>
         </div>
@@ -248,10 +253,10 @@ function Lightbox({ photos, index: start, onClose }: { photos: Photo[]; index: n
         </AnimatePresence>
         {photos.length > 1 && (
           <>
-            <button onClick={(e) => (e.stopPropagation(), go(-1))} className="absolute left-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Previous">
+            <button onClick={(e) => (e.stopPropagation(), go(-1))} className="absolute left-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label={t("memories.previous")}>
               ‹
             </button>
-            <button onClick={(e) => (e.stopPropagation(), go(1))} className="absolute right-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label="Next">
+            <button onClick={(e) => (e.stopPropagation(), go(1))} className="absolute right-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white hover:bg-white/20" aria-label={t("memories.next")}>
               ›
             </button>
           </>
@@ -261,7 +266,7 @@ function Lightbox({ photos, index: start, onClose }: { photos: Photo[]; index: n
         <input
           key={photo._id}
           defaultValue={photo.caption ?? ""}
-          placeholder="Add a caption…"
+          placeholder={t("memories.captionPlaceholder")}
           onBlur={(e) => e.target.value !== (photo.caption ?? "") && void setCaption({ memoryId: photo._id, caption: e.target.value })}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
           className="mx-auto block w-full max-w-xl rounded-full bg-white/10 px-4 py-2.5 text-center text-white placeholder:text-white/40 outline-none focus:bg-white/15"

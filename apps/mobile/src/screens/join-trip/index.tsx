@@ -1,5 +1,5 @@
 import { api } from "@trip/backend/api";
-import { formatDateRange } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -17,14 +17,15 @@ export function JoinTrip({ token }: { token: string }) {
   const join = useMutation(api.members.join);
   const router = useRouter();
   const [joining, setJoining] = useState(false);
+  const { t, f } = useI18n();
 
   if (preview === undefined) return <ActivityIndicator className="mt-16" />;
   if (preview === null)
     return (
       <View className="flex-1 items-center justify-center gap-2 bg-background p-8">
         <Text className="text-4xl">🔗</Text>
-        <Text className="text-xl font-bold text-foreground">This invite isn&apos;t active</Text>
-        <Text className="text-center text-muted-foreground">Ask the organizer for a new link.</Text>
+        <Text className="text-xl font-bold text-foreground">{t("join.inactiveTitle")}</Text>
+        <Text className="text-center text-muted-foreground">{t("join.inactiveBody")}</Text>
       </View>
     );
 
@@ -49,24 +50,26 @@ export function JoinTrip({ token }: { token: string }) {
           <View className="absolute bottom-4 left-5 right-5">
             <Text className="text-sm font-semibold text-white/85">📍 {preview.destination}</Text>
             <Text className="text-3xl font-extrabold text-white">{preview.title}</Text>
-            <Text className="text-sm text-white/80">{formatDateRange(preview.startDate, preview.endDate)}</Text>
+            <Text className="text-sm text-white/80">{f.dateRange(preview.startDate, preview.endDate)}</Text>
           </View>
         </View>
         <View className="gap-4 p-5">
           <Text className="text-lg text-foreground">
-            <Text className="font-bold">{preview.ownerName}</Text> invited you
-            {others.length ? ` with ${others.slice(0, 3).join(", ")}` : ""}.
+            {others.length
+              ? t("mobileSheets.invitedYouWith", { name: preview.ownerName, names: others.slice(0, 3).join(", ") })
+              : t("mobileSheets.invitedYou", { name: preview.ownerName })}
+            .
           </Text>
           <View className="gap-1.5">
-            <Text className="text-sm text-muted-foreground">✅ See the plan and check things off</Text>
-            <Text className="text-sm text-muted-foreground">💡 Suggest places to go and eat</Text>
-            <Text className="text-sm text-muted-foreground">🗳️ Vote: the majority decides</Text>
+            <Text className="text-sm text-muted-foreground">✅ {t("mobileSheets.perk1")}</Text>
+            <Text className="text-sm text-muted-foreground">💡 {t("join.perk2")}</Text>
+            <Text className="text-sm text-muted-foreground">🗳️ {t("mobileSheets.perk3")}</Text>
           </View>
           {preview.alreadyMember ? (
-            <Button onPress={() => router.replace({ pathname: "/trips/[tripId]", params: { tripId: preview.tripId } })}>Open the trip</Button>
+            <Button onPress={() => router.replace({ pathname: "/trips/[tripId]", params: { tripId: preview.tripId } })}>{t("mobileSheets.openTrip")}</Button>
           ) : (
             <Button onPress={() => void onJoin()} loading={joining}>
-              Join the trip
+              {t("join.join")}
             </Button>
           )}
         </View>

@@ -1,6 +1,7 @@
 import type { Id } from "@trip/backend/dataModel";
 import { Suspense } from "react";
 import { RequireAuth } from "@/components/auth";
+import { T } from "@trip/i18n/react";
 import { TodayView } from "@/components/today/today-view";
 
 export const metadata = { title: "Today · Trip Planner" };
@@ -8,7 +9,7 @@ export const metadata = { title: "Today · Trip Planner" };
 export default function TodayPage({ params, searchParams }: PageProps<"/trips/[tripId]/today">) {
   return (
     <RequireAuth>
-      <Suspense fallback={<p className="p-8 text-center text-muted-foreground">Loading today…</p>}>
+      <Suspense fallback={<p className="p-8 text-center text-muted-foreground"><T k="today.loading" /></p>}>
         <TodayFromParams params={params} searchParams={searchParams} />
       </Suspense>
     </RequireAuth>

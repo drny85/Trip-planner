@@ -1,16 +1,12 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import type { ActivityNode, TripDetails } from "@trip/backend/types";
+import { useI18n } from "@trip/i18n/react";
 import {
-  categoryLabel,
   cn,
-  countdown,
   distanceKm,
   estimateTravel,
   findTodayDay,
-  formatDay,
-  formatDuration,
-  formatTime,
   fromMinutes,
   hasCoords,
   leaveBy,
@@ -48,8 +44,9 @@ const FAR_KM = 30;
  */
 export function TodayScreen({ tripId, previewDay }: { tripId: Id<"trips">; previewDay?: number }) {
   const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
+  const { t } = useI18n();
   if (trip === undefined) return <ActivityIndicator className="mt-16" />;
-  if (trip === null) return <Text className="p-8 text-center text-muted-foreground">This trip doesn&apos;t exist anymore.</Text>;
+  if (trip === null) return <Text className="p-8 text-center text-muted-foreground">{t("trip.notFound")}</Text>;
 
   const today = localToday();
   const live = findTodayDay(trip, today);
@@ -61,6 +58,7 @@ export function TodayScreen({ tripId, previewDay }: { tripId: Id<"trips">; previ
 function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day; isPreview: boolean; isCached: boolean }) {
   const router = useRouter();
   const now = useNowMinutes();
+  const { t, f } = useI18n();
   const status = todayStatus(day.activities, now);
   const { next, lastDone } = status;
   const canEdit = trip.myRole === "owner";
@@ -85,11 +83,11 @@ function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-4 px-4 pb-16 pt-2">
-      <Stack.Screen options={{ title: isPreview ? `Preview · Day ${day.dayNumber}` : "Today" }} />
+      <Stack.Screen options={{ title: isPreview ? t("today.previewTitle", { day: day.dayNumber }) : t("today.title") }} />
       <OfflineBanner cached={isCached} />
       <Text className="text-sm text-muted-foreground">
-        {trip.title} · Day {day.dayNumber}
-        {day.date ? ` · ${formatDay(day.date)}` : ""} · {formatTime(fromMinutes(now))}
+        {trip.title} · {t("time.dayN", { day: day.dayNumber })}
+        {day.date ? ` · ${f.weekday(day.date)}` : ""} · {f.time(fromMinutes(now))}
       </Text>
 
       <WeatherStrip weather={weather} />
@@ -104,22 +102,22 @@ function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day
           stop={next}
           isNow={status.current?._id === next._id}
           travel={travel}
-          travelFrom={meNear ? "you" : lastDone?.title}
+          travelFrom={meNear ? t("today.fromYou") : lastDone ? t("today.fromPlace", { place: lastDone.title }) : undefined}
           location={location}
           far={!!me && !meNear}
         />
       ) : (
         <Animated.View entering={FadeIn.duration(300).easing(EASE_OUT)} className="items-center gap-2 rounded-3xl bg-card p-8">
           <Text className="text-5xl">🎉</Text>
-          <Text className="text-xl font-bold text-foreground">That&apos;s a wrap for today</Text>
-          <Text className="text-center text-muted-foreground">All {status.total} stops done.</Text>
+          <Text className="text-xl font-bold text-foreground">{t("today.wrapTitle")}</Text>
+          <Text className="text-center text-muted-foreground">{t("today.wrapBody", { count: status.total })}</Text>
         </Animated.View>
       )}
 
       <View className="mt-2 flex-row items-baseline justify-between">
-        <Text className="text-lg font-bold text-foreground">Rest of the day</Text>
+        <Text className="text-lg font-bold text-foreground">{t("today.restOfDay")}</Text>
         <Text className="text-sm text-muted-foreground">
-          {status.done}/{status.total} done
+          {t("today.doneCount", { done: status.done, total: status.total })}
         </Text>
       </View>
       <View className="gap-1">
@@ -131,7 +129,7 @@ function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day
       </View>
       {canEdit && next && (
         <Button variant="secondary" icon="sparkles" onPress={() => replan()}>
-          Re-plan the rest of today
+          {t("today.replanRest")}
         </Button>
       )}
     </ScrollView>
@@ -139,6 +137,7 @@ function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day
 }
 
 function WeatherStrip({ weather }: { weather: LiveWeather | null }) {
+  const { t, f } = useI18n();
   if (!weather) return null;
   return (
     <Animated.View entering={FadeIn.duration(240).easing(EASE_OUT)} className="flex-row items-center gap-3 rounded-3xl bg-card p-3">
@@ -146,13 +145,13 @@ function WeatherStrip({ weather }: { weather: LiveWeather | null }) {
         <Text className="text-3xl">{weather.now.emoji}</Text>
         <View>
           <Text className="text-2xl font-extrabold text-foreground">{weather.now.temp}°</Text>
-          <Text className="text-xs text-muted-foreground">{weather.now.label}</Text>
+          <Text className="text-xs text-muted-foreground">{t(`weather.${weather.now.kind}`)}</Text>
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-1.5">
         {weather.hours.slice(1, 9).map((h) => (
           <View key={h.time} className={cn("w-14 items-center gap-0.5 rounded-2xl py-2", h.rainChance >= 50 ? "bg-sky-500/15" : "bg-muted")}>
-            <Text className="text-[11px] text-muted-foreground">{formatTime(h.time).replace(":00", "")}</Text>
+            <Text className="text-[11px] text-muted-foreground">{f.time(h.time).replace(":00", "")}</Text>
             <Text className="text-sm">{h.emoji}</Text>
             <Text className="text-xs font-semibold text-foreground">{h.temp}°</Text>
             {h.rainChance >= 30 && <Text className="text-[10px] text-sky-600">☂ {h.rainChance}%</Text>}
@@ -167,6 +166,7 @@ function AlertCard({ alert, day, canEdit, onReplan }: { alert: TodayAlert; day: 
   const shift = useMutation(api.activities.shiftTimes);
   const [shifted, setShifted] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const { t, f } = useI18n();
   const rain = alert.kind === "rain";
   const push = alert.kind === "late" ? Math.min(180, Math.ceil(alert.minutes / 15) * 15) : 0;
 
@@ -192,27 +192,23 @@ function AlertCard({ alert, day, canEdit, onReplan }: { alert: TodayAlert; day: 
       <View className="flex-row gap-3">
         <Text className="text-2xl">{rain ? "🌧️" : "⏰"}</Text>
         <View className="flex-1 gap-0.5">
-          <Text className="font-bold text-foreground">{rain ? `Rain likely from ${formatTime(alert.at)} (${alert.chance}%)` : `You're about ${formatDuration(alert.minutes)} behind`}</Text>
-          <Text className="text-sm text-muted-foreground">
-            {rain
-              ? `${alert.outdoor.slice(0, 3).join(", ")}${alert.outdoor.length > 3 ? " and more" : ""} ${alert.outdoor.length === 1 ? "is" : "are"} outdoors.`
-              : "The AI can reorder the stops or swap one out so you still make the important ones."}
-          </Text>
+          <Text className="font-bold text-foreground">{rain ? t("today.rainFrom", { time: f.time(alert.at), percent: alert.chance }) : t("today.behind", { duration: f.duration(alert.minutes) })}</Text>
+          <Text className="text-sm text-muted-foreground">{rain ? outdoorText(t, alert.outdoor) : t("today.lateBody")}</Text>
         </View>
       </View>
       {canEdit ? (
         <View className="flex-row flex-wrap gap-2">
           <Button size="sm" icon="sparkles" onPress={onReplan}>
-            {rain ? "Swap in indoor stops" : "Re-plan from now"}
+            {rain ? t("today.swapIndoor") : t("today.replanFromNow")}
           </Button>
           {alert.kind === "late" && (
             <Button size="sm" variant="secondary" loading={busy} onPress={() => void run(shifted ? -shifted : push)}>
-              {shifted ? `Moved ${shifted} min · Undo` : `Push back ${push} min`}
+              {shifted ? t("today.movedUndoShort", { minutes: shifted }) : t("today.pushBackShort", { minutes: push })}
             </Button>
           )}
         </View>
       ) : (
-        <Text className="text-xs text-muted-foreground">The organizer can re-plan the day.</Text>
+        <Text className="text-xs text-muted-foreground">{t("today.organizerCan")}</Text>
       )}
     </Animated.View>
   );
@@ -234,7 +230,8 @@ function NextCard({
   far: boolean;
 }) {
   const toggleDone = useToggleDone();
-  const badge = categoryLabel(stop.category, stop.subcategory);
+  const { t, f, category } = useI18n();
+  const badge = category(stop.category, stop.subcategory);
   const leave = travel && !isNow ? leaveBy(stop, travel.minutes) : undefined;
   const step = stop.children.find((c) => !c.isCompleted);
 
@@ -243,36 +240,36 @@ function NextCard({
       <SmartImage uri={stop.photoUrl} seed={stop.title} emoji={badge.emoji} tint={badge.color} className="absolute inset-0" />
       <LinearGradient colors={["rgba(2,6,23,0.25)", "rgba(2,6,23,0.85)", "rgba(2,6,23,0.98)"]} className="absolute inset-0" />
       <View className="gap-2 p-5 pt-28">
-        <Text className="text-[11px] font-bold uppercase tracking-widest text-emerald-300">{isNow ? "Happening now" : "Up next"}</Text>
+        <Text className="text-[11px] font-bold uppercase tracking-widest text-emerald-300">{isNow ? t("today.happeningNow") : t("today.upNext")}</Text>
         <Text className="text-[28px] font-extrabold leading-8 text-white" numberOfLines={2}>
           {stop.title}
         </Text>
         <Text className="text-sm text-white/75" numberOfLines={2}>
-          {[formatTime(stop.startTime), `${badge.emoji} ${badge.text}`, stop.durationMinutes ? formatDuration(stop.durationMinutes) : null, stop.address].filter(Boolean).join(" · ")}
+          {[f.time(stop.startTime), `${badge.emoji} ${badge.text}`, stop.durationMinutes ? f.duration(stop.durationMinutes) : null, stop.address].filter(Boolean).join(" · ")}
         </Text>
         {step && (
           <Text className="self-start rounded-2xl bg-white/10 px-3 py-2 text-sm text-white">
-            Next step: <Text className="font-semibold">{step.title}</Text>
+            {t("today.nextStep")} <Text className="font-semibold">{step.title}</Text>
           </Text>
         )}
 
         {travel && (
           <View className="mt-1 self-start rounded-2xl bg-white/10 px-3 py-2">
             <Text className="text-sm text-white">
-              {travel.mode === "walk" ? "🚶" : "🚇"} About <Text className="font-bold">{formatDuration(travel.minutes)}</Text> {travel.mode === "walk" ? "walk" : "by transit or taxi"}
-              {travelFrom ? <Text className="text-white/60"> from {travelFrom}</Text> : null}
+              {travel.mode === "walk" ? "🚶" : "🚇"} {t(travel.mode === "walk" ? "today.travelWalk" : "today.travelTransit", { duration: f.duration(travel.minutes) })}
+              {travelFrom ? <Text className="text-white/60"> {travelFrom}</Text> : null}
             </Text>
-            {leave && <Text className="mt-0.5 text-sm font-semibold text-emerald-300">Leave by {formatTime(leave)}</Text>}
+            {leave && <Text className="mt-0.5 text-sm font-semibold text-emerald-300">{t("today.leaveBy", { time: f.time(leave) })}</Text>}
           </View>
         )}
         {location.status !== "on" && (
           <Pressable onPress={location.enable} disabled={location.status === "asking"} className="self-start rounded-2xl bg-white/10 px-3 py-2 active:opacity-70">
             <Text className="text-sm font-semibold text-white">
-              {location.status === "denied" ? "📍 Location is off for Trip Planner in Settings" : location.status === "unavailable" ? "📍 Location unavailable" : "📍 Use my location for travel time"}
+              📍 {location.status === "denied" ? t("today.locationBlockedMobile") : location.status === "unavailable" ? t("today.locationUnavailable") : t("today.useLocation")}
             </Text>
           </Pressable>
         )}
-        {far && <Text className="text-xs text-white/60">You&apos;re more than {FAR_KM} km away</Text>}
+        {far && <Text className="text-xs text-white/60">{t("today.far", { km: FAR_KM })}</Text>}
 
         <View className="mt-3 flex-row flex-wrap gap-2">
           <Button
@@ -284,19 +281,19 @@ function NextCard({
               void toggleDone(step ?? stop, true);
             }}
           >
-            {step ? "Step done" : "Mark done"}
+            {step ? t("mobileUpNext.stepDone") : t("upNext.markDone")}
           </Button>
           <Button size="sm" variant="glass" icon="directions" onPress={() => void openDirections(stop)}>
-            Directions
+            {t("activity.directions")}
           </Button>
           {stop.phone && (
             <Button size="sm" variant="glass" icon="phone" onPress={() => void callPhone(stop.phone!)}>
-              Call
+              {t("activity.call")}
             </Button>
           )}
           {stop.bookingUrl && (
             <Button size="sm" variant="glass" icon="ticket" onPress={() => void openInAppBrowser(stop.bookingUrl!)}>
-              Reserve
+              {t("activity.reserve")}
             </Button>
           )}
         </View>
@@ -307,19 +304,20 @@ function NextCard({
 
 function TimelineRow({ stop, leg, isNext }: { stop: ActivityNode; leg: ReturnType<typeof estimateTravel> | null; isNext: boolean }) {
   const toggleDone = useToggleDone();
-  const badge = categoryLabel(stop.category, stop.subcategory);
+  const { t, f, category } = useI18n();
+  const badge = category(stop.category, stop.subcategory);
   return (
     <Animated.View layout={LinearTransition}>
       {leg && (
         <Text className="ml-12 py-1 text-xs text-muted-foreground">
-          {leg.mode === "walk" ? "🚶" : "🚇"} ~{formatDuration(leg.minutes)}
+          {leg.mode === "walk" ? "🚶" : "🚇"} ~{f.duration(leg.minutes)}
         </Text>
       )}
       <View className={cn("flex-row items-center gap-3 rounded-2xl border px-3 py-2.5", isNext ? "border-primary/40 bg-primary/10" : "border-border bg-card", stop.isCompleted && "opacity-60")}>
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: stop.isCompleted }}
-          accessibilityLabel={stop.title}
+          accessibilityLabel={t(stop.isCompleted ? "activity.markNotDone" : "activity.markDone", { title: stop.title })}
           hitSlop={8}
           onPress={() => {
             void Haptics.selectionAsync();
@@ -329,13 +327,13 @@ function TimelineRow({ stop, leg, isNext }: { stop: ActivityNode; leg: ReturnTyp
         >
           {stop.isCompleted && <Text className="text-xs font-bold text-white">✓</Text>}
         </Pressable>
-        <Text className="w-[68px] text-sm font-semibold text-muted-foreground">{formatTime(stop.startTime)}</Text>
+        <Text className="w-[68px] text-sm font-semibold text-muted-foreground">{f.time(stop.startTime)}</Text>
         <Text className={cn("flex-1 font-semibold text-foreground", stop.isCompleted && "line-through")} numberOfLines={1}>
           {badge.emoji} {stop.title}
         </Text>
         {isNext && (
           <View className="rounded-full bg-primary px-2 py-0.5">
-            <Text className="text-xs font-semibold text-primary-foreground">Next</Text>
+            <Text className="text-xs font-semibold text-primary-foreground">{t("today.next")}</Text>
           </View>
         )}
       </View>
@@ -347,18 +345,25 @@ function NotToday({ trip, today }: { trip: TripDetails; today: string }) {
   const router = useRouter();
   const startsIn = Math.round((Date.parse(`${trip.startDate}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
   const over = today > trip.endDate;
+  const { t } = useI18n();
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="items-center gap-4 p-8">
       <Text className="text-5xl">{over ? "🧳" : "🗓️"}</Text>
-      <Text className="text-center text-2xl font-bold text-foreground">{over ? "This trip is over" : `${trip.title} starts ${countdown(startsIn, 1).toLowerCase()}`}</Text>
-      <Text className="text-center text-muted-foreground">Today mode turns on during the trip. It shows what&apos;s next, how long it takes to get there and the weather, and helps when plans change.</Text>
+      <Text className="text-center text-2xl font-bold text-foreground">{over ? t("today.tripOver") : t("today.startsIn", { title: trip.title, count: startsIn })}</Text>
+      <Text className="text-center text-muted-foreground">{t("today.notTodayBody")}</Text>
       <View className="flex-row flex-wrap justify-center gap-2">
         {trip.subTrips.slice(0, 7).map((d) => (
           <Button key={d._id} size="sm" variant="secondary" onPress={() => router.setParams({ day: String(d.dayNumber) })}>
-            {`Preview day ${d.dayNumber}`}
+            {t("today.previewDay", { day: d.dayNumber })}
           </Button>
         ))}
       </View>
     </ScrollView>
   );
+}
+
+/** "Park, Garden and more are outdoors." */
+function outdoorText(t: ReturnType<typeof useI18n>["t"], places: string[]) {
+  const listed = places.slice(0, 3).join(", ");
+  return t("today.outdoors", { count: places.length, places: places.length > 3 ? t("today.andMore", { places: listed }) : listed });
 }

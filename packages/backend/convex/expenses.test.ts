@@ -83,6 +83,16 @@ describe("notifications", () => {
     await ben.mutation(api.notifications.markAllRead, {});
     expect((await ben.query(api.notifications.feed, {}))!.unread).toBe(0);
 
+    // Each reader gets the text in their own language; the stored params let the apps re-render it.
+    await ben.mutation(api.users.setLanguage, { language: "es" });
+    await ana.mutation(api.expenses.add, { tripId, description: "Cena", amountCents: 9000, paidBy: "ana", splitAmong: ["ana", "ben"] });
+    expect((await ben.query(api.notifications.feed, {}))!.items[0]).toMatchObject({
+      kind: "expense",
+      text: expect.stringMatching(/^Ana agregó Cena \(.+90\), dividido entre 2\.$/),
+      params: expect.objectContaining({ name: "Ana", item: "Cena", count: 2, amountCents: 9000 }),
+    });
+    await expect(ben.mutation(api.users.setLanguage, { language: "xx" })).rejects.toThrow();
+
     await ben.mutation(api.notifications.registerPushToken, { token: "ExponentPushToken[abc]" });
     await expect(ben.mutation(api.notifications.registerPushToken, { token: "nope" })).rejects.toThrow();
   });

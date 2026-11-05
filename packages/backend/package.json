@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
+    "@trip/i18n": "workspace:*",
     "ai": "7.0.162",
     "convex": "^1.49.0",
     "zod": "^4.6.7"

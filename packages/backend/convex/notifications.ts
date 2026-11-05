@@ -11,7 +11,7 @@ export const feed = query({
     const rows = await ctx.db.query("notifications").withIndex("by_userId", (q) => q.eq("userId", userId)).order("desc").take(30);
     return {
       unread: rows.filter((r) => !r.isRead).length,
-      items: rows.map((r) => ({ _id: r._id, _creationTime: r._creationTime, tripId: r.tripId, kind: r.kind, text: r.text, isRead: r.isRead })),
+      items: rows.map((r) => ({ _id: r._id, _creationTime: r._creationTime, tripId: r.tripId, kind: r.kind, text: r.text, params: r.params, isRead: r.isRead })),
     };
   },
 });

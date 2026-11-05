@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@trip/i18n/react";
 import { motion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 import { EASE_OUT, rise } from "@/lib/motion";
@@ -9,20 +10,21 @@ import { UpNext } from "./up-next";
 const u = (id: string, w = 900) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 
 const COLLAGE = [
-  { id: "1540959733332-eab4deabeeaf", seed: "tokyo", label: "Tokyo skyline", className: "left-0 top-6 h-64 w-48 -rotate-6", depth: 40 },
-  { id: "1478436127897-769e1b3f0f36", seed: "kyoto", label: "Fushimi Inari", className: "left-40 top-0 z-10 h-72 w-56 rotate-3", depth: 80 },
-  { id: "1579584425555-c3ce17fd4351", seed: "food", label: "Tempura lunch", className: "left-8 top-64 h-44 w-60 rotate-2", depth: 20 },
-];
+  { id: "1540959733332-eab4deabeeaf", seed: "tokyo", label: "collageTokyo", className: "left-0 top-6 h-64 w-48 -rotate-6", depth: 40 },
+  { id: "1478436127897-769e1b3f0f36", seed: "kyoto", label: "collageKyoto", className: "left-40 top-0 z-10 h-72 w-56 rotate-3", depth: 80 },
+  { id: "1579584425555-c3ce17fd4351", seed: "food", label: "collageFood", className: "left-8 top-64 h-44 w-60 rotate-2", depth: 20 },
+] as const;
 
 const FEATURES = [
-  { emoji: "✨", title: "AI itineraries", body: "Describe a trip in a sentence. Get every day planned with addresses, times and booking links." },
-  { emoji: "🧲", title: "Drag to rearrange", body: "Reorder activities or move them between days. Changes sync to your phone instantly." },
-  { emoji: "✅", title: "Check it off", body: "Tick off places as you go. Call ahead, get directions or reserve in one tap." },
-];
+  { emoji: "✨", title: "feature1Title", body: "feature1Body" },
+  { emoji: "🧲", title: "feature2Title", body: "feature2Body" },
+  { emoji: "✅", title: "feature3Title", body: "feature3Body" },
+] as const;
 
-const STEPS = ["Tell it where and when", "Claude plans every day", "Tweak, reorder, go"];
+const STEPS = ["step1", "step2", "step3"] as const;
 
 export function Landing() {
+  const { t, f } = useI18n();
   const { scrollY } = useScroll();
   const lift = useTransform(scrollY, [0, 600], [0, -60]);
 
@@ -46,33 +48,32 @@ export function Landing() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-            Powered by Claude
+            {t("landing.poweredBy")}
           </motion.span>
           <motion.h1 {...rise(1)} className="text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
-            Your whole trip,{" "}
-            <span className="bg-gradient-to-r from-primary via-emerald-500 to-sky-500 bg-clip-text text-transparent">planned in a minute.</span>
+            {t("landing.headline")}{" "}
+            <span className="bg-gradient-to-r from-primary via-emerald-500 to-sky-500 bg-clip-text text-transparent">{t("landing.headlineAccent")}</span>
           </motion.h1>
           <motion.p {...rise(2)} className="max-w-xl text-lg text-muted-foreground">
-            Tell Trip Planner where you&apos;re going and what you love. It builds a day-by-day itinerary you can edit, reorder
-            and check off on the web or your phone.
+            {t("landing.intro")}
           </motion.p>
           <motion.div {...rise(3)} className="flex flex-wrap gap-3">
             <Link
               href="/trips/new"
               className="group inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:shadow-xl hover:shadow-primary/30 active:scale-[0.97]"
             >
-              Plan a trip with AI
+              {t("landing.cta")}
               <span className="transition-transform group-hover:translate-x-0.5">→</span>
             </Link>
             <Link href="/trips" className="rounded-full border border-border bg-card/70 px-6 py-3 font-semibold backdrop-blur transition hover:bg-muted active:scale-[0.97]">
-              View my trips
+              {t("landing.viewTrips")}
             </Link>
           </motion.div>
           <motion.ol {...rise(4)} className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             {STEPS.map((s, i) => (
               <li key={s} className="flex items-center gap-2">
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-muted text-[11px] font-bold text-foreground">{i + 1}</span>
-                {s}
+                {t(`landing.${s}`)}
               </li>
             ))}
           </motion.ol>
@@ -93,7 +94,7 @@ export function Landing() {
                 transition={{ duration: 6 + i, repeat: Infinity, ease: "easeInOut" }}
                 className="h-full w-full overflow-hidden rounded-3xl border-4 border-card shadow-2xl"
               >
-                <SmartImage src={u(c.id)} seed={c.seed} alt={c.label} className="h-full w-full" priority />
+                <SmartImage src={u(c.id)} seed={c.seed} alt={t(`landing.${c.label}`)} className="h-full w-full" priority />
               </motion.div>
             </motion.div>
           ))}
@@ -105,17 +106,19 @@ export function Landing() {
           >
             <span className="grid h-9 w-9 place-items-center rounded-full bg-success text-card">✓</span>
             <div className="text-sm">
-              <p className="font-semibold">Senso-ji Temple</p>
-              <p className="text-muted-foreground">Day 1 · 9:00</p>
+              <p className="font-semibold">{t("landing.sampleActivity")}</p>
+              <p className="text-muted-foreground">
+                {t("time.dayN", { day: 1 })} · {f.time("09:00")}
+              </p>
             </div>
           </motion.div>
         </motion.div>
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-24 sm:grid-cols-3">
-        {FEATURES.map((f, i) => (
+        {FEATURES.map((feat, i) => (
           <motion.div
-            key={f.title}
+            key={feat.title}
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
@@ -123,9 +126,9 @@ export function Landing() {
             whileHover={{ y: -4 }}
             className="rounded-3xl border border-border bg-card/80 p-6 shadow-sm backdrop-blur"
           >
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-muted text-xl">{f.emoji}</span>
-            <h2 className="mt-4 text-lg font-bold">{f.title}</h2>
-            <p className="mt-1.5 text-muted-foreground">{f.body}</p>
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-muted text-xl">{feat.emoji}</span>
+            <h2 className="mt-4 text-lg font-bold">{t(`landing.${feat.title}`)}</h2>
+            <p className="mt-1.5 text-muted-foreground">{t(`landing.${feat.body}`)}</p>
           </motion.div>
         ))}
       </section>

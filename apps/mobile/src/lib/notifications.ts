@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { i18nNow } from "./i18n";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
@@ -15,7 +16,7 @@ export async function getPushToken() {
   if (Platform.OS === "web" || !Device.isDevice) return null;
   if (Platform.OS === "android") {
     // eslint-disable-next-line import/namespace -- re-exported with `export *`, which the rule can't follow
-    await Notifications.setNotificationChannelAsync("default", { name: "Trip updates", importance: Notifications.AndroidImportance.DEFAULT });
+    await Notifications.setNotificationChannelAsync("default", { name: i18nNow().t("mobile.channelName"), importance: Notifications.AndroidImportance.DEFAULT });
   }
   const { status } = await Notifications.getPermissionsAsync();
   const granted = status === "granted" || (await Notifications.requestPermissionsAsync()).status === "granted";
@@ -57,7 +58,7 @@ export async function scheduleTripReminders(trip: ReminderTrip) {
         if (fire > now && fire < horizon) {
           jobs.push(
             Notifications.scheduleNotificationAsync({
-              content: { title: `In ${REMIND_BEFORE_MIN} min: ${a.title}`, body: a.address || trip.title, data: { tripId: trip._id } },
+              content: { title: i18nNow().t("mobile.reminder", { minutes: REMIND_BEFORE_MIN, title: a.title }), body: a.address || trip.title, data: { tripId: trip._id } },
               trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fire },
             }),
           );

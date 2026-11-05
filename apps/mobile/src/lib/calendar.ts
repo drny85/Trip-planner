@@ -1,6 +1,7 @@
 import { toICS } from "@trip/ui";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import { i18nNow } from "./i18n";
 
 /** Writes the itinerary to an .ics file and opens the share sheet, so it can go to Calendar. */
 export async function shareCalendar(trip: Parameters<typeof toICS>[0]) {
@@ -8,5 +9,5 @@ export async function shareCalendar(trip: Parameters<typeof toICS>[0]) {
   if (file.exists) file.delete();
   file.create();
   await file.write(toICS(trip));
-  await Sharing.shareAsync(file.uri, { mimeType: "text/calendar", UTI: "public.calendar-event", dialogTitle: "Add to calendar" });
+  await Sharing.shareAsync(file.uri, { mimeType: "text/calendar", UTI: "public.calendar-event", dialogTitle: i18nNow().t("trip.addToCalendar") });
 }

@@ -1,5 +1,6 @@
+import { useI18n } from "@trip/i18n/react";
 import type { TripDetails } from "@trip/backend/types";
-import { formatDateRange, tripLength } from "@trip/ui";
+import { tripLength } from "@trip/ui";
 import { Text, View } from "react-native";
 import Animated, {
   Extrapolation,
@@ -21,6 +22,7 @@ export function TripHero({ trip, scrollY }: { trip: TripDetails; scrollY: Shared
   const { completed, total } = trip.progress;
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
   const days = tripLength(trip.startDate, trip.endDate);
+  const { t, f } = useI18n();
 
   // Parallax: the photo moves at half speed on scroll and stretches when pulled down.
   const photoStyle = useAnimatedStyle(() => {
@@ -56,21 +58,21 @@ export function TripHero({ trip, scrollY }: { trip: TripDetails; scrollY: Shared
           {trip.isAIGenerated && (
             <View className="flex-row items-center gap-1.5 self-start rounded-full bg-white/20 px-3 py-1">
               <Icon name="sparkles" size={12} colorVar="--color-accent" />
-              <Text className="text-xs font-semibold text-white">AI generated</Text>
+              <Text className="text-xs font-semibold text-white">{t("trip.aiGenerated")}</Text>
             </View>
           )}
           <Text className="text-5xl font-extrabold tracking-tight text-white">{trip.title}</Text>
           <Text className="text-base text-white/85">
-            {trip.destination} · {formatDateRange(trip.startDate, trip.endDate)}
+            {trip.destination} · {f.dateRange(trip.startDate, trip.endDate)}
           </Text>
         </Animated.View>
       </View>
 
       <View className="mx-4 -mt-8 gap-4 rounded-3xl bg-card p-5 shadow-lg shadow-black/10">
         <View className="flex-row">
-          <Stat value={`${days}`} label={days === 1 ? "day" : "days"} />
-          <Stat value={`${total}`} label="activities" />
-          <Stat value={`${percent}%`} label="done" highlight />
+          <Stat value={f.number(days)} label={t("mobileDay.dayStat", { count: days })} />
+          <Stat value={f.number(total)} label={t("mobileDay.activitiesStat")} />
+          <Stat value={`${percent}%`} label={t("mobileDay.doneStat")} highlight />
         </View>
         <View className="h-2 overflow-hidden rounded-full bg-muted">
           {/* Absolutely positioned, childless fill: animating width is cheap here. */}

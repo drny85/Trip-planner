@@ -4,7 +4,9 @@ import { optimisticMove, optimisticRemove } from "@trip/backend/optimistic";
 import { CATEGORIES, CATEGORY_TREE, type Category } from "@trip/backend/categories";
 import { findNode } from "@trip/backend/tree";
 import type { Activity, TripDetails } from "@trip/backend/types";
-import { categoryLabel, categoryMeta, cn, fallbackPhoto, formatTime, parseTime, subcategoryMeta } from "@trip/ui";
+import type { Messages } from "@trip/i18n";
+import { useI18n } from "@trip/i18n/react";
+import { categoryMeta, cn, fallbackPhoto, parseTime, subcategoryMeta } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -18,10 +20,11 @@ type Props = { tripId: Id<"trips">; activityId: Id<"activities"> };
 export function EditActivity({ tripId, activityId }: Props) {
   const trip = useQuery(api.trips.get, { tripId });
   const activity = trip?.subTrips.map((s) => findNode(s.activities, activityId)).find(Boolean);
+  const { t } = useI18n();
 
   if (trip === undefined) return <ActivityIndicator className="mt-10" />;
   if (!trip || !activity) {
-    return <Text className="m-6 text-muted-foreground">This activity was removed.</Text>;
+    return <Text className="m-6 text-muted-foreground">{t("mobileEdit.removed")}</Text>;
   }
   // Keyed so the form resets if the activity changes underneath it.
   return <EditForm key={activity._id} trip={trip} activity={activity} />;
@@ -33,11 +36,12 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
   const create = useMutation(api.activities.create);
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const remove = useMutation(api.activities.remove).withOptimisticUpdate(optimisticRemove);
+  const { t, f, category: categoryText } = useI18n();
 
   const [form, setForm] = useState({
     title: activity.title,
     description: activity.description,
-    startTime: formatTime(activity.startTime),
+    startTime: f.time(activity.startTime),
     address: activity.address,
     phone: activity.phone ?? "",
     bookingUrl: activity.bookingUrl ?? "",
@@ -49,7 +53,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
   const num = (text: string) => (text.trim() === "" || Number.isNaN(Number(text)) ? undefined : Math.max(0, Number(text)));
   const [saving, setSaving] = useState(false);
   const [newStep, setNewStep] = useState("");
-  const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof typeof form) => (value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const day = trip.subTrips.find((s) => s._id === activity.subTripId);
   // Siblings: the parent's steps for a sub-activity, otherwise the day's activities.
@@ -81,9 +85,9 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
   };
 
   const save = async () => {
-    if (!form.title.trim()) return Alert.alert("Add a title");
+    if (!form.title.trim()) return Alert.alert(t("mobileEdit.addTitle"));
     const startTime = form.startTime.trim() ? parseTime(form.startTime) : undefined;
-    if (startTime === null) return Alert.alert("Check the start time", "Try something like 9:30 AM or 7 PM.");
+    if (startTime === null) return Alert.alert(t("mobileEdit.checkTime"), t("mobileEdit.checkTimeBody", { example: f.time("09:30") }));
     setSaving(true);
     try {
       await update({
@@ -109,12 +113,12 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
 
   const confirmDelete = () =>
     Alert.alert(
-      "Delete this activity?",
-      activity.children.length ? `${activity.title} and everything inside it` : activity.title,
+      t("mobileEdit.deleteTitle"),
+      activity.children.length ? t("mobileEdit.andInside", { title: activity.title }) : activity.title,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => {
             router.back();
@@ -131,35 +135,35 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
       contentContainerClassName="gap-4 p-5 pb-12"
       keyboardShouldPersistTaps="handled"
     >
-      <Field label="Title" value={form.title} onChangeText={set("title")} />
-      <Field label="Description" value={form.description} onChangeText={set("description")} multiline />
+      <Field label={t("editor.title")} value={form.title} onChangeText={set("title")} />
+      <Field label={t("editor.description")} value={form.description} onChangeText={set("description")} multiline />
 
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-muted-foreground">Category</Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{t("editor.category")}</Text>
         <Chips
-          options={CATEGORIES.map((c) => ({ value: c, label: `${categoryMeta[c].emoji} ${categoryMeta[c].label}` }))}
+          options={CATEGORIES.map((c) => ({ value: c, label: `${categoryMeta[c].emoji} ${t(`categories.${c}`)}` }))}
           selected={form.category}
-          onSelect={(c) => setForm((f) => ({ ...f, category: c as Category, subcategory: "" }))}
+          onSelect={(c) => setForm((prev) => ({ ...prev, category: c as Category, subcategory: "" }))}
         />
         {subOptions.length > 0 && (
           <Chips
-            options={subOptions.map((s) => ({ value: s, label: `${subcategoryMeta[s]?.emoji ?? ""} ${subcategoryMeta[s]?.label ?? s}` }))}
+            options={subOptions.map((s) => ({ value: s, label: `${subcategoryMeta[s]?.emoji ?? ""} ${t(`subcategories.${s as keyof Messages["subcategories"]}`)}` }))}
             selected={form.subcategory}
-            onSelect={(s) => setForm((f) => ({ ...f, subcategory: f.subcategory === s ? "" : s }))}
+            onSelect={(s) => setForm((prev) => ({ ...prev, subcategory: prev.subcategory === s ? "" : s }))}
           />
         )}
       </View>
       <View className="flex-row gap-3">
-        <Field label="Start time" value={form.startTime} onChangeText={set("startTime")} placeholder="9:30 AM" autoCapitalize="characters" className="w-32" />
-        <Field label="Phone" value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" className="flex-1" />
+        <Field label={t("editor.startTime")} value={form.startTime} onChangeText={set("startTime")} placeholder={f.time("09:30")} autoCapitalize="characters" className="w-32" />
+        <Field label={t("editor.phone")} value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" className="flex-1" />
       </View>
       <View className="flex-row gap-3">
-        <Field label="Estimated cost" value={form.estimatedCost} onChangeText={set("estimatedCost")} keyboardType="decimal-pad" placeholder="Per person" className="flex-1" />
-        <Field label="Actually spent" value={form.actualCost} onChangeText={set("actualCost")} keyboardType="decimal-pad" placeholder="Per person" className="flex-1" />
+        <Field label={t("editor.estimatedCost")} value={form.estimatedCost} onChangeText={set("estimatedCost")} keyboardType="decimal-pad" placeholder={t("editor.perPerson")} className="flex-1" />
+        <Field label={t("editor.actuallySpent")} value={form.actualCost} onChangeText={set("actualCost")} keyboardType="decimal-pad" placeholder={t("editor.perPerson")} className="flex-1" />
       </View>
-      <Field label="Address" value={form.address} onChangeText={set("address")} />
+      <Field label={t("editor.address")} value={form.address} onChangeText={set("address")} />
       <Field
-        label="Reservation link"
+        label={t("editor.reservationLink")}
         value={form.bookingUrl}
         onChangeText={set("bookingUrl")}
         placeholder="https://"
@@ -168,9 +172,9 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
       />
 
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-muted-foreground">Steps inside</Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{t("mobileEdit.stepsInside")}</Text>
         {activity.children.map((child) => {
-          const badge = categoryLabel(child.category, child.subcategory);
+          const badge = categoryText(child.category, child.subcategory);
           return (
             <Pressable
               key={child._id}
@@ -181,7 +185,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
               <View className="flex-1">
                 <Text className={cn("text-base font-semibold text-foreground", child.isCompleted && "text-muted-foreground line-through")}>{child.title}</Text>
                 {child.children.length > 0 && (
-                  <Text className="text-xs text-muted-foreground">{child.children.length} more inside</Text>
+                  <Text className="text-xs text-muted-foreground">{t("mobileEdit.moreInside", { count: child.children.length })}</Text>
                 )}
               </View>
               <Icon name="chevron" size={14} colorVar="--color-muted-foreground" />
@@ -194,24 +198,24 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
             onChangeText={setNewStep}
             onSubmitEditing={() => void addStep()}
             returnKeyType="done"
-            placeholder="Add a step, e.g. Check in"
+            placeholder={t("mobileEdit.addStepPlaceholder")}
             placeholderTextColorClassName="accent-muted-foreground"
             className="flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-base text-foreground"
           />
           <Button size="sm" icon="plus" disabled={!newStep.trim()} onPress={() => void addStep()}>
-            Add
+            {t("common.add")}
           </Button>
         </View>
       </View>
 
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-muted-foreground">Order</Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{t("mobileEdit.order")}</Text>
         <View className="flex-row gap-2">
           <Button variant="secondary" size="sm" icon="up" disabled={index === 0} onPress={() => day && moveTo(day._id, index - 1)}>
-            Earlier
+            {t("mobileEdit.earlier")}
           </Button>
           <Button variant="secondary" size="sm" icon="down" disabled={index >= count - 1} onPress={() => day && moveTo(day._id, index + 1)}>
-            Later
+            {t("mobileEdit.later")}
           </Button>
           {activity.parentId && (
             <Button
@@ -219,14 +223,14 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
               size="sm"
               onPress={() => parent && moveTo(activity.subTripId, parent.order + 1, parent.parentId)}
             >
-              Move out a level
+              {t("mobileEdit.moveOut")}
             </Button>
           )}
         </View>
       </View>
 
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-muted-foreground">Day</Text>
+        <Text className="text-sm font-semibold text-muted-foreground">{t("mobileMoney.day")}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
           {trip.subTrips.map((s) => {
             const selected = s._id === activity.subTripId;
@@ -237,7 +241,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
                 className={cn("rounded-full border px-3 py-1.5", selected ? "border-primary bg-primary" : "border-border bg-card")}
               >
                 <Text className={cn("text-sm font-semibold", selected ? "text-primary-foreground" : "text-foreground")}>
-                  Day {s.dayNumber}
+                  {t("time.dayN", { day: s.dayNumber })}
                 </Text>
               </Pressable>
             );
@@ -246,10 +250,10 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
       </View>
 
       <Button onPress={save} loading={saving} className="mt-2">
-        Save changes
+        {t("mobileEdit.saveChanges")}
       </Button>
       <Button variant="danger" icon="trash" onPress={confirmDelete}>
-        Delete activity
+        {t("mobileEdit.deleteActivity")}
       </Button>
     </ScrollView>
   );
