@@ -10,6 +10,7 @@ import { pickUpNext, type UpNext } from "./lib/upNext";
 import { buildTree } from "./lib/tree";
 import { tripTreeInput } from "./lib/validators";
 import type { PublicTripDetails, TripDetails } from "./lib/types";
+import { deleteJournal } from "./journal";
 
 /** Trips the user owns or has joined, soonest first. */
 async function myTrips(ctx: QueryCtx, userId: string) {
@@ -189,6 +190,7 @@ export const remove = mutation({
       ...expenses.map((e) => ctx.db.delete("expenses", e._id)),
       ...notifications.map((n) => ctx.db.delete("notifications", n._id)),
     ]);
+    await deleteJournal(ctx, tripId);
     await deleteTripBookings(ctx, tripId);
     await ctx.db.delete("trips", tripId);
   },

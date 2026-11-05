@@ -11,6 +11,7 @@ import { useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
+import { ActivityNotes } from "./journal";
 import { BookingChip } from "./bookings";
 import { ActivityPhotos } from "./memories";
 import { SubActivities } from "./sub-activities";
@@ -98,6 +99,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
         {editing ? (
           <ActivityEditor activity={activity} onDone={() => setEditing(false)} />
         ) : (
+          <>
           <div className="flex flex-col sm:flex-row">
             <div className="relative h-44 w-full shrink-0 sm:h-auto sm:min-h-44 sm:w-48">
               <SmartImage
@@ -212,6 +214,9 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               </IconButton>
             </div>}
           </div>
+          {/* Outside the faded body, so notes on a done activity stay readable */}
+          <ActivityNotes activityId={activity._id} isCompleted={done} className="px-5 pb-5" />
+          </>
         )}
       </article>
 

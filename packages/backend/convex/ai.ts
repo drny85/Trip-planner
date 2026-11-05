@@ -27,7 +27,7 @@ export type AiFile = { data: string; mediaType: string; filename?: string };
 export const aiVia = (env: Record<string, string | undefined> = process.env): Via | null =>
   env.AI_GATEWAY_API_KEY ? "gateway" : env.ANTHROPIC_API_KEY ? "anthropic" : null;
 
-async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
+export async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
   const [primary, ...fallbacks] = models;
   const result = await generateText({
     model: primary!,
@@ -77,7 +77,7 @@ const anthropicFileBlock = (file: AiFile) =>
         source: { type: "base64" as const, media_type: file.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: file.data },
       };
 
-async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
+export async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const response = await client.beta.messages.parse({
     model,

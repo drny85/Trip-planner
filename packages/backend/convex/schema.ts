@@ -127,6 +127,45 @@ export default defineSchema({
     .index("by_activityId", ["activityId"])
     .index("by_storageId", ["storageId"]),
 
+  /** Trip journal: a short note from one traveler on a completed activity (one per person per activity). */
+  journalNotes: defineTable({
+    tripId: v.id("trips"),
+    activityId: v.id("activities"),
+    authorId: v.string(),
+    text: v.string(),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_activityId_authorId", ["activityId", "authorId"]),
+
+  /**
+   * The AI-written story of a trip, built from what was done, the journal notes
+   * and the photos. One per trip; writing it again replaces it. When published,
+   * it's public at /share/<trip shareToken>/story.
+   */
+  tripStories: defineTable({
+    tripId: v.id("trips"),
+    status: v.union(v.literal("writing"), v.literal("ready"), v.literal("failed")),
+    requestedBy: v.string(),
+    requestedAt: v.number(),
+    title: v.optional(v.string()),
+    intro: v.optional(v.string()),
+    chapters: v.optional(
+      v.array(
+        v.object({
+          subTripId: v.id("subTrips"),
+          heading: v.string(),
+          body: v.string(),
+          /** Highlights the chapter mentions, in the order they happened. */
+          activityIds: v.array(v.id("activities")),
+        }),
+      ),
+    ),
+    closing: v.optional(v.string()),
+    model: v.optional(v.string()),
+    error: v.optional(v.string()),
+    isPublished: v.boolean(),
+  }).index("by_tripId", ["tripId"]),
+
   /** Shared packing list: anyone on the trip adds, ticks off or claims items. */
   /** Shared costs. A settlement is a payment from `paidBy` to the one person in `splitAmong`. */
   expenses: defineTable({
