@@ -10,6 +10,7 @@ import { AnimatedSplash } from "@/components/animated-splash";
 import { AuthGate } from "@/components/auth-gate";
 import { CloseButton } from "@/components/close-button";
 import { PushSetup } from "@/components/push-setup";
+import { TravelDaySync } from "@/components/travel-day-sync";
 import { UndoToastProvider } from "@/components/undo-toast";
 import { MobileI18nProvider } from "@/lib/i18n";
 import { AppProviders } from "@/providers/app-providers";
@@ -25,6 +26,8 @@ export default function RootLayout() {
         <AuthGate>
           <UndoToastProvider>
           <PushSetup />
+          {/* iOS "Next stop" widget and travel-day Live Activity. */}
+          <TravelDaySync />
           <AppStack />
           </UndoToastProvider>
         </AuthGate>

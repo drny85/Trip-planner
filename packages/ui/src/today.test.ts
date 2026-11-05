@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { estimateTravel, findTodayDay, fromMinutes, isOutdoor, leaveBy, parseHourly, rainSoon, todayAlerts, todayStatus, toMinutes, type TodayStop } from "./today";
+import { estimateTravel, findTodayDay, fromMinutes, isOutdoor, leaveBy, parseHourly, projectDay, rainSoon, todayAlerts, todayStatus, toMinutes, type TodayStop } from "./today";
 
 const stop = (id: string, startTime: string, extra: Partial<TodayStop> = {}): TodayStop => ({
   _id: id,
@@ -114,5 +114,33 @@ describe("weather and alerts", () => {
 
     const late = todayAlerts(todayStatus(stops, toMinutes("11:30")!), null, toMinutes("11:30")!);
     expect(late).toMatchObject([{ kind: "late", minutes: 90 }]);
+  });
+});
+
+describe("projectDay", () => {
+  const stops = [stop("a", "09:00"), stop("b", "11:00", { durationMinutes: 90 }), stop("c", "14:00")];
+  const view = (steps: ReturnType<typeof projectDay>) => steps.map((s) => [fromMinutes(s.at), s.status.current?._id ?? "-", s.status.next?._id ?? "-", s.status.done]);
+
+  test("steps through the day as planned", () => {
+    expect(view(projectDay(stops, 8 * 60))).toEqual([
+      ["08:00", "-", "a", 0],
+      ["09:00", "a", "a", 0],
+      ["10:00", "-", "b", 1],
+      ["11:00", "b", "b", 1],
+      ["12:30", "-", "c", 2],
+      ["14:00", "c", "c", 2],
+      ["15:00", "-", "-", 3],
+    ]);
+  });
+
+  test("starts mid-stop and skips what's done", () => {
+    const done = stops.map((s) => (s._id === "a" ? { ...s, isCompleted: true } : s));
+    expect(view(projectDay(done, 11 * 60 + 30))[0]).toEqual(["11:30", "b", "b", 1]);
+    expect(view(projectDay(done, 11 * 60 + 30)).at(-1)).toEqual(["15:00", "-", "-", 3]);
+  });
+
+  test("waits on an overdue or untimed stop", () => {
+    expect(projectDay(stops, 10 * 60 + 30)).toHaveLength(1);
+    expect(projectDay([stop("x", "")], 8 * 60)).toHaveLength(1);
   });
 });
