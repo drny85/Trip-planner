@@ -28,6 +28,8 @@ import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
 import type * as lib_notify from "../lib/notify.js";
 import type * as lib_photos from "../lib/photos.js";
+import type * as lib_promptAnswer from "../lib/promptAnswer.js";
+import type * as lib_promptBrief from "../lib/promptBrief.js";
 import type * as lib_replan from "../lib/replan.js";
 import type * as lib_settle from "../lib/settle.js";
 import type * as lib_story from "../lib/story.js";
@@ -43,6 +45,7 @@ import type * as memories from "../memories.js";
 import type * as notifications from "../notifications.js";
 import type * as packing from "../packing.js";
 import type * as photos from "../photos.js";
+import type * as prompts from "../prompts.js";
 import type * as push from "../push.js";
 import type * as seed from "../seed.js";
 import type * as suggestions from "../suggestions.js";
@@ -76,6 +79,8 @@ import type * as users from "../users.js";
 "lib/modelRouter": typeof lib_modelRouter,
 "lib/notify": typeof lib_notify,
 "lib/photos": typeof lib_photos,
+"lib/promptAnswer": typeof lib_promptAnswer,
+"lib/promptBrief": typeof lib_promptBrief,
 "lib/replan": typeof lib_replan,
 "lib/settle": typeof lib_settle,
 "lib/story": typeof lib_story,
@@ -92,6 +97,7 @@ import type * as users from "../users.js";
 "packing": typeof packing,
 "photos": typeof photos,
 "places": typeof places,
+"prompts": typeof prompts,
 "push": typeof push,
 "seed": typeof seed,
 "suggestions": typeof suggestions,

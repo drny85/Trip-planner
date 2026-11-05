@@ -201,6 +201,9 @@ export default defineSchema({
     .index("by_userId_isRead", ["userId", "isRead"])
     .index("by_tripId", ["tripId"]),
 
+  /** One row per "Improve with AI" request, for the hourly limit. Rows older than an hour are cleared. */
+  promptImprovements: defineTable({ userId: v.string(), at: v.number() }).index("by_userId_at", ["userId", "at"]),
+
   /** Expo push tokens, one per phone. */
   pushTokens: defineTable({ userId: v.string(), token: v.string() }).index("by_userId", ["userId"]).index("by_token", ["token"]),
 

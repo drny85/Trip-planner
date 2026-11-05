@@ -14,6 +14,7 @@
     "./optimistic": "./src/optimistic.ts",
     "./schemas": "./src/tripSchema.ts",
     "./replan": "./convex/lib/replan.ts",
+    "./promptAnswer": "./convex/lib/promptAnswer.ts",
     "./sample": "./convex/lib/fakeData.ts"
   },
   "scripts": {
