@@ -22,6 +22,9 @@ const icons = {
   share: { ios: "square.and.arrow.up", android: "share", web: "share" },
   route: { ios: "point.topleft.down.to.point.bottomright.curvepath.fill", android: "route", web: "route" },
   logout: { ios: "rectangle.portrait.and.arrow.right", android: "logout", web: "logout" },
+  document: { ios: "doc.text.fill", android: "description", web: "description" },
+  photo: { ios: "photo.on.rectangle", android: "image", web: "image" },
+  mail: { ios: "envelope.fill", android: "mail", web: "mail" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 
 export type IconName = keyof typeof icons;

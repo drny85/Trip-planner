@@ -66,6 +66,10 @@ function AppStack() {
         name="trips/[tripId]/replan/[subTripId]"
         options={{ title: t("mobile.titleReplan"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
+      <Stack.Screen
+        name="trips/[tripId]/import"
+        options={{ title: t("bookings.importTitle"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
       <Stack.Screen name="notifications" options={{ title: t("notifications.title") }} />
       <Stack.Screen
         name="language"

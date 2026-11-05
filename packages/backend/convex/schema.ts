@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
 import { activityFields } from "./lib/validators";
 
 export default defineSchema({
@@ -33,11 +34,53 @@ export default defineSchema({
     shareToken: v.optional(v.string()),
     /** Random token for the "join this trip" link. Absent means invites are off. */
     inviteToken: v.optional(v.string()),
+    /** Random token in the trip's "forward bookings here" email address. Absent means it's off. */
+    importToken: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
     .index("by_userId_startDate", ["userId", "startDate"])
     .index("by_shareToken", ["shareToken"])
-    .index("by_inviteToken", ["inviteToken"]),
+    .index("by_inviteToken", ["inviteToken"])
+    .index("by_importToken", ["importToken"]),
+
+  /**
+   * One confirmation a traveler pasted, uploaded or forwarded. AI reads it in the
+   * background (`processing`), then the bookings it found wait for review
+   * (`ready`) until the traveler adds them to the itinerary (`applied`).
+   */
+  bookingImports: defineTable({
+    tripId: v.id("trips"),
+    /** Who it belongs to: the traveler who pasted or uploaded it, or the trip owner for a forwarded email. */
+    userId: v.string(),
+    source: v.union(v.literal("text"), v.literal("file"), v.literal("email")),
+    /** The pasted or forwarded text. Cleared once the import is resolved. */
+    text: v.optional(v.string()),
+    /** The uploaded PDF or screenshot. Deleted once it has been read. */
+    storageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    /** A forwarded email's subject and sender, to recognize it in the list. */
+    subject: v.optional(v.string()),
+    from: v.optional(v.string()),
+    status: v.union(v.literal("processing"), v.literal("ready"), v.literal("failed"), v.literal("applied"), v.literal("dismissed")),
+    error: v.optional(v.string()),
+    proposals: v.optional(v.array(v.object({ booking: bookingObject, placement: placementObject }))),
+    aiModel: v.optional(v.string()),
+    /** App language of the person reviewing it: titles and messages are written in it. */
+    language: v.optional(v.string()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_tripId_userId", ["tripId", "userId"]),
+
+  /** A confirmed reservation on a trip, linked to the itinerary activity it shows on. */
+  bookings: defineTable({
+    tripId: v.id("trips"),
+    activityId: v.optional(v.id("activities")),
+    importId: v.optional(v.id("bookingImports")),
+    addedBy: v.string(),
+    ...bookingFields,
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_activityId", ["activityId"]),
 
   /**
    * Everyone going on a trip. The owner (`trips.userId`) has a row too, so votes
