@@ -87,7 +87,11 @@ test("Google Places fills in places Wikipedia doesn't know, and /place-photo ser
         textQueries.push(textQuery);
         // Only the tempura place has Google photos in this test.
         const places = textQuery.startsWith("Tempura lunch at Daikokuya")
-          ? [{ id: "ChIJdaikokuya", photos: [{ name: "places/ChIJdaikokuya/photos/abc", authorAttributions: [{ displayName: "Aiko T." }] }] }]
+          ? [
+              // A different business that happens to come first must be skipped.
+              { id: "ChIJotherplace", displayName: { text: "Some Other Bar" }, photos: [{ name: "places/ChIJotherplace/photos/x" }] },
+              { id: "ChIJdaikokuya", displayName: { text: "Daikokuya Tempura" }, photos: [{ name: "places/ChIJdaikokuya/photos/abc", authorAttributions: [{ displayName: "Aiko T." }] }] },
+            ]
           : [];
         return new Response(JSON.stringify({ places }));
       }
@@ -113,7 +117,7 @@ test("Google Places fills in places Wikipedia doesn't know, and /place-photo ser
   expect(tempura.photoUrl).toBe("https://demo.convex.site/place-photo/ChIJdaikokuya?w=1000");
   expect(tempura.photoCredit).toBe("Aiko T.");
   // Hotels are looked up on Google (not on Wikipedia); train rides on neither.
-  expect(textQueries.some((q) => q.startsWith("Stay in a Gion machiya"))).toBe(true);
+  expect(textQueries.some((q) => q.includes("Gion machiya"))).toBe(true);
   expect(textQueries.some((q) => /shinkansen/i.test(q))).toBe(false);
 
   const res = await t.fetch("/place-photo/ChIJdaikokuya?w=1000");
@@ -126,6 +130,13 @@ test("Google Places fills in places Wikipedia doesn't know, and /place-photo ser
   await t.withIdentity({ subject: "demo-user" }).mutation(api.activities.update, { activityId: tempura._id, patch: { photoUrl: "https://example.com/mine.jpg" } });
   const edited = (await t.query(api.trips.get, { tripId }))!.subTrips.flatMap((s) => s.activities).find((a) => a._id === tempura._id)!;
   expect(edited.photoCredit).toBeUndefined();
+});
+
+test("placeName drops lead-in words", async () => {
+  const { placeName } = await import("./lib/googlePlaces");
+  expect(placeName("Dinner at A Cevicheria")).toBe("A Cevicheria");
+  expect(placeName("Lunch at Time Out Market")).toBe("Time Out Market");
+  expect(placeName("LX Factory")).toBe("LX Factory");
 });
 
 test("decodeEntities turns HTML entities back into text", async () => {

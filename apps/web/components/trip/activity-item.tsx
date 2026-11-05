@@ -113,7 +113,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               />
               {credit !== null && (
                 <span className="absolute bottom-1.5 right-2 max-w-[90%] truncate rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white/90">
-                  {credit ? t("activity.photoBy", { name: credit }) : "Google"}
+                  {credit ? t("activity.photoBy", { name: credit }) : "Google Maps"}
                 </span>
               )}
               <span

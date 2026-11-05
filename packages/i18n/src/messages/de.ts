@@ -222,7 +222,7 @@ export const de: Shape<typeof en> = {
   },
   activity: {
     /** Credit on a Google Places photo, which Google requires. */
-    photoBy: "Foto: {name} · Google",
+    photoBy: "Foto: {name} · Google Maps",
     markDone: "{title} als erledigt markieren",
     markNotDone: "{title} als nicht erledigt markieren",
     done: "Erledigt",

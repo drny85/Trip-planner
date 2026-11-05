@@ -7,11 +7,21 @@
  * route (see http.ts), which looks up a fresh photo each time and redirects to it.
  */
 
+import { decodeEntities } from "./text";
+import { keywords } from "./wikiPhotos";
+
 const API = "https://places.googleapis.com/v1";
+
+/** Leading filler that isn't part of the place's name: "Dinner at A Cevicheria" → "A Cevicheria". */
+const LEAD_IN =
+  /^(?:(?:visit|explore|check[- ]?in|check[- ]?out|stay|lunch|dinner|breakfast|brunch|coffee|drinks|cocktails|tapas|shopping|shop|tour|eat|try|walk|stroll)\s+(?:at|in|to|of|on|around|through)?\s*)+/i;
+
+export const placeName = (title: string) => decodeEntities(title).replace(LEAD_IN, "").trim() || title;
 
 export const googlePlacesKey = () => process.env.GOOGLE_PLACES_API_KEY || undefined;
 
 type Photo = { name: string; authorAttributions?: Array<{ displayName?: string }> };
+type SearchPlace = { id?: string; displayName?: { text?: string }; photos?: Photo[] };
 
 const creditOf = (photo: Photo | undefined) =>
   photo?.authorAttributions
@@ -20,29 +30,40 @@ const creditOf = (photo: Photo | undefined) =>
     .join(", ") || undefined;
 
 /**
- * Finds the place an activity is at, if Google has photos of it.
- * `credit` is the photographer, which Google asks us to show with the photo.
+ * Finds the place an activity is at, if Google has photos of it. Only a result
+ * whose name shares a word with the activity counts, so a vague search can't
+ * attach some other business. `credit` is the photographer, which Google asks
+ * us to show with the photo.
  */
 export async function findGooglePlace(
   title: string,
   where: string,
   key: string,
 ): Promise<{ placeId: string; credit?: string } | null> {
+  const name = placeName(title);
+  const wanted = keywords(name);
+  if (wanted.length === 0) return null;
   try {
     const res = await fetch(`${API}/places:searchText`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "X-Goog-Api-Key": key,
-        "X-Goog-FieldMask": "places.id,places.photos",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.photos",
       },
-      body: JSON.stringify({ textQuery: where ? `${title}, ${where}` : title, pageSize: 1 }),
+      body: JSON.stringify({ textQuery: where ? `${name}, ${where}` : name, pageSize: 3 }),
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { places?: Array<{ id?: string; photos?: Photo[] }> };
-    const place = data.places?.[0];
-    if (!place?.id || !place.photos?.length) return null;
-    return { placeId: place.id, credit: creditOf(place.photos[0]) };
+    if (!res.ok) {
+      console.log(`Google Places search failed (${res.status}) for "${name}"`);
+      return null;
+    }
+    const data = (await res.json()) as { places?: SearchPlace[] };
+    for (const place of data.places ?? []) {
+      if (!place.id || !place.photos?.length) continue;
+      const found = new Set(keywords(place.displayName?.text ?? ""));
+      if (wanted.some((w) => found.has(w))) return { placeId: place.id, credit: creditOf(place.photos[0]) };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -55,7 +76,7 @@ export async function googlePhotoUri(placeId: string, key: string, width: number
       headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "photos" },
     });
     if (!details.ok) return null;
-    const photo = ((await details.json()) as { photos?: Photo[] }).photos?.[0];
+    const photo = ((await details.json()) as SearchPlace).photos?.[0];
     if (!photo) return null;
     const media = await fetch(`${API}/${photo.name}/media?maxWidthPx=${width}&skipHttpRedirect=true`, {
       headers: { "X-Goog-Api-Key": key },

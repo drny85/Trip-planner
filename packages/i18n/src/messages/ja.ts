@@ -222,7 +222,7 @@ export const ja: Shape<typeof en> = {
   },
   activity: {
     /** Credit on a Google Places photo, which Google requires. */
-    photoBy: "写真: {name} · Google",
+    photoBy: "写真: {name} · Google Maps",
     markDone: "{title}を完了にする",
     markNotDone: "{title}を未完了にする",
     done: "完了",
