@@ -2,11 +2,13 @@ import { tokyoAdventure } from "@trip/backend/sample";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
 import { useState } from "react";
-import { FlatList, Text, useWindowDimensions, View } from "react-native";
+import { FlatList, Modal, Pressable, Text, useWindowDimensions, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { LanguageAndTheme } from "@/screens/language";
 import { Button } from "../button";
+import { Icon } from "../icon";
 import { LinearGradient } from "../gradient";
 import { Image } from "../image";
 import { SampleTrip } from "./sample-trip";
@@ -33,6 +35,7 @@ export function Welcome({ onSignIn, busy, error }: { onSignIn: () => void; busy:
   const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const [sampleOpen, setSampleOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <View className="flex-1 bg-black">
@@ -64,8 +67,18 @@ export function Welcome({ onSignIn, busy, error }: { onSignIn: () => void; busy:
         )}
       />
 
-      <View className="absolute inset-x-0 top-0 flex-row items-center gap-2 px-7" style={{ paddingTop: insets.top + 12 }} pointerEvents="none">
+      <View className="absolute inset-x-0 top-0 flex-row items-center justify-between pl-7 pr-5" style={{ paddingTop: insets.top + 6 }} pointerEvents="box-none">
         <Text className="text-base font-extrabold tracking-tight text-white">{t("common.appName")}</Text>
+        {/* Language and light/dark, before anyone has to sign in. */}
+        <Pressable
+          onPress={() => setSettingsOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("mobile.titleSettings")}
+          hitSlop={10}
+          className="h-10 w-10 items-center justify-center rounded-full bg-black/35 active:opacity-70"
+        >
+          <Icon name="globe" size={20} colorVar="--color-on-image" />
+        </Pressable>
       </View>
 
       <View className="absolute inset-x-0 bottom-0 gap-4 px-6" style={{ paddingBottom: insets.bottom + 16 }}>
@@ -82,6 +95,10 @@ export function Welcome({ onSignIn, busy, error }: { onSignIn: () => void; busy:
         </Button>
         {error && <Text className="text-center text-sm text-white">{error}</Text>}
       </View>
+
+      <Modal visible={settingsOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSettingsOpen(false)}>
+        <LanguageAndTheme onPickLanguage={() => setSettingsOpen(false)} />
+      </Modal>
 
       <SampleTrip
         visible={sampleOpen}

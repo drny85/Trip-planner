@@ -9,10 +9,10 @@ import { photoFor, unsplash } from "./photos";
  */
 const PHOTOS: Record<string, string> = {
   "tokyo-skyline": "1540959733332-eab4deabeeaf",
-  sensoji: "1545569341-9eb8b30979d9",
-  tempura: "1579584425555-c3ce17fd4351",
+  sensoji: "1580167227251-be70f01b0c51",
+  tempura: "1570078362689-c57c33cca104",
   "ueno-park": "1522383225653-ed111181a951",
-  skytree: "1536098561742-ca998e48cbcc",
+  skytree: "1681685544703-fd783db99515",
   "meiji-jingu": "1528360983277-13d401cdc186",
   takeshita: "1503899036084-c55cdd92da26",
   "shibuya-sky": "1542051841857-5f90071e7989",
@@ -21,7 +21,7 @@ const PHOTOS: Record<string, string> = {
   teamlab: "1513407030348-c983a97b98d8",
   shinkansen: "1474487548417-781cb71495f3",
   "fushimi-inari": "1478436127897-769e1b3f0f36",
-  arashiyama: "1524413840807-0c3cb6fa808d",
+  arashiyama: "1698618988744-737573cb6a7a",
   kaiseki: "1617196034796-73dfa7b1fd56",
   kinkakuji: "1493976040374-85c8e12f0c0e",
 };
