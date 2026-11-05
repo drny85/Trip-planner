@@ -74,7 +74,7 @@ export const create = mutation({
     const outcome = await resolve(ctx, trip, id);
     if (outcome === "open") {
       const { name } = await getCallerProfile(ctx);
-      await notify(ctx, trip, { kind: "idea", actorId: userId, text: `${name.split(" ")[0]} suggested "${fields.title.trim()}". Cast your vote.` });
+      await notify(ctx, trip, { kind: "idea", actorId: userId, params: { name: name.split(" ")[0], title: fields.title.trim() } });
     }
     return id;
   },
@@ -150,7 +150,7 @@ async function resolve(ctx: MutationCtx, trip: Doc<"trips">, suggestionId: Doc<"
   if (members.length > 1) {
     await notify(ctx, trip, {
       kind: outcome,
-      text: outcome === "accepted" ? `The group voted yes: "${suggestion.title}" is on the plan.` : `"${suggestion.title}" didn't get enough votes.`,
+      params: { title: suggestion.title },
     });
   }
   return outcome;

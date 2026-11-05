@@ -4,7 +4,8 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticMove } from "@trip/backend/optimistic";
 import type { PublicTripDetails, TripDetails } from "@trip/backend/types";
-import { cn, formatDateRange, formatDay } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, dayTitle } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, LayoutGroup, motion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
@@ -13,6 +14,7 @@ import { useEffect, useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
 import { ActivityItem } from "./activity-item";
+import { BookingsProvider, Bookings } from "./bookings";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
@@ -24,26 +26,29 @@ import { DayExtras } from "./replan-day";
 import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
+import { TodayBanner } from "@/components/today/today-banner";
 
 export function TripView({ tripId }: { tripId: Id<"trips"> }) {
   const trip = useQuery(api.trips.get, { tripId });
+  const { t } = useI18n();
   if (trip === undefined) return <TripSkeleton />;
-  if (trip === null) return <p className="p-8 text-center text-muted-foreground">This trip doesn&apos;t exist anymore.</p>;
+  if (trip === null) return <p className="p-8 text-center text-muted-foreground">{t("trip.notFound")}</p>;
   return <Itinerary trip={trip} mode={trip.myRole} />;
 }
 
 /** Public, read-only view behind a share link. */
 export function SharedTripView({ token }: { token: string }) {
   const trip = useQuery(api.trips.getShared, { token });
+  const { t } = useI18n();
   if (trip === undefined) return <TripSkeleton />;
   if (trip === null)
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-24 text-center">
         <span className="text-5xl">🔒</span>
-        <h1 className="text-2xl font-bold">This link isn&apos;t active</h1>
-        <p className="text-muted-foreground">The owner may have stopped sharing this trip.</p>
+        <h1 className="text-2xl font-bold">{t("trip.linkInactiveTitle")}</h1>
+        <p className="text-muted-foreground">{t("trip.linkInactiveBody")}</p>
         <Link href="/trips/new" className="rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground">
-          ✨ Plan your own trip
+          ✨ {t("trip.planYourOwnTrip")}
         </Link>
       </div>
     );
@@ -53,6 +58,7 @@ export function SharedTripView({ token }: { token: string }) {
 /** On a shared itinerary: a link to the trip's story, once the organizer publishes it. */
 function StoryBanner({ token }: { token: string }) {
   const story = useQuery(api.journal.publicStory, { token });
+  const { t } = useI18n();
   if (!story) return null;
   return (
     <motion.div {...rise(0)}>
@@ -62,7 +68,7 @@ function StoryBanner({ token }: { token: string }) {
       >
         <span className="text-3xl">📖</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-xs font-semibold uppercase tracking-widest opacity-80">Read the story</span>
+          <span className="block text-xs font-semibold uppercase tracking-widest opacity-80">{t("journal.readStory")}</span>
           <span className="block truncate text-lg font-bold">{story.story.title}</span>
         </span>
         <span className="text-xl transition group-hover:translate-x-1">→</span>
@@ -93,6 +99,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
   const [dragging, setDragging] = useState<DragState>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const activeDay = useActiveDay(trip.subTrips.map((s) => s._id));
+  const { t, f } = useI18n();
 
   const drop = (toSubTripId: Id<"subTrips">, toIndex: number) => {
     if (dragging) void move({ activityId: dragging.activityId, toSubTripId, toIndex });
@@ -103,6 +110,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
   return (
     <MemoriesProvider tripId={trip._id} enabled={canCheck}>
     <JournalProvider tripId={trip._id} enabled={canCheck}>
+    <BookingsProvider tripId={trip._id} enabled={canCheck}>
     <main className="pb-24">
       <Hero
         trip={trip}
@@ -116,16 +124,18 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
 
       <div className="mx-auto max-w-4xl px-4">
         <Stats trip={trip} readOnly={readOnly} />
+        {mode !== "public" && <TodayBanner trip={trip} />}
         <BudgetCard trip={trip} />
         {mode !== "public" && <Crew tripId={trip._id} />}
         {storyToken && <StoryBanner token={storyToken} />}
+        {mode !== "public" && <Bookings tripId={trip._id} days={trip.subTrips} />}
         {mode === "public" && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">
-              <span className="font-semibold">Shared itinerary.</span> <span className="text-muted-foreground">You&apos;re viewing a read-only copy.</span>
+              <span className="font-semibold">{t("trip.sharedTitle")}</span> <span className="text-muted-foreground">{t("trip.sharedBody")}</span>
             </p>
             <Link href="/trips/new" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 active:scale-[0.97]">
-              ✨ Plan your own
+              ✨ {t("trip.planYourOwn")}
             </Link>
           </motion.div>
         )}
@@ -145,7 +155,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
                   {activeDay === s._id && (
                     <motion.span layoutId="day-pill" transition={layoutSpring} className="absolute inset-0 -z-10 rounded-full bg-primary shadow-md shadow-primary/30" />
                   )}
-                  Day {s.dayNumber}
+                  {t("time.dayN", { day: s.dayNumber })}
                 </a>
               </li>
             ))}
@@ -166,13 +176,13 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
             >
               <header className="mb-5 flex items-center gap-4">
                 <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-primary-foreground shadow-lg shadow-primary/25">
-                  <span className="text-[10px] font-semibold uppercase leading-none tracking-wider opacity-80">Day</span>
+                  <span className="text-[10px] font-semibold uppercase leading-none tracking-wider opacity-80">{t("trip.day")}</span>
                   <span className="-mt-2 text-xl font-extrabold leading-none">{subTrip.dayNumber}</span>
                 </div>
                 <div className="min-w-0">
-                  <h2 className="truncate text-2xl font-bold tracking-tight">{subTrip.title.replace(/^Day \d+\s*·\s*/, "")}</h2>
+                  <h2 className="truncate text-2xl font-bold tracking-tight">{dayTitle(subTrip.title)}</h2>
                   <p className="text-sm text-muted-foreground">
-                    {[subTrip.date && formatDay(subTrip.date), subTrip.location, `${subTrip.activities.length} stops`]
+                    {[subTrip.date && f.weekday(subTrip.date), subTrip.location, t("trip.stops", { count: subTrip.activities.length })]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
@@ -241,7 +251,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
                     dropTarget === `end-${subTrip._id}` && "border-primary bg-primary/5 text-primary",
                   )}
                 >
-                  {dragging ? "Drop here" : subTrip.activities.length === 0 ? "Nothing planned for this day yet." : null}
+                  {dragging ? t("trip.dropHere") : subTrip.activities.length === 0 ? t("trip.nothingPlanned") : null}
                 </li>
               </ol>
             </motion.section>
@@ -257,6 +267,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
         {mode === "member" && <LeaveTrip tripId={trip._id} title={trip.title} />}
       </div>
     </main>
+    </BookingsProvider>
     </JournalProvider>
     </MemoriesProvider>
   );
@@ -266,6 +277,7 @@ function Hero({ trip, action }: { trip: PublicTripDetails; action?: React.ReactN
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 500], [0, 120]);
   const fade = useTransform(scrollY, [0, 300], [1, 0]);
+  const { t, f } = useI18n();
 
   return (
     <section className="relative h-[26rem] w-full overflow-hidden sm:h-[30rem]">
@@ -284,13 +296,13 @@ function Hero({ trip, action }: { trip: PublicTripDetails; action?: React.ReactN
       <motion.div style={{ opacity: fade }} className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-20 text-white">
         <motion.div {...rise(0)} className="mb-3 flex flex-wrap gap-2">
           <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">📍 {trip.destination}</span>
-          {trip.isAIGenerated && <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">✨ AI generated</span>}
+          {trip.isAIGenerated && <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">✨ {t("trip.aiGenerated")}</span>}
         </motion.div>
         <motion.h1 {...rise(1)} className="text-4xl font-extrabold tracking-tight drop-shadow-sm sm:text-6xl">
           {trip.title}
         </motion.h1>
         <motion.p {...rise(2)} className="mt-2 text-lg text-white/90">
-          {formatDateRange(trip.startDate, trip.endDate)}
+          {f.dateRange(trip.startDate, trip.endDate)}
         </motion.p>
       </motion.div>
     </section>
@@ -300,10 +312,11 @@ function Hero({ trip, action }: { trip: PublicTripDetails; action?: React.ReactN
 function Stats({ trip, readOnly }: { trip: PublicTripDetails; readOnly: boolean }) {
   const { completed, total } = trip.progress;
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+  const { t } = useI18n();
   const stats = [
-    { label: "Days", value: trip.subTrips.length },
-    { label: "Activities", value: total },
-    { label: "Done", value: `${percent}%` },
+    { label: t("trip.statDays"), value: trip.subTrips.length },
+    { label: t("trip.statActivities"), value: total },
+    { label: t("trip.statDone"), value: `${percent}%` },
   ];
 
   return (
@@ -332,10 +345,10 @@ function Stats({ trip, readOnly }: { trip: PublicTripDetails; readOnly: boolean 
         />
       </div>
       <p className="mt-2 text-right text-xs text-muted-foreground">
-        {completed} of {total} done
+        {t("trip.doneOf", { done: completed, total })}
       </p>
       {trip.description && <p className="mt-3 text-muted-foreground">{trip.description}</p>}
-      {!readOnly && <p className="mt-3 text-xs text-muted-foreground">Tip: drag activities to reorder them or move them to another day.</p>}
+      {!readOnly && <p className="mt-3 text-xs text-muted-foreground">{t("trip.dragTip")}</p>}
     </motion.div>
   );
 }
@@ -362,17 +375,18 @@ function useActiveDay(ids: string[]) {
 function DeleteTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
   const remove = useMutation(api.trips.remove);
   const router = useRouter();
+  const { t } = useI18n();
   return (
     <div className="mt-14 flex justify-center">
       <button
         onClick={async () => {
-          if (!confirm(`Delete "${title}"? This removes every day and activity in the trip.`)) return;
+          if (!confirm(t("trip.deleteConfirm", { title }))) return;
           router.push("/trips");
           await remove({ tripId });
         }}
         className="rounded-full bg-danger/10 px-5 py-2.5 text-sm font-semibold text-danger transition hover:bg-danger/20 active:scale-[0.97]"
       >
-        Delete trip
+        {t("trip.deleteTrip")}
       </button>
     </div>
   );

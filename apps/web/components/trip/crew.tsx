@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { cn } from "@trip/ui";
@@ -44,6 +45,7 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
   const removeMember = useMutation(api.members.remove);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
   if (!data) return null;
 
   const link = data.inviteToken && typeof window !== "undefined" ? `${window.location.origin}/join/${data.inviteToken}` : null;
@@ -68,10 +70,10 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
           </div>
           <div>
             <h2 id="crew-title" className="font-bold">
-              {count === 1 ? "Just you so far" : `${count} going`}
+              {count === 1 ? t("crew.justYou") : t("crew.going", { count })}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {data.isOwner ? "Invite friends to suggest ideas and vote on them." : "Suggest ideas below. The group votes, and the majority decides."}
+              {data.isOwner ? t("crew.ownerHint") : t("crew.memberHint")}
             </p>
           </div>
         </div>
@@ -80,7 +82,7 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
           aria-expanded={open}
           className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition hover:opacity-90 active:scale-[0.97]"
         >
-          {data.isOwner ? "＋ Invite friends" : "See who's going"}
+          {data.isOwner ? `＋ ${t("crew.invite")}` : t("crew.seeWho")}
         </button>
       </div>
 
@@ -96,18 +98,18 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
             <div className="mt-5 grid gap-5 border-t border-border pt-5 md:grid-cols-2">
               {data.isOwner && (
                 <div>
-                  <p className="text-sm font-semibold">Invite link</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Anyone with it can join this trip after signing in.</p>
+                  <p className="text-sm font-semibold">{t("crew.inviteLink")}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("crew.inviteHint")}</p>
                   {link ? (
                     <>
                       <div className="mt-3 flex gap-2">
                         <input readOnly value={link} onFocus={(e) => e.target.select()} className="min-w-0 flex-1 rounded-xl border border-border bg-muted px-3 py-2 text-xs" />
                         <button onClick={() => void copy(link)} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground active:scale-[0.97]">
-                          {copied ? "Copied ✓" : "Copy"}
+                          {copied ? t("share.copied") : t("share.copy")}
                         </button>
                       </div>
                       <button onClick={() => void revokeInvite({ tripId })} className="mt-2 text-sm font-semibold text-danger hover:underline">
-                        Turn off the link
+                        {t("crew.turnOff")}
                       </button>
                     </>
                   ) : (
@@ -118,7 +120,7 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
                       }}
                       className="mt-3 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground active:scale-[0.98]"
                     >
-                      Create link and copy
+                      {t("share.create")}
                     </button>
                   )}
                 </div>
@@ -129,17 +131,17 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
                     <Avatar {...m} size={32} ring={false} />
                     <span className="flex-1 truncate font-medium">
                       {m.name}
-                      {m.isMe && <span className="text-muted-foreground"> (you)</span>}
+                      {m.isMe && <span className="text-muted-foreground"> {t("crew.you")}</span>}
                     </span>
                     {m.role === "owner" ? (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">Organizer</span>
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{t("crew.organizer")}</span>
                     ) : (
                       data.isOwner && (
                         <button
-                          onClick={() => confirm(`Remove ${m.name} from the trip?`) && void removeMember({ tripId, userId: m.userId })}
+                          onClick={() => confirm(t("crew.removeConfirm", { name: m.name })) && void removeMember({ tripId, userId: m.userId })}
                           className="text-xs font-semibold text-muted-foreground hover:text-danger"
                         >
-                          Remove
+                          {t("common.remove")}
                         </button>
                       )
                     )}
@@ -157,17 +159,18 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
 export function LeaveTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
   const leave = useMutation(api.members.leave);
   const router = useRouter();
+  const { t } = useI18n();
   return (
     <div className="mt-14 flex justify-center">
       <button
         onClick={async () => {
-          if (!confirm(`Leave "${title}"? You'll need a new invite to rejoin.`)) return;
+          if (!confirm(t("crew.leaveConfirm", { title }))) return;
           router.push("/trips");
           await leave({ tripId });
         }}
         className="rounded-full bg-muted px-5 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-danger/10 hover:text-danger active:scale-[0.97]"
       >
-        Leave trip
+        {t("crew.leave")}
       </button>
     </div>
   );

@@ -1,6 +1,8 @@
 "use client";
 
 import { api } from "@trip/backend/api";
+import { localeNames } from "@trip/i18n";
+import { useI18n } from "@trip/i18n/react";
 import { useAction } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -8,13 +10,13 @@ import { useEffect, useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
 
 const IDEAS = [
-  { emoji: "🏯", text: "5 days in Tokyo on a moderate budget, love food and temples" },
-  { emoji: "🐟", text: "A relaxed long weekend in Lisbon with great seafood" },
-  { emoji: "🎨", text: "4 days in Mexico City for art lovers" },
-  { emoji: "🚗", text: "A week road-tripping the Amalfi Coast" },
-];
+  { emoji: "🏯", text: "idea1" },
+  { emoji: "🐟", text: "idea2" },
+  { emoji: "🎨", text: "idea3" },
+  { emoji: "🚗", text: "idea4" },
+] as const;
 
-const STATUS = ["Reading your wishes…", "Finding the best neighborhoods…", "Picking places to eat…", "Balancing each day…", "Adding addresses and links…"];
+const STATUS = ["status1", "status2", "status3", "status4", "status5"] as const;
 
 export function GenerateTripForm() {
   const generate = useAction(api.ai.generateTrip);
@@ -22,17 +24,18 @@ export function GenerateTripForm() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t, locale } = useI18n();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const tripId = await generate({ prompt });
+      const tripId = await generate({ prompt, language: locale });
       router.push(`/trips/${tripId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      setError(message.match(/Uncaught Error: (.*?)(\n|$)/)?.[1] ?? "Something went wrong. Please try again.");
+      setError(message.match(/Uncaught Error: (.*?)(\n|$)/)?.[1] ?? t("common.somethingWrong"));
       setLoading(false);
     }
   };
@@ -44,11 +47,9 @@ export function GenerateTripForm() {
       ) : (
         <motion.form key="form" onSubmit={submit} exit={{ opacity: 0, y: -12 }} className="flex flex-col gap-6">
           <motion.div {...rise(0)}>
-            <p className="text-sm font-semibold uppercase tracking-widest text-primary">New trip</p>
-            <h1 className="mt-1 text-4xl font-extrabold tracking-tight">Where to?</h1>
-            <p className="mt-2 text-muted-foreground">
-              Say where, how long, your budget and what you enjoy. You can edit everything afterwards.
-            </p>
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary">{t("generate.eyebrow")}</p>
+            <h1 className="mt-1 text-4xl font-extrabold tracking-tight">{t("generate.title")}</h1>
+            <p className="mt-2 text-muted-foreground">{t("generate.intro")}</p>
           </motion.div>
           <motion.div {...rise(1)} className="relative">
             <textarea
@@ -57,7 +58,7 @@ export function GenerateTripForm() {
               autoFocus
               rows={5}
               maxLength={2000}
-              placeholder="e.g. 5 days in Tokyo on a moderate budget"
+              placeholder={t("generate.placeholder")}
               className="w-full resize-none rounded-3xl border border-border bg-card p-5 text-lg shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15"
             />
             <span className="absolute bottom-4 right-5 text-xs text-muted-foreground">{prompt.length}/2000</span>
@@ -70,10 +71,10 @@ export function GenerateTripForm() {
                 {...rise(i + 2)}
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setPrompt(idea.text)}
+                onClick={() => setPrompt(t(`generate.${idea.text}`))}
                 className="rounded-full border border-border bg-card px-3.5 py-2 text-sm shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
               >
-                {idea.emoji} {idea.text}
+                {idea.emoji} {t(`generate.${idea.text}`)}
               </motion.button>
             ))}
           </div>
@@ -84,8 +85,9 @@ export function GenerateTripForm() {
             disabled={prompt.trim().length < 3}
             className="rounded-full bg-gradient-to-r from-primary to-emerald-500 px-6 py-3.5 text-lg font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-opacity disabled:opacity-40"
           >
-            ✨ Generate itinerary
+            ✨ {t("generate.submit")}
           </motion.button>
+          <p className="-mt-3 text-center text-xs text-muted-foreground">{t("generate.writtenIn", { language: localeNames[locale] })}</p>
           <AnimatePresence>
             {error && (
               <motion.p
@@ -106,6 +108,7 @@ export function GenerateTripForm() {
 
 function Planning({ prompt }: { prompt: string }) {
   const [step, setStep] = useState(0);
+  const { t } = useI18n();
   useEffect(() => {
     const id = setInterval(() => setStep((s) => (s + 1) % STATUS.length), 2400);
     return () => clearInterval(id);
@@ -148,12 +151,12 @@ function Planning({ prompt }: { prompt: string }) {
             transition={{ duration: 0.3, ease: EASE_OUT }}
             className="text-xl font-semibold"
           >
-            {STATUS[step]}
+            {t(`generate.${STATUS[step]!}`)}
           </motion.p>
         </AnimatePresence>
       </div>
       <p className="max-w-md text-muted-foreground">&ldquo;{prompt}&rdquo;</p>
-      <p className="text-sm text-muted-foreground">This usually takes under a minute.</p>
+      <p className="text-sm text-muted-foreground">{t("generate.usuallyTakes")}</p>
     </motion.div>
   );
 }

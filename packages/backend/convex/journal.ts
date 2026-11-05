@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { aiVia, generateViaAnthropic, generateViaGateway } from "./ai";
+import { isLocale } from "@trip/i18n";
+import { aiVia, generateViaAnthropic, generateViaGateway, languageInstruction } from "./ai";
 import { findMembership, getMemberActivity, getMemberTrip, getOptionalUserId, getOwnedTrip } from "./lib/auth";
 import { listMembers } from "./lib/members";
 import { modelsFor, nextTier, type Tier } from "./lib/modelRouter";
@@ -233,8 +234,9 @@ export const publicStory = query({
 
 /** Asks the AI to write (or rewrite) the trip's story. Any traveler can; it runs in the background. */
 export const writeStory = mutation({
-  args: { tripId: v.id("trips") },
-  handler: async (ctx, { tripId }) => {
+  /** `language`: the app language of whoever asked; the story is written in it. */
+  args: { tripId: v.id("trips"), language: v.optional(v.string()) },
+  handler: async (ctx, { tripId, language }) => {
     const { userId } = await getMemberTrip(ctx, tripId);
     const done = await ctx.db
       .query("activities")
@@ -247,7 +249,7 @@ export const writeStory = mutation({
     if (row?.status === "writing" && now - row.requestedAt < WRITING_TIMEOUT_MS) throw new Error("The story is already being written");
     if (row) await ctx.db.patch("tripStories", row._id, { status: "writing", requestedBy: userId, requestedAt: now, error: undefined });
     else await ctx.db.insert("tripStories", { tripId, status: "writing", requestedBy: userId, requestedAt: now, isPublished: false });
-    await ctx.scheduler.runAfter(0, internal.journal.generateStory, { tripId, requestedAt: now });
+    await ctx.scheduler.runAfter(0, internal.journal.generateStory, { tripId, requestedAt: now, language });
   },
 });
 
@@ -321,8 +323,8 @@ export const storyInput = internalQuery({
 
 /** Writes the story with the model (or a plain template when no AI key is set) and saves it. */
 export const generateStory = internalAction({
-  args: { tripId: v.id("trips"), requestedAt: v.number() },
-  handler: async (ctx, { tripId, requestedAt }): Promise<null> => {
+  args: { tripId: v.id("trips"), requestedAt: v.number(), language: v.optional(v.string()) },
+  handler: async (ctx, { tripId, requestedAt, language }): Promise<null> => {
     const save = (result: { story: Story; model: string } | { error: string }): Promise<null> =>
       ctx.runMutation(internal.journal.saveStory, { tripId, requestedAt, ...result });
     const input: StoryInput | null = await ctx.runQuery(internal.journal.storyInput, { tripId });
@@ -334,7 +336,7 @@ export const generateStory = internalAction({
     }
     try {
       const content = storyPrompt(input);
-      const spec = { system: STORY_PROMPT, schema: storySchema };
+      const spec = { system: STORY_PROMPT + (isLocale(language) ? languageInstruction(language) : ""), schema: storySchema };
       let tier: Tier | null = "standard";
       while (tier) {
         const models = modelsFor(tier, via);

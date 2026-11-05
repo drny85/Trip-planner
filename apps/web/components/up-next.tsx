@@ -1,7 +1,8 @@
 "use client";
 
 import { api } from "@trip/backend/api";
-import { categoryLabel, countdown, formatDay, formatDuration, formatTime, links, localToday } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { links, localToday } from "@trip/ui";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
@@ -21,10 +22,11 @@ export function UpNext() {
   const next = useQuery(api.trips.upNext, today ? { today } : "skip");
   const toggleDone = useToggleDone();
   const reduce = useReducedMotion();
+  const { t, f, category } = useI18n();
   if (!next) return null;
 
   const { trip, day, activity, step, later } = next;
-  const badge = categoryLabel(activity.category, activity.subcategory);
+  const badge = category(activity.category, activity.subcategory);
   const pct = day.total ? day.done / day.total : 0;
   const target = step ?? activity;
 
@@ -33,7 +35,7 @@ export function UpNext() {
       initial={{ opacity: 0, y: 20, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: EASE_OUT }}
-      aria-label="Up next"
+      aria-label={t("upNext.label")}
       className="relative isolate overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950 text-white shadow-2xl shadow-black/20"
     >
       {/* Backdrop: the trip photo, slowly drifting, under a gradient wash */}
@@ -54,12 +56,12 @@ export function UpNext() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-70" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
               </span>
-              Up next
+              {t("upNext.label")}
             </span>
-            <span className="rounded-full bg-white/10 px-3 py-1 backdrop-blur">{countdown(next.startsInDays, day.dayNumber)}</span>
+            <span className="rounded-full bg-white/10 px-3 py-1 backdrop-blur">{f.countdown(next.startsInDays, day.dayNumber)}</span>
             <Link href={`/trips/${trip._id}`} className="truncate rounded-full bg-white/10 px-3 py-1 backdrop-blur transition hover:bg-white/20">
-              {trip.title} · Day {day.dayNumber}
-              {day.date ? `, ${formatDay(day.date)}` : ""}
+              {t("upNext.tripDay", { trip: trip.title, day: day.dayNumber })}
+              {day.date ? `, ${f.day(day.date)}` : ""}
             </Link>
           </div>
 
@@ -73,17 +75,17 @@ export function UpNext() {
               className="mt-5"
             >
               <p className="flex flex-wrap items-center gap-2 text-sm text-white/70">
-                {activity.startTime && <span className="rounded-md bg-white/15 px-2 py-0.5 font-semibold tabular-nums text-white">{formatTime(activity.startTime)}</span>}
+                {activity.startTime && <span className="rounded-md bg-white/15 px-2 py-0.5 font-semibold tabular-nums text-white">{f.time(activity.startTime)}</span>}
                 <span>
                   {badge.emoji} {badge.text}
                 </span>
-                {activity.durationMinutes ? <span>· {formatDuration(activity.durationMinutes)}</span> : null}
+                {activity.durationMinutes ? <span>· {f.duration(activity.durationMinutes)}</span> : null}
               </p>
               <h2 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{activity.title}</h2>
               <p className="mt-2 line-clamp-2 max-w-2xl text-white/75">{activity.description}</p>
               {step && (
                 <p className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-2 text-sm backdrop-blur">
-                  <span className="text-white/60">Next step</span>
+                  <span className="text-white/60">{t("upNext.nextStep")}</span>
                   <span className="font-semibold">{step.title}</span>
                 </p>
               )}
@@ -96,7 +98,7 @@ export function UpNext() {
               onClick={() => void toggleDone(target, true)}
               className="rounded-full bg-white px-5 py-2.5 font-semibold text-slate-950 shadow-lg transition hover:bg-white/90"
             >
-              ✓ {step ? "Done with this step" : "Mark done"}
+              ✓ {step ? t("upNext.doneWithStep") : t("upNext.markDone")}
             </motion.button>
             <a
               href={links.directions(activity)}
@@ -104,13 +106,21 @@ export function UpNext() {
               rel="noreferrer"
               className="rounded-full bg-white/15 px-5 py-2.5 font-semibold backdrop-blur transition hover:bg-white/25 active:scale-[0.97]"
             >
-              🧭 Directions
+              🧭 {t("upNext.directions")}
             </a>
+            {next.startsInDays <= 0 && (
+              <Link
+                href={`/trips/${trip._id}/today`}
+                className="rounded-full bg-emerald-400/90 px-5 py-2.5 font-semibold text-slate-950 transition hover:bg-emerald-300 active:scale-[0.97]"
+              >
+                ☀️ {t("today.todayMode")}
+              </Link>
+            )}
             <Link
               href={`/trips/${trip._id}#day-${day._id}`}
               className="rounded-full px-5 py-2.5 font-semibold text-white/80 transition hover:text-white active:scale-[0.97]"
             >
-              Open trip →
+              {t("upNext.openTrip")} →
             </Link>
           </div>
         </div>
@@ -119,7 +129,7 @@ export function UpNext() {
           <DayRing pct={pct} done={day.done} total={day.total} dayNumber={day.dayNumber} />
           {later.length > 0 && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/50">After that</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/50">{t("upNext.afterThat")}</p>
               <ul className="mt-2 flex flex-col gap-1.5">
                 <AnimatePresence initial={false}>
                   {later.map(({ activity: a, dayNumber }, i) => (
@@ -132,7 +142,7 @@ export function UpNext() {
                       transition={{ duration: 0.25, ease: EASE_OUT }}
                       className="flex items-center gap-2 truncate text-sm"
                     >
-                      <span className="w-16 shrink-0 tabular-nums text-white/50">{a.startTime ? formatTime(a.startTime) : `Day ${dayNumber}`}</span>
+                      <span className="w-16 shrink-0 tabular-nums text-white/50">{a.startTime ? f.time(a.startTime) : t("time.dayN", { day: dayNumber })}</span>
                       <span className="truncate font-medium">{a.title}</span>
                     </motion.li>
                   ))}
@@ -152,6 +162,7 @@ const noop = () => () => {};
 function DayRing({ pct, done, total, dayNumber }: { pct: number; done: number; total: number; dayNumber: number }) {
   const r = 26;
   const c = 2 * Math.PI * r;
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-3">
       <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90" aria-hidden>
@@ -174,7 +185,7 @@ function DayRing({ pct, done, total, dayNumber }: { pct: number; done: number; t
         <p className="text-2xl font-extrabold tabular-nums">
           {done}/{total}
         </p>
-        <p className="text-xs text-white/60">done on day {dayNumber}</p>
+        <p className="text-xs text-white/60">{t("upNext.doneOnDay", { day: dayNumber })}</p>
       </div>
     </div>
   );

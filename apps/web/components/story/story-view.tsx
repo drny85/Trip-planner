@@ -1,7 +1,8 @@
 "use client";
 
 import type { api } from "@trip/backend/api";
-import { cn, formatDay, links } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, links } from "@trip/ui";
 import type { FunctionReturnType } from "convex/server";
 import { motion } from "motion/react";
 import dynamic from "next/dynamic";
@@ -21,6 +22,7 @@ const hasCoords = <T extends { latitude?: number; longitude?: number }>(s: T): s
 
 /** The trip's route across every day of the story, with a legend. */
 export function StoryMap({ story }: { story: StoryData }) {
+  const { t } = useI18n();
   const days: RouteDay[] = story.chapters.map((c) => ({ dayNumber: c.dayNumber, stops: c.route.filter(hasCoords) })).filter((d) => d.stops.length > 0);
   if (days.length === 0) return null;
   const all = story.chapters.flatMap((c) => c.route);
@@ -33,12 +35,12 @@ export function StoryMap({ story }: { story: StoryData }) {
         {days.map((d) => (
           <span key={d.dayNumber} className="flex items-center gap-1.5 font-semibold">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dayColor(d.dayNumber) }} />
-            Day {d.dayNumber}
+            {t("time.dayN", { day: d.dayNumber })}
           </span>
         ))}
         {all.length > 1 && (
           <a href={links.route(all.slice(0, 10))} target="_blank" rel="noreferrer" className="ml-auto font-semibold text-primary hover:underline">
-            Open in Google Maps ↗
+            {t("journal.openInGoogleMaps")} ↗
           </a>
         )}
       </figcaption>
@@ -48,6 +50,7 @@ export function StoryMap({ story }: { story: StoryData }) {
 
 /** The story itself: title, intro, a map of the route, one chapter per day, and a closing line. */
 export function StoryView({ story, showTitle = true }: { story: StoryData; showTitle?: boolean }) {
+  const { t, f } = useI18n();
   return (
     <article className="space-y-10">
       {showTitle && <h2 className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">{story.title}</h2>}
@@ -63,8 +66,8 @@ export function StoryView({ story, showTitle = true }: { story: StoryData; showT
         >
           <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest" style={{ color: dayColor(c.dayNumber) }}>
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dayColor(c.dayNumber) }} />
-            Day {c.dayNumber}
-            {c.date && <span className="normal-case tracking-normal text-muted-foreground">· {formatDay(c.date)}</span>}
+            {t("time.dayN", { day: c.dayNumber })}
+            {c.date && <span className="normal-case tracking-normal text-muted-foreground">· {f.weekday(c.date)}</span>}
             {c.location && <span className="normal-case tracking-normal text-muted-foreground">· {c.location}</span>}
           </p>
           <h3 className="mt-1 text-balance text-2xl font-bold tracking-tight">{c.heading}</h3>

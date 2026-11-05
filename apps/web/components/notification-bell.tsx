@@ -1,6 +1,8 @@
 "use client";
 
 import { api } from "@trip/backend/api";
+import { notificationText } from "@trip/i18n";
+import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
@@ -10,13 +12,6 @@ import { EASE_OUT } from "@/lib/motion";
 
 const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝" } as const;
 
-const ago = (t: number) => {
-  const m = Math.round((Date.now() - t) / 60000);
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
-  const h = Math.round(m / 60);
-  return h < 24 ? `${h}h` : `${Math.round(h / 24)}d`;
-};
 
 /** Bell with an unread badge, and a dropdown of what the crew has been up to. */
 export function NotificationBell() {
@@ -24,6 +19,7 @@ export function NotificationBell() {
   const markAllRead = useMutation(api.notifications.markAllRead);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { t, f } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -45,7 +41,7 @@ export function NotificationBell() {
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={toggle} aria-label={`Notifications${feed.unread ? `, ${feed.unread} unread` : ""}`} aria-expanded={open} className="relative grid h-9 w-9 place-items-center rounded-full text-lg transition hover:bg-muted active:scale-95">
+      <button onClick={toggle} aria-label={feed.unread ? t("notifications.ariaUnread", { count: feed.unread }) : t("notifications.ariaLabel")} aria-expanded={open} className="relative grid h-9 w-9 place-items-center rounded-full text-lg transition hover:bg-muted active:scale-95">
         🔔
         <AnimatePresence>
           {feed.unread > 0 && (
@@ -71,17 +67,17 @@ export function NotificationBell() {
             style={{ transformOrigin: "top right" }}
             className="absolute right-0 top-11 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
           >
-            <p className="border-b border-border px-4 py-3 text-sm font-bold">Notifications</p>
+            <p className="border-b border-border px-4 py-3 text-sm font-bold">{t("notifications.title")}</p>
             {feed.items.length === 0 ? (
-              <p className="p-6 text-center text-sm text-muted-foreground">Nothing yet. You&apos;ll hear here when the crew suggests ideas, votes, or splits a bill.</p>
+              <p className="p-6 text-center text-sm text-muted-foreground">{t("notifications.empty")}</p>
             ) : (
               <ul className="max-h-96 overflow-y-auto">
                 {feed.items.map((n) => (
                   <li key={n._id}>
                     <Link href={`/trips/${n.tripId}`} onClick={() => setOpen(false)} className={cn("flex gap-3 px-4 py-3 text-sm transition hover:bg-muted", !n.isRead && "bg-primary/5")}>
                       <span aria-hidden>{ICON[n.kind]}</span>
-                      <span className="flex-1">{n.text}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">{ago(n._creationTime)}</span>
+                      <span className="flex-1">{n.params ? notificationText(t, f.money, n.kind, n.params) : n.text}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">{f.ago(n._creationTime)}</span>
                     </Link>
                   </li>
                 ))}

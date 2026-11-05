@@ -4,7 +4,8 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticMove, optimisticRemove } from "@trip/backend/optimistic";
 import type { Activity } from "@trip/backend/types";
-import { categoryLabel, cn, fallbackPhoto, formatDuration, formatTime } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, fallbackPhoto } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -91,7 +92,8 @@ function SubActivityRow({
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(true);
   const done = activity.isCompleted;
-  const badge = categoryLabel(activity.category, activity.subcategory);
+  const { t, f, category } = useI18n();
+  const badge = category(activity.category, activity.subcategory);
   const day = activity.subTripId;
   const nested = activity.children.length;
 
@@ -116,7 +118,7 @@ function SubActivityRow({
         <motion.button
           role="checkbox"
           aria-checked={done}
-          aria-label={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
+          aria-label={t(done ? "activity.markNotDone" : "activity.markDone", { title: activity.title })}
           disabled={!canCheck}
           whileTap={canCheck ? { scale: 0.85 } : undefined}
           onClick={() => void toggleDone(activity, !done)}
@@ -149,7 +151,7 @@ function SubActivityRow({
           </div>
           {(activity.startTime || activity.durationMinutes || activity.description) && (
             <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-              {[formatTime(activity.startTime), activity.durationMinutes ? formatDuration(activity.durationMinutes) : null, activity.description]
+              {[f.time(activity.startTime), activity.durationMinutes ? f.duration(activity.durationMinutes) : null, activity.description]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
@@ -159,25 +161,25 @@ function SubActivityRow({
           </div>
           {nested > 0 && (
             <button onClick={() => setOpen((o) => !o)} className="mt-1 text-xs font-semibold text-primary hover:underline">
-              {open ? "Hide" : "Show"} {nested} {nested === 1 ? "step" : "steps"}
+              {t(open ? "steps.hide" : "steps.show", { count: nested })}
             </button>
           )}
         </div>
 
         {!readOnly && (
           <div className="-mr-1 flex basis-full justify-end gap-0.5 transition sm:mr-0 sm:basis-auto sm:opacity-0 sm:group-hover/sub:opacity-100 sm:focus-within:opacity-100">
-            <SmallButton label="Add a step inside" onClick={() => { setAdding(true); setOpen(true); }}>＋</SmallButton>
-            <SmallButton label="Edit" onClick={() => setEditing(true)}>✎</SmallButton>
-            <SmallButton label="Move up" disabled={index === 0} onClick={() => moveTo(activity.parentId, index - 1)}>↑</SmallButton>
-            <SmallButton label="Move down" disabled={index >= siblings.length - 1} onClick={() => moveTo(activity.parentId, index + 1)}>↓</SmallButton>
+            <SmallButton label={t("activity.addStep")} onClick={() => { setAdding(true); setOpen(true); }}>＋</SmallButton>
+            <SmallButton label={t("activity.edit")} onClick={() => setEditing(true)}>✎</SmallButton>
+            <SmallButton label={t("steps.moveUp")} disabled={index === 0} onClick={() => moveTo(activity.parentId, index - 1)}>↑</SmallButton>
+            <SmallButton label={t("steps.moveDown")} disabled={index >= siblings.length - 1} onClick={() => moveTo(activity.parentId, index + 1)}>↓</SmallButton>
             {/* Indent: become the last step of the sibling above. Outdent: sit right after the parent. */}
-            <SmallButton label="Nest under the step above" disabled={index === 0} onClick={() => moveTo(siblings[index - 1]!._id, siblings[index - 1]!.children.length)}>⇥</SmallButton>
-            <SmallButton label="Move out one level" onClick={() => moveTo(grandparentId, parentIndexInGrandparent + 1)}>⇤</SmallButton>
+            <SmallButton label={t("steps.nest")} disabled={index === 0} onClick={() => moveTo(siblings[index - 1]!._id, siblings[index - 1]!.children.length)}>⇥</SmallButton>
+            <SmallButton label={t("steps.outdent")} onClick={() => moveTo(grandparentId, parentIndexInGrandparent + 1)}>⇤</SmallButton>
             <SmallButton
-              label="Delete"
+              label={t("activity.delete")}
               onClick={() => {
-                const extra = nested ? ` and its ${nested} ${nested === 1 ? "step" : "steps"}` : "";
-                if (confirm(`Delete "${activity.title}"${extra}?`)) void remove({ activityId: activity._id });
+                const question = nested ? t("steps.deleteWithSteps", { title: activity.title, count: nested }) : t("steps.deleteConfirm", { title: activity.title });
+                if (confirm(question)) void remove({ activityId: activity._id });
               }}
             >
               🗑
@@ -195,6 +197,7 @@ function SubActivityRow({
 export function QuickAdd({ parent, onDone }: { parent: Activity; onDone: () => void }) {
   const create = useMutation(api.activities.create);
   const [title, setTitle] = useState("");
+  const { t } = useI18n();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,11 +227,11 @@ export function QuickAdd({ parent, onDone }: { parent: Activity; onDone: () => v
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Escape" && onDone()}
           onBlur={() => !title.trim() && onDone()}
-          placeholder={`Add a step to "${parent.title}"…`}
+          placeholder={t("steps.addPlaceholder", { title: parent.title })}
           className="min-w-0 flex-1 rounded-2xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary"
         />
         <button type="submit" className="rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90">
-          Add
+          {t("common.add")}
         </button>
       </form>
     </motion.li>

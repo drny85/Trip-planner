@@ -1,3 +1,4 @@
+import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { cn } from "@trip/ui";
@@ -19,6 +20,7 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
   const claim = useMutation(api.packing.claim);
   const remove = useMutation(api.packing.remove);
   const [text, setText] = useState("");
+  const { t, locale } = useI18n();
   if (!items) return null;
 
   const packed = items.filter((i) => i.isPacked).length;
@@ -33,14 +35,14 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
     <View className="mt-10 gap-3 px-4">
       <View className="flex-row items-end justify-between">
         <View className="flex-1">
-          <Text className="text-xs font-bold uppercase tracking-widest text-primary">Get ready</Text>
-          <Text className="text-2xl font-extrabold tracking-tight text-foreground">Packing list</Text>
+          <Text className="text-xs font-bold uppercase tracking-widest text-primary">{t("packing.eyebrow")}</Text>
+          <Text className="text-2xl font-extrabold tracking-tight text-foreground">{t("packing.title")}</Text>
           <Text className="text-xs text-muted-foreground">
-            {items.length ? `${packed} of ${items.length} packed · shared with everyone` : "Shared with everyone going"}
+            {items.length ? t("mobileMoney.packedShared", { done: packed, total: items.length }) : t("mobileMoney.sharedWithEveryone")}
           </Text>
         </View>
-        <Button size="sm" variant="secondary" icon="plus" onPress={() => void addEssentials({ tripId })}>
-          Essentials
+        <Button size="sm" variant="secondary" icon="plus" onPress={() => void addEssentials({ tripId, language: locale })}>
+          {t("mobileMoney.essentials")}
         </Button>
       </View>
 
@@ -60,8 +62,8 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
               }}
               onLongPress={() =>
                 Alert.alert(item.text, undefined, [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Remove", style: "destructive", onPress: () => void remove({ itemId: item._id }) },
+                  { text: t("common.cancel"), style: "cancel" },
+                  { text: t("common.remove"), style: "destructive", onPress: () => void remove({ itemId: item._id }) },
                 ])
               }
               hitSlop={6}
@@ -85,7 +87,7 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
               className={cn("rounded-full px-2.5 py-1", item.claimedBy?.isMe ? "bg-primary/10" : "bg-muted")}
             >
               <Text className={cn("text-xs font-semibold", item.claimedBy?.isMe ? "text-primary" : "text-muted-foreground")}>
-                {item.claimedBy ? (item.claimedBy.isMe ? "You" : item.claimedBy.name.split(" ")[0]) : "I'll bring"}
+                {item.claimedBy ? (item.claimedBy.isMe ? t("split.you") : item.claimedBy.name.split(" ")[0]) : t("mobileMoney.illBring")}
               </Text>
             </Pressable>
           </Animated.View>
@@ -97,7 +99,7 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
           returnKeyType="done"
           submitBehavior="submit"
           maxLength={120}
-          placeholder={items.length ? "Add something…" : "Add an item, or start with the essentials"}
+          placeholder={items.length ? t("packing.addPlaceholder") : t("mobileMoney.addItemPlaceholder")}
           className="py-3 text-base text-foreground placeholder:text-muted-foreground"
         />
       </View>

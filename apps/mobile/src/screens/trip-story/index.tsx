@@ -1,6 +1,6 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { formatDay } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -21,12 +21,13 @@ export function TripStory({ tripId }: { tripId: Id<"trips"> }) {
   const publish = useMutation(api.journal.publishStory);
   const { width } = useWindowDimensions();
   const [busy, setBusy] = useState(false);
+  const { t, f, locale } = useI18n();
   if (data === undefined) return <ActivityIndicator className="mt-10" />;
-  if (data === null) return <Text className="p-8 text-center text-muted-foreground">This trip doesn&apos;t exist anymore.</Text>;
+  if (data === null) return <Text className="p-8 text-center text-muted-foreground">{t("trip.notFound")}</Text>;
 
   const writing = data.status === "writing";
   const story = data.story;
-  const ask = () => void write({ tripId }).catch((e: unknown) => Alert.alert("Couldn't start the story", cleanError(e)));
+  const ask = () => void write({ tripId, language: locale }).catch((e: unknown) => Alert.alert(t("journal.couldntStart"), cleanError(e)));
 
   const share = async () => {
     setBusy(true);
@@ -34,34 +35,34 @@ export function TripStory({ tripId }: { tripId: Id<"trips"> }) {
       const token = (await publish({ tripId, published: true }))!;
       const url = `${webUrl}/share/${token}/story`;
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await Share.share({ title: story?.title, message: `${story?.title ?? "Our trip story"}: ${url}`, url });
+      await Share.share({ title: story?.title, message: t("mobileTrip.shareMessage", { title: story?.title ?? t("journal.defaultTitle"), url }), url });
     } catch (e) {
-      Alert.alert("Couldn't publish the story", cleanError(e));
+      Alert.alert(t("journal.couldntPublish"), cleanError(e));
     } finally {
       setBusy(false);
     }
   };
   const unpublish = () =>
-    Alert.alert("Unpublish the story?", "People with the link won't be able to read it anymore.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Unpublish", style: "destructive", onPress: () => void publish({ tripId, published: false }) },
+    Alert.alert(t("journal.unpublishTitle"), t("journal.unpublishBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("journal.unpublish"), style: "destructive", onPress: () => void publish({ tripId, published: false }) },
     ]);
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-6 p-5 pb-16">
-      <Stack.Screen options={{ title: "Our story" }} />
+      <Stack.Screen options={{ title: t("journal.ourStory") }} />
       {data.error && <Text className="text-sm text-danger">{data.error}</Text>}
 
       {!story ? (
         <View className="gap-4 pt-4">
-          <Text className="text-2xl font-extrabold tracking-tight text-foreground">Turn the trip into a story</Text>
+          <Text className="text-2xl font-extrabold tracking-tight text-foreground">{t("journal.turnInto")}</Text>
           <Text className="text-base text-muted-foreground">
-            AI writes it from what you checked off, everyone&apos;s notes and the photos, one chapter per day. {data.tripEnded ? "" : "You can write it again after the trip."}
+            {t("journal.aiWrites")} {data.tripEnded ? "" : t("journal.writeAgainAfter")}
           </Text>
           <Button icon="sparkles" loading={writing} disabled={data.completedCount === 0} onPress={ask}>
-            {writing ? "Writing your story…" : "Write our story"}
+            {writing ? t("journal.writing") : t("journal.write")}
           </Button>
-          {data.completedCount === 0 && <Text className="text-center text-sm text-muted-foreground">Check off a few activities first.</Text>}
+          {data.completedCount === 0 && <Text className="text-center text-sm text-muted-foreground">{t("journal.checkOffFirst")}</Text>}
         </View>
       ) : (
         <>
@@ -75,30 +76,30 @@ export function TripStory({ tripId }: { tripId: Id<"trips"> }) {
               (data.isPublished ? (
                 <View className="flex-row gap-2">
                   <Button icon="share" containerClassName="flex-1" loading={busy} onPress={() => void share()}>
-                    Share link
+                    {t("journal.shareLink")}
                   </Button>
                   <Button variant="secondary" onPress={unpublish}>
-                    Unpublish
+                    {t("journal.unpublish")}
                   </Button>
                 </View>
               ) : (
                 <Button icon="share" loading={busy} onPress={() => void share()}>
-                  Publish and share
+                  {t("journal.publishShare")}
                 </Button>
               ))}
             <Button variant="secondary" icon="sparkles" loading={writing} onPress={ask}>
-              {writing ? "Rewriting…" : "Write it again"}
+              {writing ? t("journal.rewriting") : t("journal.writeAgain")}
             </Button>
             {data.canPublish && !data.isPublished && (
-              <Text className="text-center text-xs text-muted-foreground">Publishing puts the story and its photos on the trip&apos;s share link.</Text>
+              <Text className="text-center text-xs text-muted-foreground">{t("journal.publishHintShort")}</Text>
             )}
           </View>
 
           {story.chapters.map((c, i) => (
             <Animated.View key={c.subTripId} entering={FadeInDown.duration(400).delay(80 + Math.min(i, 5) * 60).easing(EASE_OUT)} className="gap-3">
               <Text className="text-xs font-bold uppercase tracking-widest text-primary">
-                Day {c.dayNumber}
-                {c.date ? ` · ${formatDay(c.date)}` : ""}
+                {t("time.dayN", { day: c.dayNumber })}
+                {c.date ? ` · ${f.weekday(c.date)}` : ""}
                 {c.location ? ` · ${c.location}` : ""}
               </Text>
               <Text className="text-2xl font-bold tracking-tight text-foreground">{c.heading}</Text>
@@ -123,7 +124,7 @@ export function TripStory({ tripId }: { tripId: Id<"trips"> }) {
               )}
               {c.route.length > 1 && (
                 <Button size="sm" variant="secondary" icon="route" className="self-start" onPress={() => void openDayRoute(c.route)}>
-                  {`Day ${c.dayNumber} route`}
+                  {t("journal.dayRoute", { day: c.dayNumber })}
                 </Button>
               )}
             </Animated.View>

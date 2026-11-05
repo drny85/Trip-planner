@@ -2,11 +2,12 @@
 
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { api } from "@trip/backend/api";
+import { useI18n } from "@trip/i18n/react";
 import { UndoToastProvider } from "./undo-toast";
 import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { MotionConfig } from "motion/react";
-import { useEffect, type ReactNode } from "react";
+import { Fragment, useEffect, type ReactNode } from "react";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -29,11 +30,18 @@ export function Providers({ children }: { children: ReactNode }) {
 
 function ConvexProviders({ children }: { children: ReactNode }) {
   if (!convex) return <MissingConfig />;
-  if (!clerkKey) return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+  if (!clerkKey)
+    return (
+      <ConvexProvider client={convex}>
+        <SyncLanguage />
+        {children}
+      </ConvexProvider>
+    );
   return (
     <ClerkProvider publishableKey={clerkKey}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SyncUser />
+        <SyncLanguage />
         {children}
       </ConvexProviderWithClerk>
     </ClerkProvider>
@@ -49,14 +57,30 @@ function SyncUser() {
   return null;
 }
 
+/** Saves the chosen language on the account, so notifications and AI trips use it too. */
+function SyncLanguage() {
+  const { locale } = useI18n();
+  const { isLoading, isAuthenticated } = useConvexAuth();
+  const setLanguage = useMutation(api.users.setLanguage);
+  const ready = !isLoading && (isAuthenticated || !authEnabled);
+  useEffect(() => {
+    if (ready) void setLanguage({ language: locale }).catch(() => {});
+  }, [ready, locale, setLanguage]);
+  return null;
+}
+
 function MissingConfig() {
+  const { t } = useI18n();
+  const [before, middle, after] = t("config.webHint").split(/\{env\}|\{file\}/);
   return (
     <main className="mx-auto flex max-w-lg flex-1 flex-col justify-center gap-3 p-8">
-      <h1 className="text-2xl font-bold">Connect your backend</h1>
+      <h1 className="text-2xl font-bold">{t("config.connectBackend")}</h1>
       <p className="text-muted-foreground">
-        Set <code className="rounded bg-muted px-1">NEXT_PUBLIC_CONVEX_URL</code> in{" "}
-        <code className="rounded bg-muted px-1">apps/web/.env.local</code> to your Convex deployment URL and restart
-        the dev server.
+        <Fragment>{before}</Fragment>
+        <code className="rounded bg-muted px-1">NEXT_PUBLIC_CONVEX_URL</code>
+        {middle}
+        <code className="rounded bg-muted px-1">apps/web/.env.local</code>
+        {after}
       </p>
     </main>
   );

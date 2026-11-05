@@ -1,5 +1,6 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
+import { useI18n } from "@trip/i18n/react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { Image } from "expo-image";
@@ -33,6 +34,7 @@ const initial = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
 export function ActivityNotes({ tripId, activityId, isCompleted }: { tripId: Id<"trips">; activityId: Id<"activities">; isCompleted: boolean }) {
   const notes = useContext(JournalContext).get(activityId) ?? [];
   const router = useRouter();
+  const { t } = useI18n();
   if (!isCompleted && notes.length === 0) return null;
   const edit = () => router.push({ pathname: "/trips/[tripId]/note/[activityId]", params: { tripId, activityId } });
   const mine = notes.some((n) => n.isMine);
@@ -41,7 +43,7 @@ export function ActivityNotes({ tripId, activityId, isCompleted }: { tripId: Id<
     <View className="gap-2 pt-3">
       {notes.map((n) => (
         <Animated.View key={n._id} entering={FadeIn.duration(200)}>
-          <Pressable disabled={!n.isMine} onPress={edit} accessibilityHint={n.isMine ? "Edit your note" : undefined} className="flex-row gap-2.5 rounded-2xl bg-muted p-3 active:opacity-70">
+          <Pressable disabled={!n.isMine} onPress={edit} accessibilityHint={n.isMine ? t("journal.editYourNote") : undefined} className="flex-row gap-2.5 rounded-2xl bg-muted p-3 active:opacity-70">
             <View className="h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-primary/15">
               {n.authorImageUrl ? (
                 <Image source={n.authorImageUrl} style={{ width: "100%", height: "100%" }} />
@@ -50,7 +52,7 @@ export function ActivityNotes({ tripId, activityId, isCompleted }: { tripId: Id<
               )}
             </View>
             <View className="flex-1">
-              <Text className="text-xs font-semibold text-muted-foreground">{n.isMine ? "You" : n.authorName}</Text>
+              <Text className="text-xs font-semibold text-muted-foreground">{n.isMine ? t("split.you") : n.authorName}</Text>
               <Text className="text-sm text-foreground">{n.text}</Text>
             </View>
           </Pressable>
@@ -58,7 +60,7 @@ export function ActivityNotes({ tripId, activityId, isCompleted }: { tripId: Id<
       ))}
       {isCompleted && !mine && (
         <Pressable onPress={edit} accessibilityRole="button" className="self-start rounded-full border border-dashed border-border px-3 py-1.5 active:opacity-70">
-          <Text className="text-sm font-semibold text-muted-foreground">✍️ Add a note</Text>
+          <Text className="text-sm font-semibold text-muted-foreground">✍️ {t("journal.addNote")}</Text>
         </Pressable>
       )}
     </View>
@@ -69,6 +71,7 @@ export function ActivityNotes({ tripId, activityId, isCompleted }: { tripId: Id<
 export function StoryCard({ tripId }: { tripId: Id<"trips"> }) {
   const data = useQuery(api.journal.story, { tripId });
   const router = useRouter();
+  const { t } = useI18n();
   if (!data) return null;
   const open = () => router.push({ pathname: "/trips/[tripId]/story", params: { tripId } });
   const cover = data.story?.chapters.flatMap((c) => c.photos)[0]?.url;
@@ -76,8 +79,8 @@ export function StoryCard({ tripId }: { tripId: Id<"trips"> }) {
   return (
     <View className="mt-10 gap-3 px-4">
       <View>
-        <Text className="text-xs font-bold uppercase tracking-widest text-primary">Trip journal</Text>
-        <Text className="text-2xl font-extrabold tracking-tight text-foreground">Our story</Text>
+        <Text className="text-xs font-bold uppercase tracking-widest text-primary">{t("journal.eyebrow")}</Text>
+        <Text className="text-2xl font-extrabold tracking-tight text-foreground">{t("journal.ourStory")}</Text>
       </View>
       {data.story ? (
         <PressableScale onPress={open} accessibilityRole="button" className="overflow-hidden rounded-3xl border border-border bg-card">
@@ -88,7 +91,7 @@ export function StoryCard({ tripId }: { tripId: Id<"trips"> }) {
               {data.story.intro}
             </Text>
             <Text className="pt-1 text-sm font-semibold text-primary">
-              {data.status === "writing" ? "Rewriting…" : data.isPublished ? "Published · Read the story →" : "Read the story →"}
+              {data.status === "writing" ? t("journal.rewriting") : data.isPublished ? t("journal.publishedRead") : t("journal.readStoryArrow")}
             </Text>
           </View>
         </PressableScale>
@@ -96,11 +99,11 @@ export function StoryCard({ tripId }: { tripId: Id<"trips"> }) {
         <View className="gap-3 rounded-3xl border border-border bg-card p-5">
           <Text className="text-sm text-muted-foreground">
             {data.completedCount === 0
-              ? "Check things off as you go and add photos and a note to each. After the trip, AI turns them into a story you can share, with a map of your route."
-              : `${data.completedCount} ${data.completedCount === 1 ? "stop" : "stops"} done and ${data.noteCount} ${data.noteCount === 1 ? "note" : "notes"} so far.`}
+              ? t("journal.emptyHint")
+              : t("journal.progress", { stops: t("journal.stops", { count: data.completedCount }), notes: t("journal.notes", { count: data.noteCount }) })}
           </Text>
           <Button icon="sparkles" onPress={open} disabled={data.completedCount === 0} loading={data.status === "writing"}>
-            {data.status === "writing" ? "Writing your story…" : "Write our story"}
+            {data.status === "writing" ? t("journal.writing") : t("journal.write")}
           </Button>
         </View>
       )}

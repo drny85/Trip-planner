@@ -1,5 +1,6 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
+import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
@@ -18,6 +19,7 @@ export function NoteEditor({ tripId, activityId }: { tripId: Id<"trips">; activi
   const router = useRouter();
   const [text, setText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { t } = useI18n();
   if (notes === undefined || trip === undefined) return <ActivityIndicator className="mt-10" />;
 
   const mine = notes?.find((n) => n.activityId === activityId && n.isMine);
@@ -31,7 +33,7 @@ export function NoteEditor({ tripId, activityId }: { tripId: Id<"trips">; activi
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
-      Alert.alert("Couldn't save the note", e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : undefined);
+      Alert.alert(t("journal.couldntSave"), e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : undefined);
     } finally {
       setBusy(false);
     }
@@ -46,20 +48,20 @@ export function NoteEditor({ tripId, activityId }: { tripId: Id<"trips">; activi
         onChangeText={setText}
         maxLength={MAX_NOTE}
         multiline
-        placeholder="What made it memorable? A taste, a view, a moment…"
+        placeholder={t("journal.placeholder")}
         className="min-h-32 rounded-2xl border border-border bg-card px-4 py-3 text-base text-foreground"
         textAlignVertical="top"
       />
       <Text className={cn("text-right text-xs text-muted-foreground", value.length > MAX_NOTE - 40 && "text-danger")}>
         {value.length}/{MAX_NOTE}
       </Text>
-      <Text className="text-sm text-muted-foreground">Everyone on the trip sees your note, and it goes into the trip story.</Text>
+      <Text className="text-sm text-muted-foreground">{t("journal.visibleHint")}</Text>
       <Button icon="check" loading={busy} disabled={!value.trim() || value.trim() === mine?.text} onPress={() => void submit(value)}>
-        Save note
+        {t("journal.saveNote")}
       </Button>
       {mine && (
         <Button variant="danger" icon="trash" disabled={busy} onPress={() => void submit("")}>
-          Delete note
+          {t("journal.deleteNote")}
         </Button>
       )}
     </ScrollView>

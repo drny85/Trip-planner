@@ -1,6 +1,7 @@
 import type { Id } from "@trip/backend/dataModel";
 import type { Activity } from "@trip/backend/types";
-import { categoryLabel, cn, formatDuration, formatTime, getCategory } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, getCategory } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
@@ -16,6 +17,7 @@ import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
 import { ActivityNotes } from "./journal";
 import { ActivityPhotos } from "./memories";
 import { SubSteps } from "./sub-steps";
+import { useBookingFor } from "./bookings";
 
 /** `canEdit` is false for trip members: they check things off but don't edit. */
 type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean; canEdit: boolean };
@@ -24,7 +26,9 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
   const toggleDone = useToggleDone();
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
-  const badge = categoryLabel(activity.category, activity.subcategory);
+  const { t, f, category: categoryText } = useI18n();
+  const badge = categoryText(activity.category, activity.subcategory);
+  const booking = useBookingFor(activity._id);
   const router = useRouter();
 
   const toggle = () => {
@@ -36,11 +40,11 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
     <View className="flex-row pl-4 pr-4">
       {/* Timeline rail: start time, completion checkbox and connector */}
       <View className="w-12 items-center">
-        <Text className="pt-1 text-[11px] font-bold text-muted-foreground">{formatTime(activity.startTime)}</Text>
+        <Text className="pt-1 text-[11px] font-bold text-muted-foreground">{f.time(activity.startTime)}</Text>
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: done }}
-          accessibilityLabel={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
+          accessibilityLabel={t(done ? "activity.markNotDone" : "activity.markDone", { title: activity.title })}
           onPress={toggle}
           hitSlop={12}
           className="mt-2"
@@ -68,7 +72,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
 
       <View className="mb-5 ml-2 flex-1">
         <PressableScale
-          accessibilityHint={canEdit ? "Opens the activity editor" : undefined}
+          accessibilityHint={canEdit ? t("mobileActivity.opensEditor") : undefined}
           disabled={!canEdit}
           onPress={() =>
             router.push({
@@ -96,14 +100,20 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
               {activity.durationMinutes ? (
                 <View className="flex-row items-center gap-1 rounded-full bg-black/65 px-2.5 py-1">
                   <Text className="text-[11px] text-white">⏱</Text>
-                  <Text className="text-xs font-semibold text-white">{formatDuration(activity.durationMinutes)}</Text>
+                  <Text className="text-xs font-semibold text-white">{f.duration(activity.durationMinutes)}</Text>
                 </View>
               ) : null}
+              {booking && (
+                <View className="flex-row items-center gap-1 rounded-full bg-success px-2.5 py-1">
+                  <Text className="text-[11px]">🎫</Text>
+                  <Text className="text-xs font-semibold text-white">{booking.confirmationCode ?? t("bookings.booked")}</Text>
+                </View>
+              )}
             </View>
             {done && (
               <View className="absolute inset-0 items-center justify-center bg-black/40">
                 <Text className="rounded-full bg-success px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-                  Done
+                  {t("activity.done")}
                 </Text>
               </View>
             )}
@@ -126,19 +136,19 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
             <View className="flex-row flex-wrap gap-2 pt-2">
               {activity.phone && (
                 <Button size="sm" variant="secondary" icon="phone" onPress={() => void callPhone(activity.phone!)}>
-                  Call
+                  {t("activity.call")}
                 </Button>
               )}
-              <Button size="sm" variant="secondary" icon="directions" onPress={() => void openDirections(activity)} accessibilityLabel="Directions">
-                Maps
+              <Button size="sm" variant="secondary" icon="directions" onPress={() => void openDirections(activity)} accessibilityLabel={t("activity.directions")}>
+                {t("mobileActivity.maps")}
               </Button>
               {activity.bookingUrl ? (
                 <Button size="sm" icon="ticket" onPress={() => void openInAppBrowser(activity.bookingUrl!)}>
-                  Reserve
+                  {t("activity.reserve")}
                 </Button>
               ) : activity.websiteUrl ? (
                 <Button size="sm" variant="secondary" icon="globe" onPress={() => void openInAppBrowser(activity.websiteUrl!)}>
-                  Website
+                  {t("activity.website")}
                 </Button>
               ) : null}
             </View>

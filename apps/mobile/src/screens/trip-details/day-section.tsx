@@ -1,6 +1,7 @@
 import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails } from "@trip/backend/types";
-import { cn, formatDay } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, dayTitle } from "@trip/ui";
 import { Text, View } from "react-native";
 import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
@@ -18,21 +19,22 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
   const weather = useDayWeather(subTrip.date, subTrip.activities);
   const router = useRouter();
   const rainy = (weather?.rainChance ?? 0) >= 50;
+  const { t, f } = useI18n();
   return (
     <View className="pt-8">
       <View className="gap-2 px-5 pb-4">
         <View className="gap-0.5">
           <Text className="text-xs font-bold uppercase tracking-widest text-primary">
-            Day {subTrip.dayNumber}
-            {subTrip.date ? ` · ${formatDay(subTrip.date)}` : ""}
+            {t("time.dayN", { day: subTrip.dayNumber })}
+            {subTrip.date ? ` · ${f.weekday(subTrip.date)}` : ""}
           </Text>
-          <Text className="text-2xl font-extrabold tracking-tight text-foreground">{subTrip.title.replace(/^Day \d+\s*·\s*/, "")}</Text>
+          <Text className="text-2xl font-extrabold tracking-tight text-foreground">{dayTitle(subTrip.title)}</Text>
         </View>
         <View className="flex-row flex-wrap items-center gap-2">
           <DayWeatherChip weather={weather} />
           {subTrip.activities.length > 0 && (
             <Text className="text-sm text-muted-foreground">
-              {done} of {subTrip.activities.length} done
+              {t("mobileDay.doneOf", { done, total: subTrip.activities.length })}
             </Text>
           )}
           <View className="flex-1" />
@@ -40,12 +42,12 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
             <PressableScale
               onPress={() => void openDayRoute(subTrip.activities)}
               accessibilityRole="link"
-              accessibilityLabel={`Route for day ${subTrip.dayNumber}`}
+              accessibilityLabel={t("mobileDay.routeLabel", { day: subTrip.dayNumber })}
               hitSlop={8}
               className="flex-row items-center gap-1 rounded-full bg-muted px-3 py-1.5"
             >
               <Icon name="route" size={14} colorVar="--color-primary" />
-              <Text className="text-xs font-semibold text-primary">Route</Text>
+              <Text className="text-xs font-semibold text-primary">{t("mobileDay.route")}</Text>
             </PressableScale>
           )}
         </View>
@@ -58,13 +60,13 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
           className={cn("mx-5 mb-4 flex-row items-center justify-center gap-2 rounded-2xl py-2.5", rainy ? "bg-sky-500" : "bg-muted")}
         >
           <Text className={cn("text-sm font-semibold", rainy ? "text-white" : "text-foreground")}>
-            {rainy ? `☔ ${weather!.rainChance}% rain: make a rain plan` : "✨ Re-plan this day with AI"}
+            {rainy ? `☔ ${t("mobileDay.rainPlan", { percent: weather!.rainChance })}` : `✨ ${t("mobileDay.replan")}`}
           </Text>
         </PressableScale>
       )}
 
       {subTrip.activities.length === 0 ? (
-        <Text className="mx-5 text-muted-foreground">Nothing planned for this day yet.</Text>
+        <Text className="mx-5 text-muted-foreground">{t("trip.nothingPlanned")}</Text>
       ) : (
         subTrip.activities.map((activity, index) => (
           <Animated.View

@@ -15,4 +15,31 @@ export function tripLength(start: string, end: string) {
   return Math.max(1, Math.round(ms / 86_400_000) + 1);
 }
 export { toICS } from "./calendar";
-export { describeWeather, forecastUrl, inForecastRange, parseForecast, type DayWeather } from "./weather";
+export { describeWeather, forecastUrl, inForecastRange, parseForecast, type DayWeather, type WeatherKind } from "./weather";
+
+/** "Day 2 · Kyoto" / "Día 2 · Kioto" / "2日目 · 京都" -> "Kyoto": drops the day prefix, since the apps show the day number already. */
+export const dayTitle = (title: string) => title.replace(/^[^·\d]*\d+[^·\d]*·\s*/, "") || title;
+export {
+  distanceKm,
+  estimateTravel,
+  findTodayDay,
+  fromMinutes,
+  hasCoords,
+  hourlyForecastUrl,
+  isOutdoor,
+  LATE_AFTER,
+  leaveBy,
+  minutesNow,
+  parseHourly,
+  rainSoon,
+  todayAlerts,
+  todayStatus,
+  toMinutes,
+  type Coords,
+  type HourWeather,
+  type LiveWeather,
+  type TodayAlert,
+  type TodayStatus,
+  type TodayStop,
+  type TravelEstimate,
+} from "./today";

@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { formatCents } from "./lib/format";
 import { findMembership, getCallerProfile, getMemberTrip, getOptionalUserId } from "./lib/auth";
 import { listMembers } from "./lib/members";
 import { notify } from "./lib/notify";
@@ -62,7 +61,12 @@ export const add = mutation({
     const text = description.trim().slice(0, 80) || "Expense";
     const id = await ctx.db.insert("expenses", { tripId, description: text, amountCents: cents, paidBy, splitAmong: among, createdBy: userId });
     const { name } = await getCallerProfile(ctx);
-    await notify(ctx, trip, { kind: "expense", actorId: userId, to: among, text: `${name.split(" ")[0]} added ${text} (${formatCents(cents, trip.currency)}), split ${among.length} ways.` });
+    await notify(ctx, trip, {
+      kind: "expense",
+      actorId: userId,
+      to: among,
+      params: { name: name.split(" ")[0], item: text, amountCents: cents, currency: trip.currency ?? "USD", count: among.length },
+    });
     return id;
   },
 });
@@ -77,7 +81,7 @@ export const settle = mutation({
     if (cents <= 0 || from === to) throw new Error("Nothing to settle");
     const id = await ctx.db.insert("expenses", { tripId, description: "Settled up", amountCents: cents, paidBy: from, splitAmong: [to], createdBy: userId, isSettlement: true });
     const { name } = await getCallerProfile(ctx);
-    await notify(ctx, trip, { kind: "settled", actorId: userId, to: [from, to], text: `${name.split(" ")[0]} marked ${formatCents(cents, trip.currency)} as paid back.` });
+    await notify(ctx, trip, { kind: "settled", actorId: userId, to: [from, to], params: { name: name.split(" ")[0], amountCents: cents, currency: trip.currency ?? "USD" } });
     return id;
   },
 });

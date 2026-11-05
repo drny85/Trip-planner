@@ -36,7 +36,7 @@ describe("toICS", () => {
 describe("weather", () => {
   test("parses a forecast and knows its range", () => {
     expect(parseForecast({ daily: { weather_code: [61], temperature_2m_max: [18.6], temperature_2m_min: [11.2], precipitation_probability_max: [70] } })).toEqual({
-      high: 19, low: 11, rainChance: 70, emoji: "🌧️", label: "Rain",
+      high: 19, low: 11, rainChance: 70, emoji: "🌧️", label: "Rain", kind: "rain",
     });
     expect(parseForecast({})).toBeNull();
     expect(inForecastRange("2026-11-10", "2026-11-05")).toBe(true);

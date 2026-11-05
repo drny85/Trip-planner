@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
+import { deleteTripBookings } from "./bookings";
 import { findMembership, getOptionalUserId, getOwnedTrip } from "./lib/auth";
 import { insertTripTree } from "./lib/insertTripTree";
 import { newToken } from "./lib/tokens";
@@ -190,6 +191,7 @@ export const remove = mutation({
       ...notifications.map((n) => ctx.db.delete("notifications", n._id)),
     ]);
     await deleteJournal(ctx, tripId);
+    await deleteTripBookings(ctx, tripId);
     await ctx.db.delete("trips", tripId);
   },
 });

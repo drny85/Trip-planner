@@ -1,3 +1,4 @@
+import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails as TripDetailsData } from "@trip/backend/types";
@@ -23,6 +24,7 @@ import { useCachedQuery } from "@/hooks/use-cached-query";
 import { shareCalendar } from "@/lib/calendar";
 import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
+import { BookingsProvider, BookingsSection } from "./bookings";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { JournalProvider, StoryCard } from "./journal";
@@ -32,9 +34,11 @@ import { SplitCostsSection } from "./split-costs";
 import { Crew, IdeasSection } from "./together";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
+import { TodayBanner } from "./today-banner";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
   const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
+  const { t } = useI18n();
 
   if (trip === undefined) {
     return (
@@ -46,8 +50,8 @@ export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
   if (trip === null) {
     return (
       <View className="flex-1 items-center justify-center bg-background p-8">
-        <Stack.Screen options={{ headerTransparent: false, title: "Trip" }} />
-        <Text className="text-lg text-muted-foreground">This trip doesn&apos;t exist anymore.</Text>
+        <Stack.Screen options={{ headerTransparent: false, title: t("mobileTrip.trip") }} />
+        <Text className="text-lg text-muted-foreground">{t("trip.notFound")}</Text>
       </View>
     );
   }
@@ -60,6 +64,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
   const dayOffsets = useRef<Record<string, number>>({});
+  const { t } = useI18n();
 
   // Re-schedule this trip's local reminders whenever its times or titles change.
   const reminderKey = JSON.stringify(trip.subTrips.map((d) => [d.date, d.activities.map((a) => [a.title, a.startTime, a.children.map((c) => [c.title, c.startTime])])]));
@@ -101,6 +106,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   return (
     <MemoriesProvider tripId={trip._id}>
     <JournalProvider tripId={trip._id}>
+    <BookingsProvider tripId={trip._id}>
     <View className="flex-1 bg-background">
       <StatusBar style={pastHero ? (scheme === "dark" ? "light" : "dark") : "light"} animated />
       <Animated.ScrollView
@@ -117,8 +123,10 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
         <OfflineBanner cached={isCached} />
+        <TodayBanner trip={trip} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
+        <BookingsSection tripId={trip._id} days={trip.subTrips} />
         {trip.subTrips.map((subTrip, index) => (
           <View
             key={subTrip._id}
@@ -135,8 +143,8 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <SplitCostsSection tripId={trip._id} />
         <PackingSection tripId={trip._id} />
         <View className="mt-10 px-4">
-          <Button variant="secondary" icon="calendar" onPress={() => void shareCalendar(trip).catch((e: unknown) => Alert.alert("Couldn't export", e instanceof Error ? e.message : undefined))}>
-            Add to calendar
+          <Button variant="secondary" icon="calendar" onPress={() => void shareCalendar(trip).catch((e: unknown) => Alert.alert(t("mobile.couldntExport"), e instanceof Error ? e.message : undefined))}>
+            {t("trip.addToCalendar")}
           </Button>
         </View>
         {isOwner ? (
@@ -159,6 +167,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         </Text>
       </Animated.View>
     </View>
+    </BookingsProvider>
     </JournalProvider>
     </MemoriesProvider>
   );
@@ -168,27 +177,28 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
 function ShareTrip({ tripId, title, isShared }: { tripId: Id<"trips">; title: string; isShared: boolean }) {
   const share = useMutation(api.trips.share);
   const unshare = useMutation(api.trips.unshare);
+  const { t } = useI18n();
 
   const onShare = async () => {
     const token = await share({ tripId });
     const url = `${webUrl}/share/${token}`;
-    await Share.share({ title, message: `${title}: ${url}`, url });
+    await Share.share({ title, message: t("mobileTrip.shareMessage", { title, url }), url });
   };
 
   const onStop = () =>
-    Alert.alert("Stop sharing?", "People with the link won't be able to see this trip anymore.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Stop sharing", style: "destructive", onPress: () => void unshare({ tripId }) },
+    Alert.alert(t("mobileTrip.stopSharingTitle"), t("mobileTrip.stopSharingBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("share.stop"), style: "destructive", onPress: () => void unshare({ tripId }) },
     ]);
 
   return (
     <View className="mt-10 gap-2 px-4">
       <Button icon="share" onPress={() => void onShare()}>
-        Share trip
+        {t("mobileTrip.shareTrip")}
       </Button>
       {isShared && (
         <Button variant="ghost" size="sm" onPress={onStop}>
-          Stop sharing
+          {t("share.stop")}
         </Button>
       )}
     </View>
@@ -198,12 +208,13 @@ function ShareTrip({ tripId, title, isShared }: { tripId: Id<"trips">; title: st
 function DeleteTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
   const remove = useMutation(api.trips.remove);
   const router = useRouter();
+  const { t } = useI18n();
 
   const confirm = () =>
-    Alert.alert(`Delete "${title}"?`, "This removes every day and activity in the trip.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("mobileTrip.deleteTitle", { title }), t("mobileTrip.deleteBody"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           router.back();
@@ -215,7 +226,7 @@ function DeleteTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
   return (
     <View className="mt-4 px-4">
       <Button variant="danger" icon="trash" onPress={confirm}>
-        Delete trip
+        {t("trip.deleteTrip")}
       </Button>
     </View>
   );
@@ -224,11 +235,12 @@ function DeleteTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
 function LeaveTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
   const leave = useMutation(api.members.leave);
   const router = useRouter();
+  const { t } = useI18n();
   const confirm = () =>
-    Alert.alert(`Leave "${title}"?`, "You'll need a new invite to rejoin.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("mobileTrip.leaveTitle", { title }), t("mobileTrip.leaveBody"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Leave",
+        text: t("mobileTrip.leave"),
         style: "destructive",
         onPress: async () => {
           router.back();
@@ -239,7 +251,7 @@ function LeaveTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
   return (
     <View className="mt-10 px-4">
       <Button variant="secondary" onPress={confirm}>
-        Leave trip
+        {t("crew.leave")}
       </Button>
     </View>
   );
