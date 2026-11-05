@@ -1,7 +1,9 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { findMembership, getMemberTrip, getOptionalUserId } from "./lib/auth";
+import { formatCents } from "./lib/format";
+import { findMembership, getCallerProfile, getMemberTrip, getOptionalUserId } from "./lib/auth";
 import { listMembers } from "./lib/members";
+import { notify } from "./lib/notify";
 import { balances, settleUp } from "./lib/settle";
 
 /** Shared costs: who paid for what, and who owes whom. */
@@ -57,14 +59,11 @@ export const add = mutation({
     const members = new Set((await listMembers(ctx, trip)).map((m) => m.userId));
     const among = [...new Set(splitAmong)];
     if (!members.has(paidBy) || among.length === 0 || among.some((m) => !members.has(m))) throw new Error("Pick people on this trip");
-    return ctx.db.insert("expenses", {
-      tripId,
-      description: description.trim().slice(0, 80) || "Expense",
-      amountCents: cents,
-      paidBy,
-      splitAmong: among,
-      createdBy: userId,
-    });
+    const text = description.trim().slice(0, 80) || "Expense";
+    const id = await ctx.db.insert("expenses", { tripId, description: text, amountCents: cents, paidBy, splitAmong: among, createdBy: userId });
+    const { name } = await getCallerProfile(ctx);
+    await notify(ctx, trip, { kind: "expense", actorId: userId, to: among, text: `${name.split(" ")[0]} added ${text} (${formatCents(cents, trip.currency)}), split ${among.length} ways.` });
+    return id;
   },
 });
 
@@ -76,7 +75,10 @@ export const settle = mutation({
     if (userId !== from && userId !== to && userId !== trip.userId) throw new Error("Only the two people involved can settle this");
     const cents = Math.round(amountCents);
     if (cents <= 0 || from === to) throw new Error("Nothing to settle");
-    return ctx.db.insert("expenses", { tripId, description: "Settled up", amountCents: cents, paidBy: from, splitAmong: [to], createdBy: userId, isSettlement: true });
+    const id = await ctx.db.insert("expenses", { tripId, description: "Settled up", amountCents: cents, paidBy: from, splitAmong: [to], createdBy: userId, isSettlement: true });
+    const { name } = await getCallerProfile(ctx);
+    await notify(ctx, trip, { kind: "settled", actorId: userId, to: [from, to], text: `${name.split(" ")[0]} marked ${formatCents(cents, trip.currency)} as paid back.` });
+    return id;
   },
 });
 

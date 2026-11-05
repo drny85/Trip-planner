@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { findMembership, getCallerProfile, getMemberTrip, getOptionalUserId, getOwnedTrip, getUserId } from "./lib/auth";
+import { notify } from "./lib/notify";
 import { newToken } from "./lib/tokens";
 import { listMembers } from "./lib/members";
 import { resolveOpenSuggestions } from "./suggestions";
@@ -86,7 +87,9 @@ export const join = mutation({
     const trip = await tripForInvite(ctx, token);
     if (!trip) throw new Error("This invite link isn't active anymore");
     if (await findMembership(ctx, trip, userId)) return trip._id;
-    await ctx.db.insert("tripMembers", { tripId: trip._id, userId, role: "member", ...(await getCallerProfile(ctx)) });
+    const profile = await getCallerProfile(ctx);
+    await ctx.db.insert("tripMembers", { tripId: trip._id, userId, role: "member", ...profile });
+    await notify(ctx, trip, { kind: "joined", actorId: userId, text: `${profile.name} joined the trip.` });
     return trip._id;
   },
 });

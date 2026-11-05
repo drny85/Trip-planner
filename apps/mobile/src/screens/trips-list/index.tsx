@@ -13,6 +13,7 @@ import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { enterUp } from "@/lib/motion";
+import { BellButton } from "@/screens/notifications";
 import { UpNext } from "./up-next";
 
 export function TripsList() {
@@ -25,9 +26,12 @@ export function TripsList() {
         options={{
           headerLeft: () => <SignOutButton />,
           headerRight: () => (
-            <Pressable accessibilityLabel="Plan a new trip" onPress={() => router.push("/generate")} hitSlop={12}>
-              <Icon name="plus" size={22} colorVar="--color-primary" />
-            </Pressable>
+            <View className="flex-row items-center gap-5">
+              <BellButton />
+              <Pressable accessibilityLabel="Plan a new trip" onPress={() => router.push("/generate")} hitSlop={12}>
+                <Icon name="plus" size={22} colorVar="--color-primary" />
+              </Pressable>
+            </View>
           ),
         }}
       />

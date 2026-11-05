@@ -3,7 +3,7 @@ import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails as TripDetailsData } from "@trip/backend/types";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useRouter } from "expo-router";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, Alert, Share, Text, View } from "react-native";
 import Animated, {
   Extrapolation,
@@ -16,6 +16,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
 import { shareCalendar } from "@/lib/calendar";
+import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
@@ -53,6 +54,13 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
   const dayOffsets = useRef<Record<string, number>>({});
+
+  // Re-schedule this trip's local reminders whenever its times or titles change.
+  const reminderKey = JSON.stringify(trip.subTrips.map((d) => [d.date, d.activities.map((a) => [a.title, a.startTime, a.children.map((c) => [c.title, c.startTime])])]));
+  useEffect(() => {
+    void scheduleTripReminders(trip).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reminderKey captures what matters
+  }, [trip._id, reminderKey]);
 
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.set(e.contentOffset.y);

@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
-import { findMembership, getMemberTrip, getOptionalUserId } from "./lib/auth";
+import { findMembership, getCallerProfile, getMemberTrip, getOptionalUserId } from "./lib/auth";
+import { notify } from "./lib/notify";
 import { isSubcategoryOf } from "./lib/categories";
 import { decide, yesNeeded } from "./lib/majority";
 import { activityFields } from "./lib/validators";
@@ -70,7 +71,11 @@ export const create = mutation({
       status: "open",
     });
     await ctx.db.insert("votes", { suggestionId: id, tripId: trip._id, userId, value: "yes" });
-    await resolve(ctx, trip, id);
+    const outcome = await resolve(ctx, trip, id);
+    if (outcome === "open") {
+      const { name } = await getCallerProfile(ctx);
+      await notify(ctx, trip, { kind: "idea", actorId: userId, text: `${name.split(" ")[0]} suggested "${fields.title.trim()}". Cast your vote.` });
+    }
     return id;
   },
 });
@@ -142,6 +147,12 @@ async function resolve(ctx: MutationCtx, trip: Doc<"trips">, suggestionId: Doc<"
     });
   }
   await ctx.db.patch("suggestions", suggestionId, { status: outcome, resolvedAt: Date.now(), activityId });
+  if (members.length > 1) {
+    await notify(ctx, trip, {
+      kind: outcome,
+      text: outcome === "accepted" ? `The group voted yes: "${suggestion.title}" is on the plan.` : `"${suggestion.title}" didn't get enough votes.`,
+    });
+  }
   return outcome;
 }
 

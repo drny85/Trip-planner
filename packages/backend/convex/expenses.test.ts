@@ -56,3 +56,34 @@ describe("expenses", () => {
     expect((await ana.query(api.expenses.forTrip, { tripId }))!.expenses).toHaveLength(2);
   });
 });
+
+describe("notifications", () => {
+  test("ideas, votes, joins and expenses notify the others, not the actor", async () => {
+    const t = convexTest(schema, modules);
+    const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+    const ben = t.withIdentity({ subject: "ben", name: "Ben Ito" });
+    const tripId = await ana.mutation(api.seed.demoTrip, {});
+    const token = await ana.mutation(api.members.createInvite, { tripId });
+    await ben.mutation(api.members.join, { token });
+    const day = (await ana.query(api.trips.get, { tripId }))!.subTrips[0]!;
+
+    expect((await ana.query(api.notifications.feed, {}))!.items.map((n) => n.text)).toEqual(["Ben Ito joined the trip."]);
+
+    const idea = await ben.mutation(api.suggestions.create, {
+      subTripId: day._id, title: "Karaoke", description: "", address: "", photoUrl: "https://picsum.photos/seed/k/800/600", category: "nightlife",
+    });
+    expect((await ana.query(api.notifications.feed, {}))!.items[0]).toMatchObject({ kind: "idea", text: 'Ben suggested "Karaoke". Cast your vote.' });
+    await ana.mutation(api.suggestions.vote, { suggestionId: idea, value: "yes" });
+    expect((await ben.query(api.notifications.feed, {}))!.items[0]).toMatchObject({ kind: "accepted" });
+
+    await ana.mutation(api.expenses.add, { tripId, description: "Taxi", amountCents: 2500, paidBy: "ana", splitAmong: ["ana", "ben"] });
+    const benFeed = (await ben.query(api.notifications.feed, {}))!;
+    expect(benFeed.items[0]).toMatchObject({ kind: "expense", text: "Ana added Taxi (¥25), split 2 ways." });
+    expect(benFeed.unread).toBe(2);
+    await ben.mutation(api.notifications.markAllRead, {});
+    expect((await ben.query(api.notifications.feed, {}))!.unread).toBe(0);
+
+    await ben.mutation(api.notifications.registerPushToken, { token: "ExponentPushToken[abc]" });
+    await expect(ben.mutation(api.notifications.registerPushToken, { token: "nope" })).rejects.toThrow();
+  });
+});

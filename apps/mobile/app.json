@@ -43,6 +43,12 @@
           "photosPermission": "Trip Planner lets you add photos from your library to the activities on your trips.",
           "cameraPermission": "Trip Planner lets you take photos to add to the activities on your trips."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0e7c66"
+        }
       ]
     ],
     "experiments": {

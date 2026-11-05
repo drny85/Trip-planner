@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccountButton } from "./auth";
+import { NotificationBell } from "./notification-bell";
 
 export function Header() {
   return (
@@ -21,6 +22,7 @@ export function Header() {
           >
             Plan with AI
           </Link>
+          <NotificationBell />
           <AccountButton />
         </nav>
       </div>
