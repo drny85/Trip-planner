@@ -1,17 +1,18 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { cn } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 import { CSS_EASE_OUT, EASE_IN_OUT, EASE_OUT } from "@/lib/motion";
 
 /** The group's shared packing list: tick items off, or claim one to bring for everyone. */
 export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
-  const items = useQuery(api.packing.list, { tripId });
+  const items = useCachedQuery(api.packing.list, { tripId }).data;
   const add = useMutation(api.packing.add);
   const addEssentials = useMutation(api.packing.addEssentials);
   const toggle = useMutation(api.packing.toggle);

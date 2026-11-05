@@ -4,6 +4,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { AuthGate } from "@/components/auth-gate";
+import { PushSetup } from "@/components/push-setup";
 import { AppProviders } from "@/providers/app-providers";
 
 export default function RootLayout() {
@@ -12,6 +13,7 @@ export default function RootLayout() {
     <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <AppProviders>
         <AuthGate>
+          <PushSetup />
           <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
             <Stack.Screen name="index" options={{ title: "My Trips", headerLargeTitle: true }} />
             <Stack.Screen
@@ -32,6 +34,15 @@ export default function RootLayout() {
               name="trips/[tripId]/suggest"
               options={{ title: "Suggest an idea", presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true }}
             />
+            <Stack.Screen
+              name="trips/[tripId]/expense"
+              options={{ title: "Add an expense", presentation: "formSheet", sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true }}
+            />
+            <Stack.Screen
+              name="trips/[tripId]/replan/[subTripId]"
+              options={{ title: "Re-plan with AI", presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true }}
+            />
+            <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
             <Stack.Screen name="join/[token]" options={{ title: "You're invited" }} />
           </Stack>
         </AuthGate>

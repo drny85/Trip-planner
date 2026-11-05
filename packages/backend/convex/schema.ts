@@ -83,6 +83,32 @@ export default defineSchema({
     .index("by_storageId", ["storageId"]),
 
   /** Shared packing list: anyone on the trip adds, ticks off or claims items. */
+  /** Shared costs. A settlement is a payment from `paidBy` to the one person in `splitAmong`. */
+  expenses: defineTable({
+    tripId: v.id("trips"),
+    description: v.string(),
+    amountCents: v.number(),
+    paidBy: v.string(),
+    splitAmong: v.array(v.string()),
+    createdBy: v.string(),
+    isSettlement: v.optional(v.boolean()),
+  }).index("by_tripId", ["tripId"]),
+
+  /** In-app notifications, one row per recipient. */
+  notifications: defineTable({
+    userId: v.string(),
+    tripId: v.id("trips"),
+    kind: v.union(v.literal("idea"), v.literal("accepted"), v.literal("rejected"), v.literal("joined"), v.literal("expense"), v.literal("settled")),
+    text: v.string(),
+    isRead: v.boolean(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_isRead", ["userId", "isRead"])
+    .index("by_tripId", ["tripId"]),
+
+  /** Expo push tokens, one per phone. */
+  pushTokens: defineTable({ userId: v.string(), token: v.string() }).index("by_userId", ["userId"]).index("by_token", ["token"]),
+
   packingItems: defineTable({
     tripId: v.id("trips"),
     text: v.string(),

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, type MutationCtx } from "./_generated/server";
+import { internalQuery, mutation, type MutationCtx } from "./_generated/server";
 import { getMemberActivity, getOwnedActivity, getOwnedTrip } from "./lib/auth";
 import { isSubcategoryOf } from "./lib/categories";
 import { deleteMemory } from "./memories";
@@ -165,5 +165,79 @@ export const remove = mutation({
     }
     await Promise.all(tree.map((a) => ctx.db.delete("activities", a._id)));
     await renumber(ctx, await siblings(ctx, activity.subTripId, activity.parentId));
+  },
+});
+
+/** The day the organizer wants re-planned, in the compact shape the model reads. */
+export const dayForReplan = internalQuery({
+  args: { subTripId: v.id("subTrips"), userId: v.string() },
+  handler: async (ctx, { subTripId, userId }) => {
+    const day = await ctx.db.get("subTrips", subTripId);
+    const trip = day && (await ctx.db.get("trips", day.tripId));
+    if (!day || !trip || trip.userId !== userId) return null;
+    const top = await ctx.db
+      .query("activities")
+      .withIndex("by_subTripId_parentId_order", (q) => q.eq("subTripId", subTripId).eq("parentId", undefined))
+      .collect();
+    return {
+      tripTitle: trip.title,
+      destination: trip.destination,
+      dayNumber: day.dayNumber,
+      date: day.date,
+      location: day.location,
+      activities: top.map((a) => ({
+        id: a._id as string,
+        title: a.title,
+        category: a.category ?? "other",
+        startTime: a.startTime,
+        durationMinutes: a.durationMinutes,
+        address: a.address,
+        description: a.description.slice(0, 200),
+      })),
+    };
+  },
+});
+
+/**
+ * Applies a re-plan: kept activities move to their new time and place in the
+ * order, new ones are added, and the rest are removed. Anything with photos is
+ * never removed; it stays at the end of the day instead.
+ */
+export const applyReplan = mutation({
+  args: {
+    subTripId: v.id("subTrips"),
+    activities: v.array(
+      v.union(
+        v.object({ keepId: v.id("activities"), startTime: v.optional(v.string()), durationMinutes: v.optional(v.number()) }),
+        v.object(activityFields),
+      ),
+    ),
+  },
+  handler: async (ctx, { subTripId, activities }) => {
+    const day = await ctx.db.get("subTrips", subTripId);
+    if (!day) throw new Error("Day not found");
+    await getOwnedTrip(ctx, day.tripId);
+    const current = await siblings(ctx, subTripId, undefined);
+    const byId = new Map(current.map((a) => [a._id as string, a]));
+    const kept = new Set<string>();
+
+    let order = 0;
+    for (const item of activities) {
+      if ("keepId" in item) {
+        if (!byId.has(item.keepId) || kept.has(item.keepId)) continue;
+        kept.add(item.keepId);
+        await ctx.db.patch("activities", item.keepId, { order: order++, startTime: item.startTime, durationMinutes: item.durationMinutes });
+      } else {
+        const subcategory = item.subcategory && isSubcategoryOf(item.category ?? "other", item.subcategory) ? item.subcategory : undefined;
+        await ctx.db.insert("activities", { ...item, subcategory, tripId: day.tripId, subTripId, isCompleted: false, order: order++ });
+      }
+    }
+    for (const a of current) {
+      if (kept.has(a._id)) continue;
+      const tree = await subtree(ctx, a);
+      const photos = await Promise.all(tree.map((x) => ctx.db.query("memories").withIndex("by_activityId", (q) => q.eq("activityId", x._id)).first()));
+      if (photos.some(Boolean)) await ctx.db.patch("activities", a._id, { order: order++ });
+      else await Promise.all(tree.map((x) => ctx.db.delete("activities", x._id)));
+    }
   },
 });

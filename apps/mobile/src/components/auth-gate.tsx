@@ -4,6 +4,7 @@ import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { authEnabled } from "@/providers/app-providers";
+import { clearCache } from "@/lib/offline-cache";
 import { Button } from "./button";
 
 /** Renders children for signed-in users (or everyone in demo mode) and a sign-in screen otherwise. */
@@ -66,7 +67,10 @@ export function SignOutButton() {
 function SignOutButtonInner() {
   const { signOut } = useAuth();
   return (
-    <Button variant="ghost" size="sm" icon="logout" onPress={() => void signOut()}>
+    <Button variant="ghost" size="sm" icon="logout" onPress={() => {
+        clearCache();
+        void signOut();
+      }}>
       Sign out
     </Button>
   );

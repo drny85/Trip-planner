@@ -1,9 +1,9 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails as TripDetailsData } from "@trip/backend/types";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { Stack, useRouter } from "expo-router";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ActivityIndicator, Alert, Share, Text, View } from "react-native";
 import Animated, {
   Extrapolation,
@@ -15,18 +15,22 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
+import { OfflineBanner } from "@/components/offline-banner";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 import { shareCalendar } from "@/lib/calendar";
+import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingSection } from "./packing";
+import { SplitCostsSection } from "./split-costs";
 import { Crew, IdeasSection } from "./together";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
-  const trip = useQuery(api.trips.get, { tripId });
+  const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
 
   if (trip === undefined) {
     return (
@@ -43,15 +47,22 @@ export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
       </View>
     );
   }
-  return <Itinerary trip={trip} />;
+  return <Itinerary trip={trip} isCached={isCached} />;
 }
 
-function Itinerary({ trip }: { trip: TripDetailsData }) {
+function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolean }) {
   const isOwner = trip.myRole === "owner";
   const insets = useSafeAreaInsets();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
   const dayOffsets = useRef<Record<string, number>>({});
+
+  // Re-schedule this trip's local reminders whenever its times or titles change.
+  const reminderKey = JSON.stringify(trip.subTrips.map((d) => [d.date, d.activities.map((a) => [a.title, a.startTime, a.children.map((c) => [c.title, c.startTime])])]));
+  useEffect(() => {
+    void scheduleTripReminders(trip).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reminderKey captures what matters
+  }, [trip._id, reminderKey]);
 
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollY.set(e.contentOffset.y);
@@ -81,6 +92,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
       >
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
+        <OfflineBanner cached={isCached} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
         {trip.subTrips.map((subTrip, index) => (
@@ -95,6 +107,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
         ))}
         <MemoriesGallery />
         <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
+        <SplitCostsSection tripId={trip._id} />
         <PackingSection tripId={trip._id} />
         <View className="mt-10 px-4">
           <Button variant="secondary" icon="calendar" onPress={() => void shareCalendar(trip).catch((e: unknown) => Alert.alert("Couldn't export", e instanceof Error ? e.message : undefined))}>

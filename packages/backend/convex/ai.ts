@@ -7,9 +7,12 @@ import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 import { getUserId } from "./lib/auth";
 import { classifyRequest, MAX_TOKENS, modelsFor, nextTier, supportsServerFallback, type Tier, type Via } from "./lib/modelRouter";
-import { type GeneratedTrip, generatedTripSchema, toTripTree } from "./lib/tripSchema";
+import type { z } from "zod";
+import { type GeneratedTrip, generatedTripSchema, replanSchema, toNewActivity, toTripTree } from "./lib/tripSchema";
 
-type Generated = { trip: GeneratedTrip | null; truncated: boolean; refused: boolean; model: string };
+type Result<T> = { trip: T | null; truncated: boolean; refused: boolean; model: string };
+type Generated = Result<GeneratedTrip>;
+type Spec<S extends z.ZodType> = { system: string; schema: S };
 
 /**
  * How requests reach a model:
@@ -21,13 +24,13 @@ type Generated = { trip: GeneratedTrip | null; truncated: boolean; refused: bool
 export const aiVia = (env: Record<string, string | undefined> = process.env): Via | null =>
   env.AI_GATEWAY_API_KEY ? "gateway" : env.ANTHROPIC_API_KEY ? "anthropic" : null;
 
-async function generateViaGateway(models: string[], tier: Tier, content: string): Promise<Generated> {
+async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
   const [primary, ...fallbacks] = models;
   const result = await generateText({
     model: primary!,
-    system: SYSTEM_PROMPT,
+    system: spec.system,
     prompt: content,
-    output: Output.object({ schema: generatedTripSchema }),
+    output: Output.object({ schema: spec.schema }),
     maxOutputTokens: MAX_TOKENS[tier],
     providerOptions: fallbacks.length ? { gateway: { models: fallbacks } } : undefined,
   }).catch((error: unknown) => {
@@ -36,9 +39,9 @@ async function generateViaGateway(models: string[], tier: Tier, content: string)
     throw error;
   });
   if (!result) return { trip: null, truncated: false, refused: false, model: primary! };
-  let trip: GeneratedTrip | null = null;
+  let trip: z.infer<S> | null = null;
   try {
-    trip = result.output;
+    trip = result.output as z.infer<S>;
   } catch {
     // No parseable object (e.g. the reply was cut off): treated as incomplete.
   }
@@ -50,7 +53,7 @@ async function generateViaGateway(models: string[], tier: Tier, content: string)
   };
 }
 
-async function generateViaAnthropic(model: string, tier: Tier, content: string): Promise<Generated> {
+async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const response = await client.beta.messages.parse({
     model,
@@ -59,12 +62,12 @@ async function generateViaAnthropic(model: string, tier: Tier, content: string):
     ...(supportsServerFallback("anthropic", model)
       ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
       : {}),
-    output_config: { effort: "medium", format: betaZodOutputFormat(generatedTripSchema) },
-    system: SYSTEM_PROMPT,
+    output_config: { effort: "medium", format: betaZodOutputFormat(spec.schema) },
+    system: spec.system,
     messages: [{ role: "user", content }],
   });
   return {
-    trip: response.parsed_output ?? null,
+    trip: (response.parsed_output as z.infer<S> | null) ?? null,
     truncated: response.stop_reason === "max_tokens",
     refused: response.stop_reason === "refusal",
     model: response.model || model,
@@ -78,6 +81,8 @@ const SYSTEM_PROMPT = `You are an expert travel planner. Turn the traveller's re
 - Respect the budget, pace and interests in the request. Mix sights, food and downtime.
 - Only include a phone number, booking URL or website when you are confident it is correct; leave them out otherwise.
 - If the request has no dates, start the trip 30 days after today's date.`;
+
+const TRIP_SPEC = { system: SYSTEM_PROMPT, schema: generatedTripSchema };
 
 /**
  * Generates a full Trip -> SubTrip -> Activity tree from a free-text prompt
@@ -111,8 +116,8 @@ export const generateTrip = action({
       const models = modelsFor(tier, via);
       const result =
         via === "gateway"
-          ? await generateViaGateway(models, tier, content)
-          : await generateViaAnthropic(models[0]!, tier, content);
+          ? await generateViaGateway(models, tier, content, TRIP_SPEC)
+          : await generateViaAnthropic(models[0]!, tier, content, TRIP_SPEC);
 
       if (result.refused) {
         throw new Error("The trip planner couldn't help with that request. Try rephrasing it.");
@@ -129,5 +134,82 @@ export const generateTrip = action({
       tier = process.env.AI_MODEL ? null : nextTier(tier);
     }
     throw new Error(lastError);
+  },
+});
+
+const REPLAN_PROMPT = `You are an expert travel planner adjusting one day of an existing itinerary.
+
+- Keep the activities that still make sense (pass their keepId), and move their times if needed.
+- Replace the ones that don't fit the new conditions with real, currently operating places nearby with accurate street addresses.
+- When it's rainy or stormy, prefer indoor or covered places (museums, food halls, galleries, arcades, onsen, covered markets) and keep outdoor time short.
+- Keep the day's pace: about the same number of stops, in a sensible order with travel time between them. Keep meals at normal times.
+- Only include a phone number, booking URL or website when you are confident it is correct.`;
+
+type ReplanDay = {
+  tripTitle: string;
+  destination: string;
+  dayNumber: number;
+  date?: string;
+  location?: string;
+  activities: { id: string; title: string; category: string; startTime?: string; durationMinutes?: number; address: string; description: string }[];
+};
+export type ReplanProposal = {
+  summary: string;
+  model: string;
+  activities: (
+    | { keepId: string; title: string; startTime: string; durationMinutes: number }
+    | (ReturnType<typeof toNewActivity> & { isNew: true })
+  )[];
+};
+
+const replanResult = v.object({
+  summary: v.string(),
+  model: v.string(),
+  activities: v.array(v.any()),
+});
+
+/**
+ * Re-plans one day for a reason such as rain, using the same model routing as
+ * trip generation. Returns a proposal; nothing changes until the organizer applies it.
+ */
+export const replanDay = action({
+  args: {
+    subTripId: v.id("subTrips"),
+    reason: v.string(),
+    weather: v.optional(v.object({ label: v.string(), high: v.number(), low: v.number(), rainChance: v.number() })),
+  },
+  returns: replanResult,
+  handler: async (ctx, { subTripId, reason, weather }): Promise<ReplanProposal> => {
+    const userId = await getUserId(ctx);
+    const day: ReplanDay | null = await ctx.runQuery(internal.activities.dayForReplan, { subTripId, userId });
+    if (!day) throw new Error("Only the organizer can re-plan a day");
+    const via = aiVia();
+    if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
+
+    const forecast = weather ? `Forecast: ${weather.label}, ${weather.high}°/${weather.low}°C, ${weather.rainChance}% chance of rain.\n` : "";
+    const content = `Trip: ${day.tripTitle} in ${day.destination}.\nDay ${day.dayNumber}${day.date ? ` (${day.date})` : ""}${day.location ? ` in ${day.location}` : ""}.\n${forecast}Why re-plan: ${reason.trim().slice(0, 300) || "Make the day better"}.\n\nCurrent plan (JSON):\n${JSON.stringify(day.activities)}`;
+
+    let tier: Tier | null = "standard";
+    while (tier) {
+      const models = modelsFor(tier, via);
+      const spec = { system: REPLAN_PROMPT, schema: replanSchema };
+      const result = via === "gateway" ? await generateViaGateway(models, tier, content, spec) : await generateViaAnthropic(models[0]!, tier, content, spec);
+      if (result.refused) throw new Error("The planner couldn't help with that. Try a different reason.");
+      const plan = result.trip;
+      if (plan && !result.truncated && plan.activities.length > 0) {
+        const known = new Set(day.activities.map((a) => a.id));
+        return {
+          summary: plan.summary,
+          model: result.model,
+          activities: plan.activities.map(({ keepId, ...a }) =>
+            keepId && known.has(keepId)
+              ? { keepId, title: day.activities.find((x) => x.id === keepId)!.title, startTime: a.startTime, durationMinutes: Math.max(0, Math.round(a.durationMinutes)) }
+              : { ...toNewActivity(a, day.destination), isNew: true as const },
+          ),
+        };
+      }
+      tier = process.env.AI_MODEL ? null : nextTier(tier);
+    }
+    throw new Error("The new plan came back incomplete. Please try again.");
   },
 });
