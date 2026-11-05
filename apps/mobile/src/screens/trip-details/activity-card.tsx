@@ -2,8 +2,10 @@ import type { Id } from "@trip/backend/dataModel";
 import type { Activity } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
 import { cn, getCategory } from "@trip/ui";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { Button } from "@/components/button";
@@ -30,6 +32,12 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
   const badge = categoryText(activity.category, activity.subcategory);
   const booking = useBookingFor(activity._id);
   const router = useRouter();
+
+  const openEditor = () =>
+    router.push({
+      pathname: "/trips/[tripId]/activity/[activityId]",
+      params: { tripId, activityId: activity._id },
+    });
 
   const toggle = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -74,12 +82,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
         <PressableScale
           accessibilityHint={canEdit ? t("mobileActivity.opensEditor") : undefined}
           disabled={!canEdit}
-          onPress={() =>
-            router.push({
-              pathname: "/trips/[tripId]/activity/[activityId]",
-              params: { tripId, activityId: activity._id },
-            })
-          }
+          onPress={openEditor}
           pressedScale={0.98}
           className="overflow-hidden rounded-3xl bg-card shadow-sm shadow-black/5"
         >
@@ -126,12 +129,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
             <Text className="text-sm leading-5 text-muted-foreground" numberOfLines={2}>
               {activity.description}
             </Text>
-            <View className="flex-row items-center gap-1 pt-1">
-              <Icon name="pin" size={12} colorVar="--color-muted-foreground" />
-              <Text className="flex-1 text-xs text-muted-foreground" numberOfLines={1}>
-                {activity.address}
-              </Text>
-            </View>
+            <CopyableAddress address={activity.address} onPress={canEdit ? openEditor : undefined} />
 
             <View className="flex-row flex-wrap gap-2 pt-2">
               {activity.phone && (
@@ -159,5 +157,40 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
         <SubSteps parent={activity} tripId={tripId} canEdit={canEdit} />
       </View>
     </View>
+  );
+}
+
+/** The address line; a long press copies it, for a taxi app or a message. */
+function CopyableAddress({ address, onPress }: { address: string; onPress?: () => void }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  if (!address) return null;
+
+  const copy = async () => {
+    await Clipboard.setStringAsync(address);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCopied(true);
+  };
+  return (
+    <Pressable
+      // A plain tap still does what tapping the card does.
+      onPress={onPress}
+      onLongPress={() => void copy()}
+      accessibilityLabel={address}
+      accessibilityHint={t("address.copyHint")}
+      accessibilityActions={[{ name: "longpress", label: t("address.copy") }]}
+      onAccessibilityAction={(e) => e.nativeEvent.actionName === "longpress" && void copy()}
+      className="flex-row items-center gap-1 pt-1"
+    >
+      <Icon name={copied ? "check" : "pin"} size={12} colorVar={copied ? "--color-success" : "--color-muted-foreground"} />
+      <Text className={cn("flex-1 text-xs", copied ? "font-semibold text-success" : "text-muted-foreground")} numberOfLines={1} accessibilityLiveRegion="polite">
+        {copied ? t("address.copied") : address}
+      </Text>
+    </Pressable>
   );
 }

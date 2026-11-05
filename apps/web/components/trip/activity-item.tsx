@@ -145,7 +145,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               </div>
               <h3 className={cn("text-lg font-bold leading-snug decoration-2 transition", done && "line-through")}>{activity.title}</h3>
               <p className="line-clamp-2 text-sm text-muted-foreground">{activity.description}</p>
-              <p className="truncate text-xs text-muted-foreground">📍 {activity.address}</p>
+              {activity.address && <CopyAddress address={activity.address} />}
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {activity.phone && <Pill href={links.phone(activity.phone)}>📞 {t("activity.call")}</Pill>}
@@ -251,5 +251,30 @@ function IconButton({ label, children, ...props }: React.ButtonHTMLAttributes<HT
     >
       {children}
     </button>
+  );
+}
+
+/** The address, with a small button that copies it (for a taxi app or a message). */
+function CopyAddress({ address }: { address: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+  return (
+    <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="truncate">📍 {address}</span>
+      <button
+        type="button"
+        onClick={() => void copy().catch(() => undefined)}
+        aria-label={t("address.copy")}
+        title={t("address.copy")}
+        className={cn("shrink-0 rounded-md px-1.5 py-0.5 font-semibold transition hover:bg-muted", copied ? "text-success" : "text-primary")}
+      >
+        <span aria-live="polite">{copied ? `✓ ${t("address.copied")}` : "⧉"}</span>
+      </button>
+    </p>
   );
 }
