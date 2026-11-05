@@ -1,5 +1,6 @@
 import { v, type Infer } from "convex/values";
 import { CATEGORIES } from "./categories";
+import { PACKING_CATEGORIES } from "./packingCategories";
 
 /**
  * Shared validators. The schema, the mutations and (later) the AI action all
@@ -8,6 +9,19 @@ import { CATEGORIES } from "./categories";
 
 const [first, second, ...rest] = CATEGORIES.map((c) => v.literal(c));
 export const activityCategory = v.union(first!, second!, ...rest);
+
+const [p1, p2, ...pRest] = PACKING_CATEGORIES.map((c) => v.literal(c));
+export const packingCategory = v.union(p1!, p2!, ...pRest);
+
+/** The trip's weather the packing list was made for (lib/packingAi.ts `TripWeather`). */
+export const tripWeather = v.object({
+  source: v.union(v.literal("forecast"), v.literal("lastYear")),
+  days: v.number(),
+  high: v.number(),
+  low: v.number(),
+  rainyDays: v.number(),
+  snowyDays: v.number(),
+});
 
 /** Editable activity fields (everything except ids, order and completion). */
 export const activityFields = {

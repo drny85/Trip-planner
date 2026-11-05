@@ -169,12 +169,13 @@ export const remove = mutation({
       .query("subTrips")
       .withIndex("by_tripId_order", (q) => q.eq("tripId", tripId))
       .collect();
-    const [members, suggestions, votes, memories, packing, expenses, notifications] = await Promise.all([
+    const [members, suggestions, votes, memories, packing, packingRuns, expenses, notifications] = await Promise.all([
       ctx.db.query("tripMembers").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("suggestions").withIndex("by_tripId_status", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("votes").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("memories").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("packingItems").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
+      ctx.db.query("packingRuns").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("expenses").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("notifications").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
     ]);
@@ -187,6 +188,7 @@ export const remove = mutation({
       ...memories.map((m) => ctx.db.delete("memories", m._id)),
       ...memories.map((m) => ctx.storage.delete(m.storageId)),
       ...packing.map((p) => ctx.db.delete("packingItems", p._id)),
+      ...packingRuns.map((r) => ctx.db.delete("packingRuns", r._id)),
       ...expenses.map((e) => ctx.db.delete("expenses", e._id)),
       ...notifications.map((n) => ctx.db.delete("notifications", n._id)),
     ]);

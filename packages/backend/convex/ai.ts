@@ -10,6 +10,8 @@ import { getUserId } from "./lib/auth";
 import { classifyRequest, MAX_TOKENS, modelsFor, nextTier, supportsServerFallback, type Tier, type Via } from "./lib/modelRouter";
 import type { z } from "zod";
 import { type GeneratedTrip, generatedTripSchema, replanSchema, toNewActivity, toTripTree } from "./lib/tripSchema";
+import { cleanItems, MAX_RUNS_PER_DAY, PACKING_PROMPT, packingContent, packingSchema, summarizeWeather, type TripWeather, weatherRequest } from "./lib/packingAi";
+import { tripWeather } from "./lib/validators";
 
 type Result<T> = { trip: T | null; truncated: boolean; refused: boolean; model: string };
 type Generated = Result<GeneratedTrip>;
@@ -284,5 +286,77 @@ export const replanDay = action({
       tier = process.env.AI_MODEL ? null : nextTier(tier);
     }
     throw new Error(t("errors.replanIncomplete"));
+  },
+});
+
+/* ------------------------------- Packing list ------------------------------- */
+
+/** Where a destination is, from Open-Meteo's free geocoder, for trips with no located stops yet. */
+async function geocode(destination: string): Promise<{ latitude: number; longitude: number } | null> {
+  const name = destination.split(",")[0]!.trim();
+  if (!name) return null;
+  const params = new URLSearchParams({ name, count: "1", format: "json" });
+  const json = (await fetchJson(`https://geocoding-api.open-meteo.com/v1/search?${params}`)) as { results?: { latitude: number; longitude: number }[] } | null;
+  const hit = json?.results?.[0];
+  return hit ? { latitude: hit.latitude, longitude: hit.longitude } : null;
+}
+
+/** GET as JSON with a timeout; null on any failure, so missing weather never blocks the list. */
+async function fetchJson(url: string, timeoutMs = 6000): Promise<unknown> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The trip's weather: the forecast when it's close, the same dates last year otherwise. */
+async function tripWeatherFor(coords: { latitude: number; longitude: number } | null, destination: string, startDate: string, endDate: string): Promise<TripWeather | null> {
+  const where = coords ?? (await geocode(destination));
+  if (!where) return null;
+  const request = weatherRequest(where.latitude, where.longitude, startDate, endDate, new Date().toISOString().slice(0, 10));
+  if (!request) return null;
+  return summarizeWeather(await fetchJson(request.url), request.source);
+}
+
+/**
+ * Writes a packing list for a trip from its destination, its weather and the
+ * activities on the plan (hiking shoes for the hike, a plug adapter for Japan),
+ * and adds the new items to the group's shared list. Any member can run it.
+ */
+export const generatePackingList = action({
+  args: { tripId: v.id("trips"), language: v.optional(v.string()) },
+  returns: v.object({ added: v.number(), model: v.string(), weather: v.union(tripWeather, v.null()) }),
+  handler: async (ctx, { tripId, language }): Promise<{ added: number; model: string; weather: TripWeather | null }> => {
+    const userId = await getUserId(ctx);
+    const locale = toLocaleArg(language);
+    const t = translator(locale);
+    const trip = await ctx.runQuery(internal.packing.aiContext, { tripId, userId });
+    if (!trip) throw new Error("Trip not found");
+    if (trip.runsToday >= MAX_RUNS_PER_DAY) throw new Error(t("errors.packingLimit"));
+    const via = aiVia();
+    if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
+
+    const weather = await tripWeatherFor(trip.coords, trip.destination, trip.startDate, trip.endDate);
+    const content = packingContent(trip, weather);
+    const spec = {
+      system: `${PACKING_PROMPT}\n- Write every item name and reason in ${languageInEnglish[locale]}. Keep brand-free, everyday names.`,
+      schema: packingSchema,
+    };
+
+    // A short list is a cheap job; only a broken reply goes up a tier.
+    let tier: Tier | null = "simple";
+    while (tier) {
+      const result = await generateStructured(via, tier, content, spec);
+      if (result.refused) throw new Error(t("errors.packingRefused"));
+      if (result.trip && !result.truncated) {
+        const items = cleanItems(result.trip.items, trip.existing);
+        const added: number = await ctx.runMutation(internal.packing.saveAiItems, { tripId, userId, model: result.model, weather: weather ?? undefined, items });
+        return { added, model: result.model, weather };
+      }
+      tier = process.env.AI_MODEL ? null : nextTier(tier);
+    }
+    throw new Error(t("errors.packingIncomplete"));
   },
 });
