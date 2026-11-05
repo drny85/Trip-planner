@@ -13,6 +13,7 @@ export async function insertTripTree(
     tree: TripTreeInput;
     isAIGenerated: boolean;
     prompt?: string;
+    aiModel?: string;
   },
 ): Promise<Id<"trips">> {
   const { subTrips, ...trip } = args.tree;
@@ -22,6 +23,7 @@ export async function insertTripTree(
     userId: args.userId,
     isAIGenerated: args.isAIGenerated,
     prompt: args.prompt,
+    aiModel: args.aiModel,
   });
 
   for (const [subIndex, subTrip] of subTrips.entries()) {

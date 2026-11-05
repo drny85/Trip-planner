@@ -25,6 +25,8 @@ export default defineSchema({
     isAIGenerated: v.boolean(),
     /** The prompt used for AI generation, kept so a trip can be regenerated. */
     prompt: v.optional(v.string()),
+    /** Model that generated the trip (picked per request by lib/modelRouter.ts). */
+    aiModel: v.optional(v.string()),
     /** Random token for the read-only share link. Absent means the trip is private. */
     shareToken: v.optional(v.string()),
   })
