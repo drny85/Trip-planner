@@ -114,7 +114,7 @@ export function UpNext() {
 
           <View className="gap-2">
             <View className="h-1.5 overflow-hidden rounded-full bg-white/15">
-              <View
+              <Animated.View
                 className="absolute bottom-0 left-0 top-0 rounded-full bg-emerald-300"
                 style={{ width: `${pct}%`, transitionProperty: "width", transitionDuration: 400, transitionTimingFunction: CSS_EASE_OUT }}
               />

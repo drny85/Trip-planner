@@ -181,7 +181,7 @@ function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: str
 
       <View className="flex-row gap-1">
         {Array.from({ length: members }, (_, i) => (
-          <View
+          <Animated.View
             key={i}
             className={cn("h-1.5 flex-1 rounded-full", i < yes ? "bg-success" : i >= members - no ? "bg-danger" : "bg-muted")}
             style={{ transitionProperty: "backgroundColor", transitionDuration: 250, transitionTimingFunction: CSS_EASE_OUT }}
