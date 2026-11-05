@@ -18,6 +18,18 @@ test("keywords keep the distinctive part of a place name", () => {
   expect(keywords("Jerónimos Monastery")).toEqual(["jeronimos", "monastery"]);
 });
 
+test("a page that only shares a generic word is not a match", async () => {
+  const { findPlacePhoto } = await import("./lib/wikiPhotos");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      new Response(JSON.stringify({ query: { pages: [{ title: "Sea cave", index: 1, thumbnail: { source: "https://upload.wikimedia.org/cave.jpg", width: 1200, height: 800 } }] } })),
+    ),
+  );
+  expect(await findPlacePhoto("Lunch at Sea Me - Peixaria Moderna", "Lisbon, Portugal")).toBeNull();
+  expect(await findPlacePhoto("LX Factory", "Lisbon, Portugal")).toBeNull();
+});
+
 test("enrichTrip swaps in Wikipedia photos only when the page matches the place", async () => {
   const searched: string[] = [];
   vi.stubGlobal(

@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Share, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Share, Text, useColorScheme, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -73,6 +73,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
 
   // Light status bar text over the photo; the normal one once the title bar covers it.
   const [pastHero, setPastHero] = useState(false);
+  const scheme = useColorScheme();
   useAnimatedReaction(
     () => scrollY.get() > HERO_HEIGHT - 110,
     (now, before) => {
@@ -95,7 +96,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   return (
     <MemoriesProvider tripId={trip._id}>
     <View className="flex-1 bg-background">
-      <StatusBar style={pastHero ? "auto" : "light"} animated />
+      <StatusBar style={pastHero ? (scheme === "dark" ? "light" : "dark") : "light"} animated />
       <Animated.ScrollView
         ref={scrollRef}
         onScroll={onScroll}

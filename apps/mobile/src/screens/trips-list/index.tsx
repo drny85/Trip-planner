@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, useColorScheme, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { SignOutButton } from "@/components/auth-gate";
+import { authEnabled } from "@/providers/app-providers";
 import { Button } from "@/components/button";
 import { LinearGradient } from "@/components/gradient";
 import { Icon } from "@/components/icon";
@@ -26,7 +27,7 @@ export function TripsList() {
     <>
       <Stack.Screen
         options={{
-          headerLeft: () => <SignOutButton />,
+          headerLeft: authEnabled ? () => <SignOutButton /> : undefined,
           headerRight: () => (
             <View className="flex-row items-center gap-5">
               <BellButton />

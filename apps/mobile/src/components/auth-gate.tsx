@@ -90,7 +90,7 @@ function SignOutButtonInner() {
       },
     ]);
   return (
-    <Pressable onPress={ask} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Account${name ? `, ${name}` : ""}. Sign out`} className="h-8 w-8 overflow-hidden rounded-full bg-primary active:opacity-70">
+    <Pressable onPress={ask} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Account${name ? `, ${name}` : ""}. Sign out`} style={{ width: 32, height: 32 }} className="overflow-hidden rounded-full bg-primary active:opacity-70">
       {user?.hasImage ? (
         <Image source={user.imageUrl} style={{ width: "100%", height: "100%" }} contentFit="cover" />
       ) : (

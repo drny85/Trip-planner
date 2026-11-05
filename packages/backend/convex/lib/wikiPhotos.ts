@@ -18,6 +18,17 @@ const STOPWORDS = new Set([
   "neighborhood", "neighbourhood", "quarter", "area", "old", "town", "historic", "experience", "visit", "explore",
 ]);
 
+/**
+ * Words that name a kind of place, not a place. A Wikipedia page that shares only
+ * one of these ("Factory", "Sea") is a different place, so they never count as a match.
+ */
+const GENERIC = new Set([
+  "sea", "factory", "market", "park", "museum", "church", "cathedral", "restaurant", "cafe", "bar", "pub", "beach",
+  "garden", "gardens", "tower", "square", "street", "palace", "castle", "temple", "shrine", "bridge", "river", "lake",
+  "station", "airport", "hill", "bay", "harbour", "harbor", "port", "food", "seafood", "fish", "wine", "beer", "tavern",
+  "bistro", "grill", "kitchen", "house", "hall", "center", "centre", "plaza", "mall", "store", "shop", "gallery",
+]);
+
 /** Distinctive words of a place name ("Visit Senso-ji Temple" → ["senso", "temple"]). */
 export const keywords = (text: string) =>
   text
@@ -36,14 +47,16 @@ type Page = { title: string; index?: number; thumbnail?: { source: string; width
  */
 export async function findPlacePhoto(name: string, context: string, width = 1200): Promise<string | null> {
   const wanted = keywords(decodeEntities(name));
-  if (wanted.length === 0) return null;
+  // Only a distinctive word ("Alfama", not "Sea" or "Factory") can confirm a match.
+  const distinctive = wanted.filter((w) => !GENERIC.has(w));
+  if (distinctive.length === 0) return null;
   // Wikipedia search wants every word to match, so filler like "Walk through" or
   // "Lunch at" finds nothing. Try the distinctive words with the city, then the
   // first distinctive word (usually the place) with the city, then the words alone.
   const city = context.split(",")[0]!.trim();
-  const queries = [...new Set([`${wanted.join(" ")} ${city}`, `${wanted[0]} ${city}`, wanted.join(" ")].map((q) => q.trim()))];
+  const queries = [...new Set([`${wanted.join(" ")} ${city}`, `${distinctive[0]} ${city}`, wanted.join(" ")].map((q) => q.trim()))];
   for (const query of queries) {
-    const found = await search(query, wanted, width);
+    const found = await search(query, distinctive, width);
     if (found) return found;
   }
   console.log(`No Wikipedia photo for "${name}" (${context})`);

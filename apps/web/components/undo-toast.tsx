@@ -12,7 +12,7 @@ import { EASE_OUT } from "@/lib/motion";
  * "Marked done · Undo" toast. Checking something off happens right away; for a
  * few seconds the toast offers Undo, with a bar that runs down the time left.
  */
-const UNDO_MS = 5000;
+const UNDO_MS = 6000;
 
 type Toast = { id: number; message: string; onUndo: () => void };
 const UndoContext = createContext<(message: string, onUndo: () => void) => void>(() => {});
