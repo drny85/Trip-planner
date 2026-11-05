@@ -2,6 +2,7 @@ import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails as TripDetailsData } from "@trip/backend/types";
+import { dayTitle } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -9,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Share, Text, useColorScheme, View } from "react-native";
 import Animated, {
   Extrapolation,
+  FadeIn,
   interpolate,
   useAnimatedReaction,
   useAnimatedRef,
@@ -58,13 +60,19 @@ export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
   return <Itinerary trip={trip} isCached={isCached} />;
 }
 
+/** Height of the compact title bar below the status bar; it shows the day you're looking at. */
+const BAR_HEIGHT = 60;
+
 function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolean }) {
   const isOwner = trip.myRole === "owner";
   const insets = useSafeAreaInsets();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
   const dayOffsets = useRef<Record<string, number>>({});
-  const { t } = useI18n();
+  // Where each day starts and ends in the scroll content, for the title bar.
+  const dayRanges = useSharedValue<Record<string, { top: number; bottom: number }>>({});
+  const [currentDayId, setCurrentDayId] = useState<string | null>(null);
+  const { t, f } = useI18n();
 
   // Re-schedule this trip's local reminders whenever its times or titles change.
   const reminderKey = JSON.stringify(trip.subTrips.map((d) => [d.date, d.activities.map((a) => [a.title, a.startTime, a.children.map((c) => [c.title, c.startTime])])]));
@@ -87,6 +95,24 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
     },
   );
 
+  // The day under the title bar, so the bar can say which day you're looking at.
+  const barHeight = insets.top + BAR_HEIGHT;
+  useAnimatedReaction(
+    () => {
+      const line = scrollY.get() + barHeight;
+      const ranges = dayRanges.get();
+      for (const id in ranges) {
+        const r = ranges[id]!;
+        if (line >= r.top && line < r.bottom) return id;
+      }
+      return null;
+    },
+    (now, before) => {
+      if (now !== before) scheduleOnRN(setCurrentDayId, now);
+    },
+  );
+  const currentDay = trip.subTrips.find((d) => d._id === currentDayId);
+
   // A compact title bar fades in once the hero has scrolled away.
   const barStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.get(), [HERO_HEIGHT - 140, HERO_HEIGHT - 80], [0, 1], Extrapolation.CLAMP),
@@ -98,7 +124,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
     // A programmatic scroll doesn't always report through the scroll handler, and
     // every day starts below the hero, so set the status bar for it directly.
     setPastHero(true);
-    scrollRef.current?.scrollTo({ y: y - insets.top - 56, animated: true });
+    scrollRef.current?.scrollTo({ y: y - barHeight + 1, animated: true });
   };
 
   // Activities are rendered in a ScrollView (a trip has tens of items, not thousands), so
@@ -131,7 +157,9 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
           <View
             key={subTrip._id}
             onLayout={(e) => {
-              dayOffsets.current[subTrip._id] = e.nativeEvent.layout.y;
+              const { y, height } = e.nativeEvent.layout;
+              dayOffsets.current[subTrip._id] = y;
+              dayRanges.set({ ...dayRanges.get(), [subTrip._id]: { top: y, bottom: y + height } });
             }}
           >
             <DaySection subTrip={subTrip} tripId={trip._id} sectionIndex={index} canEdit={isOwner} />
@@ -160,11 +188,27 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
       <Animated.View
         pointerEvents="none"
         className="absolute inset-x-0 top-0 items-center justify-end border-b border-border bg-background pb-3"
-        style={[{ height: insets.top + 52 }, barStyle]}
+        style={[{ height: barHeight }, barStyle]}
+        accessibilityLiveRegion="polite"
       >
-        <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-          {trip.title}
-        </Text>
+        {currentDay ? (
+          // Keyed by day, so the label fades over when you scroll into the next day.
+          <Animated.View key={currentDay._id} entering={FadeIn.duration(180)} className="items-center px-12">
+            <Text className="text-xs font-semibold text-muted-foreground" numberOfLines={1}>
+              {trip.title}
+            </Text>
+            <Text className="text-base font-bold text-foreground" numberOfLines={1}>
+              {t("time.dayN", { day: currentDay.dayNumber })} · {dayTitle(currentDay.title)}
+              {currentDay.date ? <Text className="font-medium text-muted-foreground"> · {f.weekday(currentDay.date)}</Text> : null}
+            </Text>
+          </Animated.View>
+        ) : (
+          <Animated.View key="trip" entering={FadeIn.duration(180)} className="px-12">
+            <Text className="text-base font-bold text-foreground" numberOfLines={1}>
+              {trip.title}
+            </Text>
+          </Animated.View>
+        )}
       </Animated.View>
     </View>
     </BookingsProvider>
