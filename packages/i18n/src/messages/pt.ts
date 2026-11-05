@@ -260,6 +260,11 @@ export const pt: Shape<typeof en> = {
     deleteConfirm: "Excluir “{title}”?",
     deleteWithSteps: { one: "Excluir “{title}” e seu {count} passo?", other: "Excluir “{title}” e seus {count} passos?" },
     addPlaceholder: "Adicione um passo a “{title}”…",
+    addStep: "Adicionar passo",
+    addStepTo: "Adicionar um passo a {title}",
+    addStepInside: "Adicionar um passo dentro de {title}",
+    doneAdding: "Pronto",
+    doneAddingLabel: "Parar de adicionar passos",
   },
   replan: {
     reasonRain: "Vai chover",

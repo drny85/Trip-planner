@@ -257,6 +257,11 @@ export const en = {
     deleteConfirm: "Delete “{title}”?",
     deleteWithSteps: { one: "Delete “{title}” and its {count} step?", other: "Delete “{title}” and its {count} steps?" },
     addPlaceholder: "Add a step to “{title}”…",
+    addStep: "Add step",
+    addStepTo: "Add a step to {title}",
+    addStepInside: "Add a step inside {title}",
+    doneAdding: "Done",
+    doneAddingLabel: "Done adding steps",
   },
   replan: {
     reasonRain: "It's going to rain",

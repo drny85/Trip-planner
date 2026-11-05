@@ -260,6 +260,11 @@ export const ja: Shape<typeof en> = {
     deleteConfirm: "「{title}」を削除しますか？",
     deleteWithSteps: { other: "「{title}」と中の{count}ステップを削除しますか？" },
     addPlaceholder: "「{title}」にステップを追加…",
+    addStep: "ステップを追加",
+    addStepTo: "{title}にステップを追加",
+    addStepInside: "{title}の中にステップを追加",
+    doneAdding: "完了",
+    doneAddingLabel: "ステップの追加を終了",
   },
   replan: {
     reasonRain: "雨が降る",

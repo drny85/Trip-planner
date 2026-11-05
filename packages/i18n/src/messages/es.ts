@@ -260,6 +260,11 @@ export const es: Shape<typeof en> = {
     deleteConfirm: "¿Eliminar «{title}»?",
     deleteWithSteps: { one: "¿Eliminar «{title}» y su {count} paso?", other: "¿Eliminar «{title}» y sus {count} pasos?" },
     addPlaceholder: "Agrega un paso a «{title}»…",
+    addStep: "Agregar paso",
+    addStepTo: "Agregar un paso a {title}",
+    addStepInside: "Agregar un paso dentro de {title}",
+    doneAdding: "Listo",
+    doneAddingLabel: "Terminar de agregar pasos",
   },
   replan: {
     reasonRain: "Va a llover",

@@ -109,6 +109,10 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         onScroll={onScroll}
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="never"
+        // Keeps an inline "Add step" field above the keyboard.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         contentContainerClassName="pb-20"
       >
         <TripHero trip={trip} scrollY={scrollY} />

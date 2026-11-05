@@ -260,6 +260,11 @@ export const fr: Shape<typeof en> = {
     deleteConfirm: "Supprimer « {title} » ?",
     deleteWithSteps: { one: "Supprimer « {title} » et son étape ?", other: "Supprimer « {title} » et ses {count} étapes ?" },
     addPlaceholder: "Ajoute une étape à « {title} »…",
+    addStep: "Ajouter une étape",
+    addStepTo: "Ajouter une étape à {title}",
+    addStepInside: "Ajouter une étape dans {title}",
+    doneAdding: "OK",
+    doneAddingLabel: "Terminer l’ajout d’étapes",
   },
   replan: {
     reasonRain: "Il va pleuvoir",
