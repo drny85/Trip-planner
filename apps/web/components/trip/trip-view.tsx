@@ -14,6 +14,8 @@ import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
 import { ActivityItem } from "./activity-item";
 import { BudgetCard } from "./budget-card";
+import { Crew, LeaveTrip } from "./crew";
+import { Ideas } from "./ideas";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
 
@@ -21,7 +23,7 @@ export function TripView({ tripId }: { tripId: Id<"trips"> }) {
   const trip = useQuery(api.trips.get, { tripId });
   if (trip === undefined) return <TripSkeleton />;
   if (trip === null) return <p className="p-8 text-center text-muted-foreground">This trip doesn&apos;t exist anymore.</p>;
-  return <Itinerary trip={trip} />;
+  return <Itinerary trip={trip} mode={trip.myRole} />;
 }
 
 /** Public, read-only view behind a share link. */
@@ -39,7 +41,7 @@ export function SharedTripView({ token }: { token: string }) {
         </Link>
       </div>
     );
-  return <Itinerary trip={trip} readOnly />;
+  return <Itinerary trip={trip} mode="public" />;
 }
 
 export function TripSkeleton() {
@@ -53,7 +55,13 @@ export function TripSkeleton() {
 
 type DragState = { activityId: Id<"activities"> } | null;
 
-function Itinerary({ trip, readOnly = false }: { trip: PublicTripDetails | TripDetails; readOnly?: boolean }) {
+/**
+ * owner: edits everything. member (joined by invite): checks things off, suggests
+ * and votes. public (share link): looks only.
+ */
+function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode: "owner" | "member" | "public" }) {
+  const readOnly = mode !== "owner";
+  const canCheck = mode !== "public";
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const [dragging, setDragging] = useState<DragState>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -72,7 +80,8 @@ function Itinerary({ trip, readOnly = false }: { trip: PublicTripDetails | TripD
       <div className="mx-auto max-w-4xl px-4">
         <Stats trip={trip} readOnly={readOnly} />
         <BudgetCard trip={trip} />
-        {readOnly && (
+        {mode !== "public" && <Crew tripId={trip._id} />}
+        {mode === "public" && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">
               <span className="font-semibold">Shared itinerary.</span> <span className="text-muted-foreground">You&apos;re viewing a read-only copy.</span>
@@ -166,6 +175,7 @@ function Itinerary({ trip, readOnly = false }: { trip: PublicTripDetails | TripD
                         count={subTrip.activities.length}
                         isDragging={dragging?.activityId === activity._id}
                         readOnly={readOnly}
+                        canCheck={canCheck}
                         onDragStart={() => setDragging({ activityId: activity._id })}
                         onDragEnd={() => {
                           setDragging(null);
@@ -199,7 +209,9 @@ function Itinerary({ trip, readOnly = false }: { trip: PublicTripDetails | TripD
           ))}
         </LayoutGroup>
 
-        {!readOnly && <DeleteTrip tripId={trip._id} title={trip.title} />}
+        {mode !== "public" && <Ideas tripId={trip._id} subTrips={trip.subTrips} />}
+        {mode === "owner" && <DeleteTrip tripId={trip._id} title={trip.title} />}
+        {mode === "member" && <LeaveTrip tripId={trip._id} title={trip.title} />}
       </div>
     </main>
   );

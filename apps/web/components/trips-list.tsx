@@ -78,8 +78,12 @@ export function TripsList() {
                   <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">
                     {tripLength(trip.startDate, trip.endDate)} days
                   </span>
-                  {trip.isAIGenerated && (
-                    <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">✨ AI</span>
+                  {!trip.isOwner ? (
+                    <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">👥 Joined</span>
+                  ) : (
+                    trip.isAIGenerated && (
+                      <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">✨ AI</span>
+                    )
                   )}
                 </div>
                 <div className="absolute inset-x-0 bottom-0 p-5 text-white">

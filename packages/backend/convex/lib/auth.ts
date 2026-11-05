@@ -1,4 +1,4 @@
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { ActionCtx, MutationCtx, QueryCtx } from "../_generated/server";
 
 /**
@@ -44,4 +44,39 @@ export async function getOwnedActivity(
   if (!activity) throw new Error("Activity not found");
   await getOwnedTrip(ctx, activity.tripId);
   return activity;
+}
+
+/** Display name for the caller, from their sign-in identity. */
+export async function getCallerProfile(ctx: Pick<QueryCtx | MutationCtx, "auth">) {
+  const identity = await ctx.auth.getUserIdentity();
+  const name = identity?.name ?? identity?.givenName ?? identity?.nickname ?? identity?.email?.split("@")[0];
+  return { name: name ?? "Traveler", imageUrl: identity?.pictureUrl };
+}
+
+/** The caller's membership row for a trip, or null. The owner always counts as a member. */
+export async function findMembership(ctx: QueryCtx | MutationCtx, trip: Doc<"trips">, userId: string) {
+  const row = await ctx.db
+    .query("tripMembers")
+    .withIndex("by_tripId_userId", (q) => q.eq("tripId", trip._id).eq("userId", userId))
+    .unique();
+  if (row) return row;
+  // Trips created before members existed have no owner row yet.
+  if (trip.userId === userId) return { tripId: trip._id, userId, role: "owner" as const, name: "Owner" };
+  return null;
+}
+
+/** Loads a trip and throws unless the caller is going on it (owner or member). */
+export async function getMemberTrip(ctx: QueryCtx | MutationCtx, tripId: Id<"trips">) {
+  const userId = await getUserId(ctx);
+  const trip = await ctx.db.get("trips", tripId);
+  const member = trip && (await findMembership(ctx, trip, userId));
+  if (!trip || !member) throw new Error("Trip not found");
+  return { trip, userId, member };
+}
+
+/** Like getOwnedActivity, but any member of the trip may act on it. */
+export async function getMemberActivity(ctx: QueryCtx | MutationCtx, activityId: Id<"activities">) {
+  const activity = await ctx.db.get("activities", activityId);
+  if (!activity) throw new Error("Activity not found");
+  return { activity, ...(await getMemberTrip(ctx, activity.tripId)) };
 }

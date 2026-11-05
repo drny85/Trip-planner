@@ -1,5 +1,6 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { getCallerProfile } from "./auth";
 import type { TripTreeInput } from "./validators";
 
 /**
@@ -25,6 +26,9 @@ export async function insertTripTree(
     prompt: args.prompt,
     aiModel: args.aiModel,
   });
+  // The owner is the first traveler, so votes count them too.
+  const owner = await getCallerProfile(ctx);
+  await ctx.db.insert("tripMembers", { tripId, userId: args.userId, role: "owner", ...owner });
 
   for (const [subIndex, subTrip] of subTrips.entries()) {
     const { activities, ...subTripFields } = subTrip;

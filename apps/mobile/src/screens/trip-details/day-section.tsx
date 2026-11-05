@@ -9,9 +9,9 @@ import Animated from "react-native-reanimated";
 import { enterUp, reflow } from "@/lib/motion";
 import { ActivityCard } from "./activity-card";
 
-type Props = { subTrip: TripDetails["subTrips"][number]; tripId: Id<"trips">; sectionIndex: number };
+type Props = { subTrip: TripDetails["subTrips"][number]; tripId: Id<"trips">; sectionIndex: number; canEdit: boolean };
 
-export function DaySection({ subTrip, tripId, sectionIndex }: Props) {
+export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
   const done = subTrip.activities.filter((a) => a.isCompleted).length;
   return (
     <View className="pt-8">
@@ -51,7 +51,7 @@ export function DaySection({ subTrip, tripId, sectionIndex }: Props) {
             entering={sectionIndex === 0 ? enterUp(index + 1) : undefined}
             layout={reflow}
           >
-            <ActivityCard activity={activity} tripId={tripId} isLast={index === subTrip.activities.length - 1} />
+            <ActivityCard activity={activity} tripId={tripId} canEdit={canEdit} isLast={index === subTrip.activities.length - 1} />
           </Animated.View>
         ))
       )}

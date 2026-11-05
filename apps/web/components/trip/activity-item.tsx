@@ -16,6 +16,8 @@ type Props = {
   activity: Activity;
   trip: PublicTripDetails;
   readOnly?: boolean;
+  /** Members can check things off without editing the itinerary. */
+  canCheck?: boolean;
   index: number;
   count: number;
   isDragging: boolean;
@@ -23,7 +25,7 @@ type Props = {
   onDragEnd: () => void;
 };
 
-export function ActivityItem({ activity, trip, index, count, isDragging, onDragStart, onDragEnd, readOnly = false }: Props) {
+export function ActivityItem({ activity, trip, index, count, isDragging, onDragStart, onDragEnd, readOnly = false, canCheck = !readOnly }: Props) {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const remove = useMutation(api.activities.remove).withOptimisticUpdate(optimisticRemove);
@@ -41,12 +43,12 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
         aria-checked={done}
         aria-label={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
         onClick={() => void setCompleted({ activityId: activity._id, isCompleted: !done })}
-        disabled={readOnly}
-        whileTap={readOnly ? undefined : { scale: 0.85 }}
+        disabled={!canCheck}
+        whileTap={canCheck ? { scale: 0.85 } : undefined}
         className={cn(
           "absolute -left-[3.15rem] top-5 z-10 grid h-8 w-8 place-items-center rounded-full border-2 text-sm font-bold shadow-sm transition-colors duration-200",
           done ? "border-success bg-success text-card" : "border-border bg-card",
-          !readOnly && !done && "hover:border-primary",
+          canCheck && !done && "hover:border-primary",
         )}
       >
         <AnimatePresence initial={false}>
@@ -204,7 +206,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
         )}
       </article>
 
-      <SubActivities parent={activity} readOnly={readOnly} adding={adding} onAddDone={() => setAdding(false)} />
+      <SubActivities parent={activity} readOnly={readOnly} canCheck={canCheck} adding={adding} onAddDone={() => setAdding(false)} />
     </>
   );
 }

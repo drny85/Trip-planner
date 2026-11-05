@@ -28,6 +28,11 @@ export default function RootLayout() {
                 sheetGrabberVisible: true,
               }}
             />
+            <Stack.Screen
+              name="trips/[tripId]/suggest"
+              options={{ title: "Suggest an idea", presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true }}
+            />
+            <Stack.Screen name="join/[token]" options={{ title: "You're invited" }} />
           </Stack>
         </AuthGate>
       </AppProviders>

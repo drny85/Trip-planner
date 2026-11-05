@@ -19,12 +19,14 @@ import { ActivityEditor } from "./activity-editor";
 export function SubActivities({
   parent,
   readOnly,
+  canCheck = !readOnly,
   depth = 1,
   adding,
   onAddDone,
 }: {
   parent: Activity;
   readOnly: boolean;
+  canCheck?: boolean;
   depth?: number;
   adding?: boolean;
   onAddDone?: () => void;
@@ -50,6 +52,7 @@ export function SubActivities({
               grandparentId={parent.parentId}
               parentIndexInGrandparent={parent.order}
               readOnly={readOnly}
+              canCheck={canCheck}
               depth={depth}
             />
           </motion.li>
@@ -67,6 +70,7 @@ function SubActivityRow({
   grandparentId,
   parentIndexInGrandparent,
   readOnly,
+  canCheck,
   depth,
 }: {
   activity: Activity;
@@ -75,6 +79,7 @@ function SubActivityRow({
   grandparentId?: Id<"activities">;
   parentIndexInGrandparent: number;
   readOnly: boolean;
+  canCheck: boolean;
   depth: number;
 }) {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
@@ -110,13 +115,13 @@ function SubActivityRow({
           role="checkbox"
           aria-checked={done}
           aria-label={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
-          disabled={readOnly}
-          whileTap={readOnly ? undefined : { scale: 0.85 }}
+          disabled={!canCheck}
+          whileTap={canCheck ? { scale: 0.85 } : undefined}
           onClick={() => void setCompleted({ activityId: activity._id, isCompleted: !done })}
           className={cn(
             "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 text-[10px] font-bold transition-colors duration-150",
             done ? "border-success bg-success text-card" : "border-border bg-card",
-            !readOnly && !done && "hover:border-primary",
+            canCheck && !done && "hover:border-primary",
           )}
         >
           <AnimatePresence initial={false}>
@@ -176,7 +181,7 @@ function SubActivityRow({
         )}
       </div>
 
-      {open && <SubActivities parent={activity} readOnly={readOnly} depth={depth + 1} adding={adding} onAddDone={() => setAdding(false)} />}
+      {open && <SubActivities parent={activity} readOnly={readOnly} canCheck={canCheck} depth={depth + 1} adding={adding} onAddDone={() => setAdding(false)} />}
     </>
   );
 }

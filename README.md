@@ -132,6 +132,13 @@ pnpm build       # Next.js production build
 - The home screen (web landing page and the mobile trips list) opens with an "Up next" card: the first open activity of the trip under way or the next upcoming one, the next step inside it, and what comes after. Checking it off slides in the next one. `trips.upNext` takes the device's local date.
 - Each trip shows a budget per person by category or by day. A parent's cost is the sum of its steps when they have costs, so nothing is counted twice. "Spent" is the actual cost you enter, or the estimate for anything checked off without one.
 
+## Travel together: invites, ideas and votes
+
+- The organizer turns on an invite link from the trip page ("Invite friends"). Friends open `/join/<token>`, sign in, and join. The organizer can turn the link off or remove people; members can leave.
+- Members see the trip in their list (marked "Joined"), can check things off, and can suggest ideas. Only the organizer edits the itinerary directly.
+- Every idea goes to a vote. The author's vote counts as yes. Once more than half of the travelers vote yes, it's added at the end of its day. Once that can no longer happen, it's dropped. When someone leaves, open ideas are re-checked against the smaller group.
+- In demo mode everyone is the same user, so try invites with Clerk turned on (see "Turn on sign-in").
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.

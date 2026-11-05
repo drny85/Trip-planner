@@ -80,7 +80,7 @@ function PlanCta() {
   );
 }
 
-function TripCard({ trip }: { trip: Trip }) {
+function TripCard({ trip }: { trip: Trip & { isOwner: boolean } }) {
   const days = tripLength(trip.startDate, trip.endDate);
   return (
     <Link href={{ pathname: "/trips/[tripId]", params: { tripId: trip._id } }} asChild>
@@ -92,7 +92,7 @@ function TripCard({ trip }: { trip: Trip }) {
         />
         <View className="absolute left-4 right-4 top-4 flex-row gap-2">
           <Chip>{`${days} ${days === 1 ? "day" : "days"}`}</Chip>
-          {trip.isAIGenerated && <Chip>✨ AI</Chip>}
+          {!trip.isOwner ? <Chip>👥 Joined</Chip> : trip.isAIGenerated && <Chip>✨ AI</Chip>}
         </View>
         <View className="absolute inset-x-0 bottom-0 gap-1 p-5">
           <Text className="text-3xl font-extrabold tracking-tight text-white" numberOfLines={1}>
