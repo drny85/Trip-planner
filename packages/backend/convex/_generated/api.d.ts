@@ -14,10 +14,13 @@ import type * as ai from "../ai.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
+import type * as lib_modelRouter from "../lib/modelRouter.js";
 import type * as lib_photos from "../lib/photos.js";
 import type * as lib_tripSchema from "../lib/tripSchema.js";
 import type * as lib_types from "../lib/types.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as lib_wikiPhotos from "../lib/wikiPhotos.js";
+import type * as photos from "../photos.js";
 import type * as seed from "../seed.js";
 import type * as trips from "../trips.js";
 import type * as users from "../users.js";
@@ -36,10 +39,13 @@ import type * as users from "../users.js";
 "lib/auth": typeof lib_auth,
 "lib/fakeData": typeof lib_fakeData,
 "lib/insertTripTree": typeof lib_insertTripTree,
+"lib/modelRouter": typeof lib_modelRouter,
 "lib/photos": typeof lib_photos,
 "lib/tripSchema": typeof lib_tripSchema,
 "lib/types": typeof lib_types,
 "lib/validators": typeof lib_validators,
+"lib/wikiPhotos": typeof lib_wikiPhotos,
+"photos": typeof photos,
 "seed": typeof seed,
 "trips": typeof trips,
 "users": typeof users,

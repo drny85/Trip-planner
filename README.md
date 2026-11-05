@@ -96,7 +96,9 @@ npx convex env set AI_MODEL "anthropic/claude-sonnet-5.5"   # one model for ever
 
 `google/gemini-3.5-flash`, `openai/gpt-5.5` and `anthropic/claude-sonnet-5.5` were checked against the live gateway model list; check `anthropic/claude-haiku-5.5` and `anthropic/claude-opus-5.5` in the [AI Gateway model catalog](https://vercel.com/ai-gateway/models) and override a tier if one is missing.
 
-Either way the output is a Zod-validated structured itinerary. The model returns no photos, so each activity gets a free Unsplash photo picked from a pool for its category (`convex/lib/photos.ts`). Swap in a places/photos API later for exact pictures.
+Either way the output is a Zod-validated structured itinerary.
+
+**Photos.** A new trip first gets free Unsplash stock photos picked by category (`convex/lib/photos.ts`), so it never shows blank cards. A background job (`convex/photos.ts`) then searches Wikipedia for each place and swaps in the lead photo of the matching article, plus a destination photo for the cover. It's free with no API key. A Wikipedia result is used only when its title shares a distinctive word with the activity (so "Trevi Fountain" can't pick up a photo of some other town), and train rides and hotel check-ins keep their stock photos.
 
 ### Turn on sign-in (Clerk)
 
