@@ -3,7 +3,7 @@ import { buildI18n, I18nProvider, type I18n } from "@trip/i18n/react";
 import { useLocales } from "expo-localization";
 import * as SecureStore from "expo-secure-store";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Platform } from "react-native";
+import { Platform, Settings } from "react-native";
 
 /**
  * The app language: the one picked in the app if any, otherwise the phone's
@@ -29,6 +29,9 @@ function writeSaved(locale: Locale | null) {
       else globalThis.localStorage?.removeItem(KEY);
     } else if (locale) SecureStore.setItem(KEY, locale);
     else void SecureStore.deleteItemAsync(KEY);
+    // iOS's own per-app language, which native screens (Clerk's sign-in sheet, system
+    // dialogs) read. It takes effect the next time the app launches; null follows the phone.
+    if (Platform.OS === "ios") Settings.set({ AppleLanguages: locale ? [locale] : null });
   } catch {
     // Not saved; it still applies until the app restarts.
   }
