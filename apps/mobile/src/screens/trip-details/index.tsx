@@ -23,6 +23,7 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { useCachedQuery } from "@/hooks/use-cached-query";
 import { shareCalendar } from "@/lib/calendar";
 import { scheduleTripReminders } from "@/lib/notifications";
+import { shareItineraryPdf } from "@/lib/pdf";
 import { webUrl } from "@/lib/open";
 import { BookingsProvider, BookingsSection } from "./bookings";
 import { BudgetCard } from "./budget-card";
@@ -142,9 +143,12 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
         <SplitCostsSection tripId={trip._id} />
         <PackingSection tripId={trip._id} />
-        <View className="mt-10 px-4">
+        <View className="mt-10 gap-2 px-4">
           <Button variant="secondary" icon="calendar" onPress={() => void shareCalendar(trip).catch((e: unknown) => Alert.alert(t("mobile.couldntExport"), e instanceof Error ? e.message : undefined))}>
             {t("trip.addToCalendar")}
+          </Button>
+          <Button variant="secondary" icon="document" onPress={() => void shareItineraryPdf(trip).catch((e: unknown) => Alert.alert(t("print.couldnt"), e instanceof Error ? e.message : undefined))}>
+            {t("print.button")}
           </Button>
         </View>
         {isOwner ? (

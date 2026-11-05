@@ -27,6 +27,7 @@ const icons = {
   document: { ios: "doc.text.fill", android: "description", web: "description" },
   photo: { ios: "photo.on.rectangle", android: "image", web: "image" },
   mail: { ios: "envelope.fill", android: "mail", web: "mail" },
+  map: { ios: "map.fill", android: "map", web: "map" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 
 export type IconName = keyof typeof icons;

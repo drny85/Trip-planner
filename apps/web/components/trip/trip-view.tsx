@@ -25,6 +25,7 @@ import { PackingList } from "./packing-list";
 import { DayExtras } from "./replan-day";
 import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
+import { PdfButton } from "./pdf-button";
 import { ShareButton } from "./share-button";
 import { TodayBanner } from "@/components/today/today-banner";
 
@@ -115,8 +116,9 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
       <Hero
         trip={trip}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <CalendarButton trip={trip} />
+            <PdfButton trip={trip} />
             {!readOnly && <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />}
           </div>
         }
