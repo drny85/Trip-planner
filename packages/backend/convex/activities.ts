@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalQuery, mutation, type MutationCtx } from "./_generated/server";
 import { getMemberActivity, getOwnedActivity, getOwnedTrip } from "./lib/auth";
 import { isSubcategoryOf } from "./lib/categories";
+import { deleteNotesFor, hasNotes } from "./journal";
 import { deleteMemory } from "./memories";
 import { activityFields } from "./lib/validators";
 
@@ -184,6 +185,7 @@ export const remove = mutation({
       const photos = await ctx.db.query("memories").withIndex("by_activityId", (q) => q.eq("activityId", a._id)).collect();
       await Promise.all(photos.map((m) => deleteMemory(ctx, m._id, m.storageId)));
     }
+    await deleteNotesFor(ctx, tree.map((a) => a._id));
     await Promise.all(tree.map((a) => ctx.db.delete("activities", a._id)));
     await renumber(ctx, await siblings(ctx, activity.subTripId, activity.parentId));
   },
@@ -257,7 +259,8 @@ export const applyReplan = mutation({
       if (kept.has(a._id)) continue;
       const tree = await subtree(ctx, a);
       const photos = await Promise.all(tree.map((x) => ctx.db.query("memories").withIndex("by_activityId", (q) => q.eq("activityId", x._id)).first()));
-      if (photos.some(Boolean)) await ctx.db.patch("activities", a._id, { order: order++ });
+      // Anything with photos or journal notes stays, moved to the end of the day.
+      if (photos.some(Boolean) || (await hasNotes(ctx, tree.map((x) => x._id)))) await ctx.db.patch("activities", a._id, { order: order++ });
       else await Promise.all(tree.map((x) => ctx.db.delete("activities", x._id)));
     }
   },

@@ -24,7 +24,7 @@ type Spec<S extends z.ZodType> = { system: string; schema: S };
 export const aiVia = (env: Record<string, string | undefined> = process.env): Via | null =>
   env.AI_GATEWAY_API_KEY ? "gateway" : env.ANTHROPIC_API_KEY ? "anthropic" : null;
 
-async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
+export async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
   const [primary, ...fallbacks] = models;
   const result = await generateText({
     model: primary!,
@@ -53,7 +53,7 @@ async function generateViaGateway<S extends z.ZodType>(models: string[], tier: T
   };
 }
 
-async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
+export async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const response = await client.beta.messages.parse({
     model,
