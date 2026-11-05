@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, type MutationCtx } from "./_generated/server";
-import { getOwnedActivity, getOwnedTrip } from "./lib/auth";
+import { getMemberActivity, getOwnedActivity, getOwnedTrip } from "./lib/auth";
 import { isSubcategoryOf } from "./lib/categories";
 import { activityFields } from "./lib/validators";
 
@@ -45,7 +45,8 @@ const renumber = (ctx: MutationCtx, rows: Doc<"activities">[], extra: Partial<Do
 export const setCompleted = mutation({
   args: { activityId: v.id("activities"), isCompleted: v.boolean() },
   handler: async (ctx, { activityId, isCompleted }) => {
-    const activity = await getOwnedActivity(ctx, activityId);
+    // Anyone on the trip can check things off.
+    const { activity } = await getMemberActivity(ctx, activityId);
     const completedAt = isCompleted ? Date.now() : undefined;
     const targets = isCompleted ? await subtree(ctx, activity) : [activity];
     if (!isCompleted) {

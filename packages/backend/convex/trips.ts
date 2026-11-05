@@ -2,24 +2,42 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
-import { getOptionalUserId, getOwnedTrip } from "./lib/auth";
+import { findMembership, getOptionalUserId, getOwnedTrip } from "./lib/auth";
 import { insertTripTree } from "./lib/insertTripTree";
+import { newToken } from "./lib/tokens";
 import { pickUpNext, type UpNext } from "./lib/upNext";
 import { buildTree } from "./lib/tree";
 import { tripTreeInput } from "./lib/validators";
 import type { PublicTripDetails, TripDetails } from "./lib/types";
 
-/** The caller's trips, soonest first. */
+/** Trips the user owns or has joined, soonest first. */
+async function myTrips(ctx: QueryCtx, userId: string) {
+  const [owned, memberships] = await Promise.all([
+    ctx.db
+      .query("trips")
+      .withIndex("by_userId_startDate", (q) => q.eq("userId", userId))
+      .collect(),
+    ctx.db
+      .query("tripMembers")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect(),
+  ]);
+  const ownedIds = new Set(owned.map((t) => t._id));
+  const joined = await Promise.all(
+    memberships.filter((m) => !ownedIds.has(m.tripId)).map((m) => ctx.db.get("trips", m.tripId)),
+  );
+  return [...owned, ...joined.filter((t): t is Doc<"trips"> => t !== null)].sort((a, b) =>
+    a.startDate.localeCompare(b.startDate),
+  );
+}
+
+/** The caller's trips (owned and joined), soonest first. `isOwner` tells them apart. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getOptionalUserId(ctx);
     if (!userId) return [];
-    return ctx.db
-      .query("trips")
-      .withIndex("by_userId_startDate", (q) => q.eq("userId", userId))
-      .order("asc")
-      .collect();
+    return (await myTrips(ctx, userId)).map(({ inviteToken: _invite, ...t }) => ({ ...t, isOwner: t.userId === userId }));
   },
 });
 
@@ -33,11 +51,7 @@ export const upNext = query({
   handler: async (ctx, { today }): Promise<UpNext | null> => {
     const userId = await getOptionalUserId(ctx);
     if (!userId) return null;
-    const trips = await ctx.db
-      .query("trips")
-      .withIndex("by_userId_startDate", (q) => q.eq("userId", userId))
-      .order("asc")
-      .collect();
+    const trips = await myTrips(ctx, userId);
     for (const trip of trips.filter((t) => t.endDate >= today)) {
       const next = pickUpNext(await loadDetails(ctx, trip), today);
       if (next) return next;
@@ -52,8 +66,11 @@ export const get = query({
   handler: async (ctx, { tripId }): Promise<TripDetails | null> => {
     const userId = await getOptionalUserId(ctx);
     const trip = await ctx.db.get("trips", tripId);
-    if (!trip || !userId || trip.userId !== userId) return null;
-    return loadDetails(ctx, trip);
+    const member = trip && userId ? await findMembership(ctx, trip, userId) : null;
+    if (!trip || !member) return null;
+    const details = await loadDetails(ctx, trip);
+    // Members see the itinerary; the share link stays the owner's to hand out.
+    return { ...details, myRole: member.role, shareToken: member.role === "owner" ? trip.shareToken : undefined };
   },
 });
 
@@ -67,7 +84,8 @@ export const getShared = query({
       .withIndex("by_shareToken", (q) => q.eq("shareToken", token))
       .unique();
     if (!trip) return null;
-    const { userId: _userId, prompt: _prompt, shareToken: _token, ...details } = await loadDetails(ctx, trip);
+    const { userId: _userId, prompt: _prompt, shareToken: _token, myRole: _role, ...details } =
+      await loadDetails(ctx, trip);
     return details;
   },
 });
@@ -105,8 +123,11 @@ async function loadDetails(ctx: QueryCtx, trip: Doc<"trips">): Promise<TripDetai
       .collect(),
   ]);
 
+  // The invite token never leaves the backend through this shape (see members.forTrip).
+  const { inviteToken: _invite, ...tripFields } = trip;
   return {
-    ...trip,
+    ...tripFields,
+    myRole: "owner",
     subTrips: subTrips.map((subTrip) => ({
       ...subTrip,
       activities: buildTree(activities.filter((a) => a.subTripId === subTrip._id)),
@@ -116,11 +137,6 @@ async function loadDetails(ctx: QueryCtx, trip: Doc<"trips">): Promise<TripDetai
   };
 }
 
-/** 128 bits of randomness, URL-safe. */
-function newToken() {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 export const update = mutation({
   args: {
@@ -151,9 +167,17 @@ export const remove = mutation({
       .query("subTrips")
       .withIndex("by_tripId_order", (q) => q.eq("tripId", tripId))
       .collect();
+    const [members, suggestions, votes] = await Promise.all([
+      ctx.db.query("tripMembers").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
+      ctx.db.query("suggestions").withIndex("by_tripId_status", (q) => q.eq("tripId", tripId)).collect(),
+      ctx.db.query("votes").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
+    ]);
     await Promise.all([
       ...activities.map((a) => ctx.db.delete("activities", a._id)),
       ...subTrips.map((s) => ctx.db.delete("subTrips", s._id)),
+      ...members.map((m) => ctx.db.delete("tripMembers", m._id)),
+      ...suggestions.map((s) => ctx.db.delete("suggestions", s._id)),
+      ...votes.map((x) => ctx.db.delete("votes", x._id)),
     ]);
     await ctx.db.delete("trips", tripId);
   },

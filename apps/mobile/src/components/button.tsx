@@ -39,6 +39,8 @@ type Props = Omit<PressableProps, "children" | "style"> & {
   loading?: boolean;
   size?: "sm" | "md";
   className?: string;
+  /** Classes for the outer pressable, e.g. flex-1 to share a row. */
+  containerClassName?: string;
 };
 
 export function Button({

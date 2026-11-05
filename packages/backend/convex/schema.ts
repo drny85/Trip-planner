@@ -29,10 +29,56 @@ export default defineSchema({
     aiModel: v.optional(v.string()),
     /** Random token for the read-only share link. Absent means the trip is private. */
     shareToken: v.optional(v.string()),
+    /** Random token for the "join this trip" link. Absent means invites are off. */
+    inviteToken: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
     .index("by_userId_startDate", ["userId", "startDate"])
-    .index("by_shareToken", ["shareToken"]),
+    .index("by_shareToken", ["shareToken"])
+    .index("by_inviteToken", ["inviteToken"]),
+
+  /**
+   * Everyone going on a trip. The owner (`trips.userId`) has a row too, so votes
+   * count everyone. Members can see the trip, check things off, suggest and vote;
+   * the owner also edits the itinerary directly.
+   */
+  tripMembers: defineTable({
+    tripId: v.id("trips"),
+    userId: v.string(),
+    role: v.union(v.literal("owner"), v.literal("member")),
+    name: v.string(),
+    imageUrl: v.optional(v.string()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_userId", ["userId"])
+    .index("by_tripId_userId", ["tripId", "userId"]),
+
+  /**
+   * An activity a member proposes for a day. It's added to the itinerary once more
+   * than half of the members vote yes, and dropped once that can no longer happen.
+   */
+  suggestions: defineTable({
+    tripId: v.id("trips"),
+    subTripId: v.id("subTrips"),
+    authorId: v.string(),
+    ...activityFields,
+    status: v.union(v.literal("open"), v.literal("accepted"), v.literal("rejected"), v.literal("withdrawn")),
+    resolvedAt: v.optional(v.number()),
+    /** The activity created when it was accepted. */
+    activityId: v.optional(v.id("activities")),
+  })
+    .index("by_tripId_status", ["tripId", "status"])
+    .index("by_subTripId", ["subTripId"]),
+
+  votes: defineTable({
+    suggestionId: v.id("suggestions"),
+    tripId: v.id("trips"),
+    userId: v.string(),
+    value: v.union(v.literal("yes"), v.literal("no")),
+  })
+    .index("by_suggestionId", ["suggestionId"])
+    .index("by_suggestionId_userId", ["suggestionId", "userId"])
+    .index("by_tripId", ["tripId"]),
 
   /** A day ("Day 1") or a leg ("Kyoto Leg") of a trip. */
   subTrips: defineTable({

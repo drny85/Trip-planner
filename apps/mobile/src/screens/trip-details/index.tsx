@@ -18,6 +18,7 @@ import { Button } from "@/components/button";
 import { webUrl } from "@/lib/open";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
+import { Crew, IdeasSection } from "./together";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 
@@ -43,6 +44,7 @@ export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
 }
 
 function Itinerary({ trip }: { trip: TripDetailsData }) {
+  const isOwner = trip.myRole === "owner";
   const insets = useSafeAreaInsets();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
@@ -76,6 +78,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
         <BudgetCard trip={trip} />
+        <Crew tripId={trip._id} />
         {trip.subTrips.map((subTrip, index) => (
           <View
             key={subTrip._id}
@@ -83,11 +86,18 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
               dayOffsets.current[subTrip._id] = e.nativeEvent.layout.y;
             }}
           >
-            <DaySection subTrip={subTrip} tripId={trip._id} sectionIndex={index} />
+            <DaySection subTrip={subTrip} tripId={trip._id} sectionIndex={index} canEdit={isOwner} />
           </View>
         ))}
-        <ShareTrip tripId={trip._id} title={trip.title} isShared={Boolean(trip.shareToken)} />
-        <DeleteTrip tripId={trip._id} title={trip.title} />
+        <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
+        {isOwner ? (
+          <>
+            <ShareTrip tripId={trip._id} title={trip.title} isShared={Boolean(trip.shareToken)} />
+            <DeleteTrip tripId={trip._id} title={trip.title} />
+          </>
+        ) : (
+          <LeaveTrip tripId={trip._id} title={trip.title} />
+        )}
       </Animated.ScrollView>
 
       <Animated.View
@@ -155,6 +165,30 @@ function DeleteTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
     <View className="mt-4 px-4">
       <Button variant="danger" icon="trash" onPress={confirm}>
         Delete trip
+      </Button>
+    </View>
+  );
+}
+
+function LeaveTrip({ tripId, title }: { tripId: Id<"trips">; title: string }) {
+  const leave = useMutation(api.members.leave);
+  const router = useRouter();
+  const confirm = () =>
+    Alert.alert(`Leave "${title}"?`, "You'll need a new invite to rejoin.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Leave",
+        style: "destructive",
+        onPress: async () => {
+          router.back();
+          await leave({ tripId });
+        },
+      },
+    ]);
+  return (
+    <View className="mt-10 px-4">
+      <Button variant="secondary" onPress={confirm}>
+        Leave trip
       </Button>
     </View>
   );

@@ -16,9 +16,10 @@ import { callPhone, openDirections, openInAppBrowser } from "@/lib/open";
 import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
 import { SubSteps } from "./sub-steps";
 
-type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean };
+/** `canEdit` is false for trip members: they check things off but don't edit. */
+type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean; canEdit: boolean };
 
-export function ActivityCard({ activity, tripId, isLast }: Props) {
+export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
@@ -66,7 +67,8 @@ export function ActivityCard({ activity, tripId, isLast }: Props) {
 
       <View className="mb-5 ml-2 flex-1">
         <PressableScale
-          accessibilityHint="Opens the activity editor"
+          accessibilityHint={canEdit ? "Opens the activity editor" : undefined}
+          disabled={!canEdit}
           onPress={() =>
             router.push({
               pathname: "/trips/[tripId]/activity/[activityId]",
@@ -140,7 +142,7 @@ export function ActivityCard({ activity, tripId, isLast }: Props) {
             </View>
           </View>
         </PressableScale>
-        <SubSteps parent={activity} tripId={tripId} />
+        <SubSteps parent={activity} tripId={tripId} canEdit={canEdit} />
       </View>
     </View>
   );
