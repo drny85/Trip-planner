@@ -72,7 +72,44 @@
             ]
           }
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Trip Planner uses your location to show what's next on today's plan and route you there.",
+          "locationAlwaysAndWhenInUsePermission": "Trip Planner uses your location in the background to keep today's plan and directions up to date while you travel.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "locationAlwaysPermission": "Trip Planner uses your location in the background to keep today's plan and directions up to date while you travel."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Trip Planner adds your trip's activities to your calendar.",
+          "remindersPermission": "Trip Planner can add reminders for your trip's activities."
+        }
+      ],
+      [
+        "expo-maps",
+        {
+          "requestLocationPermission": true,
+          "locationPermission": "Trip Planner shows your location on the day's map."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Trip Planner lets you pick trip photos and save your trip memories to your library.",
+          "savePhotosPermission": "Trip Planner saves your trip photos to your library.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      "expo-document-picker",
+      "expo-apple-authentication",
+      "expo-dev-client",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true,
