@@ -24,6 +24,7 @@ import { useCachedQuery } from "@/hooks/use-cached-query";
 import { shareCalendar } from "@/lib/calendar";
 import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
+import { BookingsProvider, BookingsSection } from "./bookings";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
@@ -102,6 +103,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   // cards can animate in once and reflow smoothly when they are reordered.
   return (
     <MemoriesProvider tripId={trip._id}>
+    <BookingsProvider tripId={trip._id}>
     <View className="flex-1 bg-background">
       <StatusBar style={pastHero ? (scheme === "dark" ? "light" : "dark") : "light"} animated />
       <Animated.ScrollView
@@ -120,6 +122,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <OfflineBanner cached={isCached} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
+        <BookingsSection tripId={trip._id} days={trip.subTrips} />
         {trip.subTrips.map((subTrip, index) => (
           <View
             key={subTrip._id}
@@ -159,6 +162,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         </Text>
       </Animated.View>
     </View>
+    </BookingsProvider>
     </MemoriesProvider>
   );
 }

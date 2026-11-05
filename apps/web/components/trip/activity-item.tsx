@@ -11,6 +11,7 @@ import { useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
+import { BookingChip } from "./bookings";
 import { ActivityPhotos } from "./memories";
 import { SubActivities } from "./sub-activities";
 import { useToggleDone } from "@/components/undo-toast";
@@ -138,6 +139,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
                 {activity.startTime && <span className="rounded-md bg-muted px-2 py-0.5 tabular-nums text-foreground">{f.time(activity.startTime)}</span>}
                 {activity.durationMinutes ? <span>⏱ {f.duration(activity.durationMinutes)}</span> : null}
+                <BookingChip activityId={activity._id} />
               </div>
               <h3 className={cn("text-lg font-bold leading-snug decoration-2 transition", done && "line-through")}>{activity.title}</h3>
               <p className="line-clamp-2 text-sm text-muted-foreground">{activity.description}</p>

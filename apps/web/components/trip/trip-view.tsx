@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
 import { ActivityItem } from "./activity-item";
+import { BookingsProvider, Bookings } from "./bookings";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
@@ -84,6 +85,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
 
   return (
     <MemoriesProvider tripId={trip._id} enabled={canCheck}>
+    <BookingsProvider tripId={trip._id} enabled={canCheck}>
     <main className="pb-24">
       <Hero
         trip={trip}
@@ -99,6 +101,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
         <Stats trip={trip} readOnly={readOnly} />
         <BudgetCard trip={trip} />
         {mode !== "public" && <Crew tripId={trip._id} />}
+        {mode !== "public" && <Bookings tripId={trip._id} days={trip.subTrips} />}
         {mode === "public" && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">
@@ -236,6 +239,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
         {mode === "member" && <LeaveTrip tripId={trip._id} title={trip.title} />}
       </div>
     </main>
+    </BookingsProvider>
     </MemoriesProvider>
   );
 }

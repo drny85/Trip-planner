@@ -14,6 +14,8 @@ import { type GeneratedTrip, generatedTripSchema, replanSchema, toNewActivity, t
 type Result<T> = { trip: T | null; truncated: boolean; refused: boolean; model: string };
 type Generated = Result<GeneratedTrip>;
 type Spec<S extends z.ZodType> = { system: string; schema: S };
+/** A PDF or image sent along with the text, as base64. */
+export type AiFile = { data: string; mediaType: string; filename?: string };
 
 /**
  * How requests reach a model:
@@ -25,12 +27,24 @@ type Spec<S extends z.ZodType> = { system: string; schema: S };
 export const aiVia = (env: Record<string, string | undefined> = process.env): Via | null =>
   env.AI_GATEWAY_API_KEY ? "gateway" : env.ANTHROPIC_API_KEY ? "anthropic" : null;
 
-async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
+async function generateViaGateway<S extends z.ZodType>(models: string[], tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
   const [primary, ...fallbacks] = models;
   const result = await generateText({
     model: primary!,
     system: spec.system,
-    prompt: content,
+    ...(file
+      ? {
+          messages: [
+            {
+              role: "user" as const,
+              content: [
+                { type: "file" as const, mediaType: file.mediaType, filename: file.filename, data: { type: "data" as const, data: file.data } },
+                { type: "text" as const, text: content },
+              ],
+            },
+          ],
+        }
+      : { prompt: content }),
     output: Output.object({ schema: spec.schema }),
     maxOutputTokens: MAX_TOKENS[tier],
     providerOptions: fallbacks.length ? { gateway: { models: fallbacks } } : undefined,
@@ -54,7 +68,16 @@ async function generateViaGateway<S extends z.ZodType>(models: string[], tier: T
   };
 }
 
-async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>): Promise<Result<z.infer<S>>> {
+/** The Claude API content block for a file: a document for PDFs, an image otherwise. */
+const anthropicFileBlock = (file: AiFile) =>
+  file.mediaType === "application/pdf"
+    ? { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: file.data } }
+    : {
+        type: "image" as const,
+        source: { type: "base64" as const, media_type: file.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: file.data },
+      };
+
+async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Tier, content: string, spec: Spec<S>, file?: AiFile): Promise<Result<z.infer<S>>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const response = await client.beta.messages.parse({
     model,
@@ -65,7 +88,7 @@ async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Ti
       : {}),
     output_config: { effort: "medium", format: betaZodOutputFormat(spec.schema) },
     system: spec.system,
-    messages: [{ role: "user", content }],
+    messages: [{ role: "user", content: file ? [anthropicFileBlock(file), { type: "text" as const, text: content }] : content }],
   });
   return {
     trip: (response.parsed_output as z.infer<S> | null) ?? null,
@@ -74,6 +97,15 @@ async function generateViaAnthropic<S extends z.ZodType>(model: string, tier: Ti
     model: response.model || model,
   };
 }
+
+/**
+ * One structured request on the given tier, through whichever path is configured.
+ * Shared by trip generation, day re-plans and booking import.
+ */
+export const generateStructured = <S extends z.ZodType>(via: Via, tier: Tier, content: string, spec: Spec<S>, file?: AiFile) => {
+  const models = modelsFor(tier, via);
+  return via === "gateway" ? generateViaGateway(models, tier, content, spec, file) : generateViaAnthropic(models[0]!, tier, content, spec, file);
+};
 
 const SYSTEM_PROMPT = `You are an expert travel planner. Turn the traveller's request into a complete, realistic itinerary.
 

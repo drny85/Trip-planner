@@ -16,6 +16,7 @@ import { callPhone, openDirections, openInAppBrowser } from "@/lib/open";
 import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
 import { ActivityPhotos } from "./memories";
 import { SubSteps } from "./sub-steps";
+import { useBookingFor } from "./bookings";
 
 /** `canEdit` is false for trip members: they check things off but don't edit. */
 type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean; canEdit: boolean };
@@ -26,6 +27,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
   const category = getCategory(activity.category);
   const { t, f, category: categoryText } = useI18n();
   const badge = categoryText(activity.category, activity.subcategory);
+  const booking = useBookingFor(activity._id);
   const router = useRouter();
 
   const toggle = () => {
@@ -100,6 +102,12 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                   <Text className="text-xs font-semibold text-white">{f.duration(activity.durationMinutes)}</Text>
                 </View>
               ) : null}
+              {booking && (
+                <View className="flex-row items-center gap-1 rounded-full bg-success px-2.5 py-1">
+                  <Text className="text-[11px]">🎫</Text>
+                  <Text className="text-xs font-semibold text-white">{booking.confirmationCode ?? "Booked"}</Text>
+                </View>
+              )}
             </View>
             {done && (
               <View className="absolute inset-0 items-center justify-center bg-black/40">
