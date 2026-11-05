@@ -7,8 +7,11 @@ import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Share, Text, useColorScheme, View } from "react-native";
+import { dayTitle } from "@trip/ui";
 import Animated, {
   Extrapolation,
+  FadeIn,
+  FadeOut,
   interpolate,
   useAnimatedReaction,
   useAnimatedRef,
@@ -64,6 +67,8 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
   const dayOffsets = useRef<Record<string, number>>({});
+  // Top of each day section, in trip order, for the "which day am I in" title bar.
+  const dayTops = useSharedValue<number[]>([]);
   const { t } = useI18n();
 
   // Re-schedule this trip's local reminders whenever its times or titles change.
@@ -86,6 +91,23 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
       if (now !== before) scheduleOnRN(setPastHero, now);
     },
   );
+
+  // The day under the title bar, shown in it while scrolling (-1: above the first day).
+  const [activeDay, setActiveDay] = useState(-1);
+  const barBottom = insets.top + 52;
+  useAnimatedReaction(
+    () => {
+      const y = scrollY.get() + barBottom;
+      const tops = dayTops.get();
+      let index = -1;
+      for (let i = 0; i < tops.length; i++) if (tops[i] != null && tops[i]! <= y) index = i;
+      return index;
+    },
+    (now, before) => {
+      if (now !== before) scheduleOnRN(setActiveDay, now);
+    },
+  );
+  const currentDay = activeDay >= 0 ? trip.subTrips[activeDay] : undefined;
 
   // A compact title bar fades in once the hero has scrolled away.
   const barStyle = useAnimatedStyle(() => ({
@@ -131,7 +153,11 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
           <View
             key={subTrip._id}
             onLayout={(e) => {
-              dayOffsets.current[subTrip._id] = e.nativeEvent.layout.y;
+              const y = e.nativeEvent.layout.y;
+              dayOffsets.current[subTrip._id] = y;
+              const tops = [...dayTops.get()];
+              tops[index] = y;
+              dayTops.set(tops);
             }}
           >
             <DaySection subTrip={subTrip} tripId={trip._id} sectionIndex={index} canEdit={isOwner} />
@@ -160,11 +186,22 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
       <Animated.View
         pointerEvents="none"
         className="absolute inset-x-0 top-0 items-center justify-end border-b border-border bg-background pb-3"
-        style={[{ height: insets.top + 52 }, barStyle]}
+        style={[{ height: barBottom }, barStyle]}
       >
-        <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-          {trip.title}
-        </Text>
+        {currentDay ? (
+          <Animated.View key={currentDay._id} entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} className="items-center px-16">
+            <Text className="text-[11px] font-semibold text-muted-foreground" numberOfLines={1}>
+              {trip.title}
+            </Text>
+            <Text className="text-base font-bold text-foreground" numberOfLines={1}>
+              {t("time.dayN", { day: currentDay.dayNumber })} · {currentDay.location || dayTitle(currentDay.title)}
+            </Text>
+          </Animated.View>
+        ) : (
+          <Text className="px-16 text-base font-bold text-foreground" numberOfLines={1}>
+            {trip.title}
+          </Text>
+        )}
       </Animated.View>
     </View>
     </BookingsProvider>
