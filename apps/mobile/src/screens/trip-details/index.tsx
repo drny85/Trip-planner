@@ -70,6 +70,9 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   const scrollY = useSharedValue(0);
   const dayOffsets = useRef<Record<string, number>>({});
   // Where each day starts and ends in the scroll content, for the title bar.
+  // Built up in a ref: a shared value's get() on the JS thread can lag a set()
+  // made moments before, so merging into it directly drops days.
+  const dayRangesRef = useRef<Record<string, { top: number; bottom: number }>>({});
   const dayRanges = useSharedValue<Record<string, { top: number; bottom: number }>>({});
   const [currentDayId, setCurrentDayId] = useState<string | null>(null);
   const { t, f } = useI18n();
@@ -159,7 +162,8 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
             onLayout={(e) => {
               const { y, height } = e.nativeEvent.layout;
               dayOffsets.current[subTrip._id] = y;
-              dayRanges.set({ ...dayRanges.get(), [subTrip._id]: { top: y, bottom: y + height } });
+              dayRangesRef.current[subTrip._id] = { top: y, bottom: y + height };
+              dayRanges.set({ ...dayRangesRef.current });
             }}
           >
             <DaySection subTrip={subTrip} tripId={trip._id} sectionIndex={index} canEdit={isOwner} />
@@ -193,17 +197,24 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
       >
         {currentDay ? (
           // Keyed by day, so the label fades over when you scroll into the next day.
-          <Animated.View key={currentDay._id} entering={FadeIn.duration(180)} className="items-center px-12">
+          // Wide side padding keeps the text clear of the floating back button; only
+          // the day's title shortens, so "Day N" always shows.
+          <Animated.View key={currentDay._id} entering={FadeIn.duration(180)} className="w-full items-center px-16">
             <Text className="text-xs font-semibold text-muted-foreground" numberOfLines={1}>
               {trip.title}
             </Text>
-            <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-              {t("time.dayN", { day: currentDay.dayNumber })} · {dayTitle(currentDay.title)}
-              {currentDay.date ? <Text className="font-medium text-muted-foreground"> · {f.weekday(currentDay.date)}</Text> : null}
-            </Text>
+            <View className="max-w-full flex-row items-baseline">
+              <Text className="shrink-0 text-base font-bold text-foreground">{t("time.dayN", { day: currentDay.dayNumber })} · </Text>
+              <Text className="shrink text-base font-bold text-foreground" numberOfLines={1}>
+                {dayTitle(currentDay.title)}
+              </Text>
+              {currentDay.date ? (
+                <Text className="shrink-0 text-base font-medium text-muted-foreground"> · {f.weekday(currentDay.date)}</Text>
+              ) : null}
+            </View>
           </Animated.View>
         ) : (
-          <Animated.View key="trip" entering={FadeIn.duration(180)} className="px-12">
+          <Animated.View key="trip" entering={FadeIn.duration(180)} className="px-16">
             <Text className="text-base font-bold text-foreground" numberOfLines={1}>
               {trip.title}
             </Text>
