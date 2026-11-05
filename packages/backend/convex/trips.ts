@@ -4,7 +4,10 @@ import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { deleteTripBookings } from "./bookings";
 import { findMembership, getOptionalUserId, getOwnedTrip } from "./lib/auth";
+import { countTrip, tripAllowance } from "./lib/billing";
 import { insertTripTree } from "./lib/insertTripTree";
+import { languageOf } from "./lib/notify";
+import { translator } from "@trip/i18n";
 import { newToken } from "./lib/tokens";
 import { pickUpNext, type UpNext } from "./lib/upNext";
 import { buildTree } from "./lib/tree";
@@ -200,6 +203,12 @@ export const remove = mutation({
 export const saveGenerated = internalMutation({
   args: { userId: v.string(), prompt: v.string(), model: v.string(), tree: tripTreeInput },
   handler: async (ctx, { userId, prompt, model, tree }) => {
+    const allowance = await tripAllowance(ctx, userId);
+    if (allowance.blocked) {
+      const t = translator(await languageOf(ctx, userId));
+      throw new Error(t(allowance.blocked === "subscribe" ? "errors.subscribeForMore" : "errors.tooManyUpcoming", { max: allowance.maxUpcoming }));
+    }
+    await countTrip(ctx, userId);
     const tripId = await insertTripTree(ctx, { userId, tree, prompt, aiModel: model, isAIGenerated: true });
     // Real photos of each place replace the stock ones in the background.
     await ctx.scheduler.runAfter(0, internal.photos.enrichTrip, { tripId });

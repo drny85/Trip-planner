@@ -448,6 +448,10 @@ export const ja: Shape<typeof en> = {
     storyIncomplete: "物語が不完全でした。もう一度お試しください。",
     storyFailed: "物語の作成中に問題が発生しました。もう一度お試しください。",
     storyTimeout: "時間がかかりすぎました。もう一度お試しください。",
+    subscribeForMore: "無料の旅行プランは作成済みです。さらに旅行を計画するにはサブスクリプションに登録してください。",
+    tooManyUpcoming: "予定中の旅行がすでに{max}件あります。どれかが終わると、次の旅行を計画できます。",
+    subscribeToStart: "この旅行を始めるにはサブスクリプションに登録してください",
+    organizerMustSubscribe: "この旅行を始めるには、主催者のサブスクリプション登録が必要です",
   },
   /** Live details of a place from Google Maps (rating, hours, phone). */
   place: {
@@ -463,6 +467,25 @@ export const ja: Shape<typeof en> = {
     heading: "この場所について",
   },
   /** The tour a signed-out person sees first on mobile. */
+  /** The Traveler subscription (Clerk Billing). */
+  billing: {
+    planName: "トラベラー",
+    lockedTitle: "この旅行を始めるには登録が必要です",
+    lockedBody: "プランは完成しています。登録すると、アクティビティのチェック、写真の追加、日程の再計画、今日モードが使えます。",
+    lockedMember: "この旅行を始めるには、主催者のサブスクリプション登録が必要です。",
+    subscribe: "登録する · 月額{price}",
+    cancelAnytime: "いつでも解約できます。",
+    freeTitle: "最初の旅行は無料で計画できます",
+    freeBody: "登録すると旅行を始められ、予定中の旅行を同時に{max}件まで計画できます。",
+    fullTitle: "予定中の旅行が{max}件あります",
+    fullBody: "どれかが終わると、次の旅行を計画できます。",
+    checkAgain: "登録しました",
+    active: "トラベラープラン · 有効",
+    endsOn: "トラベラープラン · {date}に終了",
+    manage: "サブスクリプションを管理",
+    pricingTitle: "プラン",
+    pricingBody: "最初の旅行は無料で計画できます。登録すると旅行を始められ、予定中の旅行を同時に{max}件まで、何件でも計画できます。",
+  },
   welcome: {
     planTitle: "旅の計画が、1分で",
     planBody: "行き先と好きなことを伝えるだけ。実在の場所・時間・費用つきで、毎日の予定ができあがります。",

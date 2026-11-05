@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireStarted, tripUnlocked } from "./lib/billing";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalQuery, mutation, type MutationCtx } from "./_generated/server";
 import { getMemberActivity, getOwnedActivity, getOwnedTrip } from "./lib/auth";
@@ -48,7 +49,8 @@ export const setCompleted = mutation({
   args: { activityId: v.id("activities"), isCompleted: v.boolean() },
   handler: async (ctx, { activityId, isCompleted }) => {
     // Anyone on the trip can check things off.
-    const { activity } = await getMemberActivity(ctx, activityId);
+    const { activity, trip, userId } = await getMemberActivity(ctx, activityId);
+    await requireStarted(ctx, trip, userId);
     const completedAt = isCompleted ? Date.now() : undefined;
     const targets = isCompleted ? await subtree(ctx, activity) : [activity];
     if (!isCompleted) {
@@ -212,6 +214,7 @@ export const dayForReplan = internalQuery({
       .withIndex("by_subTripId_parentId_order", (q) => q.eq("subTripId", subTripId).eq("parentId", undefined))
       .collect();
     return {
+      locked: !(await tripUnlocked(ctx, trip)),
       tripTitle: trip.title,
       destination: trip.destination,
       dayNumber: day.dayNumber,

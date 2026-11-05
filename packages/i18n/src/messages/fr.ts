@@ -448,6 +448,10 @@ export const fr: Shape<typeof en> = {
     storyIncomplete: "L’histoire est arrivée incomplète. Réessaie.",
     storyFailed: "Un problème est survenu pendant l’écriture de l’histoire. Réessaie.",
     storyTimeout: "C’était trop long. Réessaie.",
+    subscribeForMore: "Ton voyage gratuit est planifié. Abonne-toi pour en planifier d’autres.",
+    tooManyUpcoming: "Tu as déjà {max} voyages à venir. Tu pourras en planifier un autre quand l’un d’eux sera terminé.",
+    subscribeToStart: "Abonne-toi pour commencer ce voyage",
+    organizerMustSubscribe: "L’organisateur doit s’abonner pour que ce voyage puisse commencer",
   },
   /** Live details of a place from Google Maps (rating, hours, phone). */
   place: {
@@ -463,6 +467,25 @@ export const fr: Shape<typeof en> = {
     heading: "À propos de ce lieu",
   },
   /** The tour a signed-out person sees first on mobile. */
+  /** The Traveler subscription (Clerk Billing). */
+  billing: {
+    planName: "Voyageur",
+    lockedTitle: "Abonne-toi pour commencer ce voyage",
+    lockedBody: "Ton programme est prêt. Abonne-toi pour cocher les activités, ajouter des photos, replanifier des journées et utiliser le mode Aujourd’hui.",
+    lockedMember: "L’organisateur doit s’abonner pour que ce voyage puisse commencer.",
+    subscribe: "S’abonner · {price}/mois",
+    cancelAnytime: "Résiliable à tout moment.",
+    freeTitle: "Ton premier voyage se planifie gratuitement",
+    freeBody: "Abonne-toi pour le commencer et planifier d’autres voyages, jusqu’à {max} à venir en même temps.",
+    fullTitle: "Tu as {max} voyages à venir",
+    fullBody: "Quand l’un d’eux sera terminé, tu pourras en planifier un autre.",
+    checkAgain: "Je suis abonné",
+    active: "Formule Voyageur · active",
+    endsOn: "Formule Voyageur · se termine le {date}",
+    manage: "Gérer l’abonnement",
+    pricingTitle: "Formules",
+    pricingBody: "Planifie ton premier voyage gratuitement. Abonne-toi pour le commencer, et planifie autant de voyages que tu veux, jusqu’à {max} à venir en même temps.",
+  },
   welcome: {
     planTitle: "Tout votre voyage, planifié en une minute",
     planBody: "Dites où vous allez et ce que vous aimez. Chaque jour est planifié, avec de vrais lieux, horaires et prix.",

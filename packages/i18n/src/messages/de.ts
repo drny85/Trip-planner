@@ -448,6 +448,10 @@ export const de: Shape<typeof en> = {
     storyIncomplete: "Die Geschichte war unvollständig. Bitte versuch es noch einmal.",
     storyFailed: "Beim Schreiben der Geschichte ist etwas schiefgelaufen. Bitte versuch es noch einmal.",
     storyTimeout: "Das hat zu lange gedauert. Bitte versuch es noch einmal.",
+    subscribeForMore: "Deine kostenlose Reise ist geplant. Abonniere, um weitere Reisen zu planen.",
+    tooManyUpcoming: "Du hast schon {max} anstehende Reisen. Sobald eine vorbei ist, kannst du die nächste planen.",
+    subscribeToStart: "Abonniere, um diese Reise zu starten",
+    organizerMustSubscribe: "Der Organisator muss abonnieren, damit diese Reise starten kann",
   },
   /** Live details of a place from Google Maps (rating, hours, phone). */
   place: {
@@ -463,6 +467,25 @@ export const de: Shape<typeof en> = {
     heading: "Über diesen Ort",
   },
   /** The tour a signed-out person sees first on mobile. */
+  /** The Traveler subscription (Clerk Billing). */
+  billing: {
+    planName: "Traveler",
+    lockedTitle: "Abonniere, um diese Reise zu starten",
+    lockedBody: "Dein Plan steht. Abonniere, um Aktivitäten abzuhaken, Fotos hinzuzufügen, Tage neu zu planen und den Heute-Modus zu nutzen.",
+    lockedMember: "Der Organisator muss abonnieren, damit diese Reise starten kann.",
+    subscribe: "Abonnieren · {price}/Monat",
+    cancelAnytime: "Jederzeit kündbar.",
+    freeTitle: "Deine erste Reise planst du kostenlos",
+    freeBody: "Abonniere, um sie zu starten und weitere Reisen zu planen, mit bis zu {max} anstehenden gleichzeitig.",
+    fullTitle: "Du hast {max} anstehende Reisen",
+    fullBody: "Sobald eine davon vorbei ist, kannst du die nächste planen.",
+    checkAgain: "Ich habe abonniert",
+    active: "Traveler-Abo · aktiv",
+    endsOn: "Traveler-Abo · endet am {date}",
+    manage: "Abo verwalten",
+    pricingTitle: "Abos",
+    pricingBody: "Plane deine erste Reise kostenlos. Abonniere, um sie zu starten, und plane so viele Reisen, wie du willst, mit bis zu {max} anstehenden gleichzeitig.",
+  },
   welcome: {
     planTitle: "Deine ganze Reise, in einer Minute geplant",
     planBody: "Sag, wohin es geht und was du magst. Jeder Tag wird geplant, mit echten Orten, Zeiten und Kosten.",

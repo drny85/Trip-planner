@@ -3,11 +3,12 @@
 import { api } from "@trip/backend/api";
 import { localeNames } from "@trip/i18n";
 import { useI18n } from "@trip/i18n/react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
+import { PlanLimitNotice } from "./billing";
 
 const IDEAS = [
   { emoji: "🏯", text: "idea1" },
@@ -25,6 +26,7 @@ export function GenerateTripForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { t, locale } = useI18n();
+  const plan = useQuery(api.billing.status, {});
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +41,9 @@ export function GenerateTripForm() {
       setLoading(false);
     }
   };
+
+  // Checked again on the server; this just saves typing a trip that can't be planned.
+  if (plan?.blocked && !loading) return <PlanLimitNotice blocked={plan.blocked} max={plan.maxUpcoming} />;
 
   return (
     <AnimatePresence mode="wait">

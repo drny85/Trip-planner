@@ -1,7 +1,8 @@
 import { localeNames } from "@trip/i18n";
+import { PlanLimitNotice } from "@/components/billing";
 import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
@@ -21,6 +22,7 @@ export function GenerateTrip() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { t, locale } = useI18n();
+  const plan = useQuery(api.billing.status, {});
 
   const submit = async () => {
     setLoading(true);
@@ -34,6 +36,14 @@ export function GenerateTrip() {
       setLoading(false);
     }
   };
+
+  // The server checks again; this just saves typing a trip that can't be planned.
+  if (plan?.blocked && !loading)
+    return (
+      <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="p-5">
+        <PlanLimitNotice blocked={plan.blocked} max={plan.maxUpcoming} />
+      </ScrollView>
+    );
 
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-5 p-5" keyboardShouldPersistTaps="handled">

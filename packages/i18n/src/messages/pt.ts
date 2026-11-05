@@ -448,6 +448,10 @@ export const pt: Shape<typeof en> = {
     storyIncomplete: "A história veio incompleta. Tente de novo.",
     storyFailed: "Algo deu errado ao escrever a história. Tente de novo.",
     storyTimeout: "Demorou demais. Tente de novo.",
+    subscribeForMore: "Sua viagem grátis já está planejada. Assine para planejar mais viagens.",
+    tooManyUpcoming: "Você já tem {max} viagens futuras. Poderá planejar outra quando uma terminar.",
+    subscribeToStart: "Assine para começar esta viagem",
+    organizerMustSubscribe: "O organizador precisa assinar para que esta viagem possa começar",
   },
   /** Live details of a place from Google Maps (rating, hours, phone). */
   place: {
@@ -463,6 +467,25 @@ export const pt: Shape<typeof en> = {
     heading: "Sobre este lugar",
   },
   /** The tour a signed-out person sees first on mobile. */
+  /** The Traveler subscription (Clerk Billing). */
+  billing: {
+    planName: "Viajante",
+    lockedTitle: "Assine para começar esta viagem",
+    lockedBody: "Seu roteiro está pronto. Assine para marcar atividades, adicionar fotos, replanejar dias e usar o modo Hoje.",
+    lockedMember: "O organizador precisa assinar para que esta viagem possa começar.",
+    subscribe: "Assinar · {price}/mês",
+    cancelAnytime: "Cancele quando quiser.",
+    freeTitle: "Planejar sua primeira viagem é grátis",
+    freeBody: "Assine para começá-la e planejar mais viagens, com até {max} futuras ao mesmo tempo.",
+    fullTitle: "Você tem {max} viagens futuras",
+    fullBody: "Quando uma terminar, você poderá planejar outra.",
+    checkAgain: "Já assinei",
+    active: "Plano Viajante · ativo",
+    endsOn: "Plano Viajante · termina em {date}",
+    manage: "Gerenciar assinatura",
+    pricingTitle: "Planos",
+    pricingBody: "Planeje sua primeira viagem de graça. Assine para começá-la e planeje quantas viagens quiser, com até {max} futuras ao mesmo tempo.",
+  },
   welcome: {
     planTitle: "Sua viagem inteira, planejada em um minuto",
     planBody: "Diga para onde vai e do que gosta. Receba cada dia planejado, com lugares reais, horários e custos.",

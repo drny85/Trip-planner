@@ -37,6 +37,7 @@ import { Crew, IdeasSection } from "./together";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 import { TodayBanner } from "./today-banner";
+import { TripLockedBanner } from "@/components/billing";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
   const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
@@ -152,6 +153,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
         <OfflineBanner cached={isCached} />
+        <TripLockedBanner tripId={trip._id} />
         <TodayBanner trip={trip} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />

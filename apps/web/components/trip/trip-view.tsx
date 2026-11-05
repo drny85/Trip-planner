@@ -27,6 +27,7 @@ import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
 import { TodayBanner } from "@/components/today/today-banner";
+import { TripLockedBanner } from "@/components/billing";
 
 export function TripView({ tripId }: { tripId: Id<"trips"> }) {
   const trip = useQuery(api.trips.get, { tripId });
@@ -124,6 +125,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
 
       <div className="mx-auto max-w-4xl px-4">
         <Stats trip={trip} readOnly={readOnly} />
+        {mode !== "public" && <TripLockedBanner tripId={trip._id} />}
         {mode !== "public" && <TodayBanner trip={trip} />}
         <BudgetCard trip={trip} />
         {mode !== "public" && <Crew tripId={trip._id} />}

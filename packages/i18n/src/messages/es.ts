@@ -448,6 +448,10 @@ export const es: Shape<typeof en> = {
     storyIncomplete: "La historia llegó incompleta. Inténtalo de nuevo.",
     storyFailed: "Algo salió mal al escribir la historia. Inténtalo de nuevo.",
     storyTimeout: "Tardó demasiado. Inténtalo de nuevo.",
+    subscribeForMore: "Tu viaje gratis ya está planeado. Suscríbete para planear más viajes.",
+    tooManyUpcoming: "Ya tienes {max} viajes próximos. Podrás planear otro cuando termine uno.",
+    subscribeToStart: "Suscríbete para empezar este viaje",
+    organizerMustSubscribe: "El organizador tiene que suscribirse para que este viaje pueda empezar",
   },
   /** Live details of a place from Google Maps (rating, hours, phone). */
   place: {
@@ -463,6 +467,25 @@ export const es: Shape<typeof en> = {
     heading: "Sobre este lugar",
   },
   /** The tour a signed-out person sees first on mobile. */
+  /** The Traveler subscription (Clerk Billing). */
+  billing: {
+    planName: "Viajero",
+    lockedTitle: "Suscríbete para empezar este viaje",
+    lockedBody: "Tu plan está listo. Suscríbete para marcar actividades, añadir fotos, replanear días y usar el modo Hoy.",
+    lockedMember: "El organizador tiene que suscribirse para que este viaje pueda empezar.",
+    subscribe: "Suscribirse · {price}/mes",
+    cancelAnytime: "Cancela cuando quieras.",
+    freeTitle: "Planear tu primer viaje es gratis",
+    freeBody: "Suscríbete para empezarlo y planear más viajes, con hasta {max} próximos a la vez.",
+    fullTitle: "Tienes {max} viajes próximos",
+    fullBody: "Cuando termine uno, podrás planear otro.",
+    checkAgain: "Ya me suscribí",
+    active: "Plan Viajero · activo",
+    endsOn: "Plan Viajero · termina el {date}",
+    manage: "Gestionar suscripción",
+    pricingTitle: "Planes",
+    pricingBody: "Planea tu primer viaje gratis. Suscríbete para empezarlo y planea todos los viajes que quieras, con hasta {max} próximos a la vez.",
+  },
   welcome: {
     planTitle: "Todo tu viaje, planeado en un minuto",
     planBody: "Di adónde vas y qué te encanta. Recibe cada día planeado, con lugares reales, horarios y costos.",
