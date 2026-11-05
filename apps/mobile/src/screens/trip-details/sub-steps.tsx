@@ -1,6 +1,7 @@
 import type { Id } from "@trip/backend/dataModel";
 import type { Activity } from "@trip/backend/types";
-import { categoryLabel, cn, formatDuration, formatTime } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
@@ -29,12 +30,13 @@ function StepRow({ activity, tripId, canEdit }: { activity: Activity; tripId: Id
   const toggleDone = useToggleDone();
   const router = useRouter();
   const done = activity.isCompleted;
-  const badge = categoryLabel(activity.category, activity.subcategory);
-  const meta = [formatTime(activity.startTime), activity.durationMinutes ? formatDuration(activity.durationMinutes) : null].filter(Boolean).join(" · ");
+  const { t, f, category } = useI18n();
+  const badge = category(activity.category, activity.subcategory);
+  const meta = [f.time(activity.startTime), activity.durationMinutes ? f.duration(activity.durationMinutes) : null].filter(Boolean).join(" · ");
 
   return (
     <PressableScale
-      accessibilityHint={canEdit ? "Opens the step editor" : undefined}
+      accessibilityHint={canEdit ? t("mobileActivity.opensStepEditor") : undefined}
       disabled={!canEdit}
       onPress={() => router.push({ pathname: "/trips/[tripId]/activity/[activityId]", params: { tripId, activityId: activity._id } })}
       pressedScale={0.98}
@@ -43,7 +45,7 @@ function StepRow({ activity, tripId, canEdit }: { activity: Activity; tripId: Id
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done }}
-        accessibilityLabel={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
+        accessibilityLabel={t(done ? "activity.markNotDone" : "activity.markDone", { title: activity.title })}
         hitSlop={12}
         onPress={() => {
           void Haptics.selectionAsync();

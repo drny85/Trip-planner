@@ -1,3 +1,4 @@
+import { useI18n } from "@trip/i18n/react";
 import { forecastUrl, inForecastRange, localToday, parseForecast, type DayWeather } from "@trip/ui";
 import { useEffect, useState } from "react";
 import { Text } from "react-native";
@@ -35,9 +36,10 @@ export function useDayWeather(date: string | undefined, activities: Located[]) {
 }
 
 export function DayWeatherChip({ weather }: { weather: DayWeather | null }) {
+  const { t } = useI18n();
   if (!weather) return null;
   return (
-    <Animated.View entering={FadeIn.duration(220).easing(EASE_OUT)} className="flex-row items-center gap-1 rounded-full bg-muted px-3 py-1.5" accessibilityLabel={`${weather.label}, high ${weather.high}, low ${weather.low}`}>
+    <Animated.View entering={FadeIn.duration(220).easing(EASE_OUT)} className="flex-row items-center gap-1 rounded-full bg-muted px-3 py-1.5" accessibilityLabel={t("mobileDay.weatherLabel", { label: t(`weather.${weather.kind}`), high: weather.high, low: weather.low })}>
       <Text className="text-xs">{weather.emoji}</Text>
       <Text className="text-xs font-semibold text-foreground">
         {weather.high}°<Text className="font-normal text-muted-foreground"> {weather.low}°</Text>

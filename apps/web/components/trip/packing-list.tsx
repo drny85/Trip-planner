@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { cn } from "@trip/ui";
@@ -17,6 +18,7 @@ export function PackingList({ tripId }: { tripId: Id<"trips"> }) {
   const claim = useMutation(api.packing.claim);
   const remove = useMutation(api.packing.remove);
   const [text, setText] = useState("");
+  const { t, locale } = useI18n();
   if (!items) return null;
 
   const packed = items.filter((i) => i.isPacked).length;
@@ -27,14 +29,14 @@ export function PackingList({ tripId }: { tripId: Id<"trips"> }) {
     <motion.section {...rise(0)} className="mt-16" aria-labelledby="packing-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-widest text-primary">Get ready</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-primary">{t("packing.eyebrow")}</p>
           <h2 id="packing-title" className="mt-1 text-3xl font-extrabold tracking-tight">
-            Packing list
+            {t("packing.title")}
           </h2>
-          <p className="text-sm text-muted-foreground">Shared with everyone going. Claim the things you&apos;ll bring for the group.</p>
+          <p className="text-sm text-muted-foreground">{t("packing.intro")}</p>
         </div>
-        <button onClick={() => void addEssentials({ tripId })} className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold transition hover:bg-muted active:scale-[0.97]">
-          ＋ Add the essentials
+        <button onClick={() => void addEssentials({ tripId, language: locale })} className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold transition hover:bg-muted active:scale-[0.97]">
+          ＋ {t("packing.addEssentials")}
         </button>
       </div>
 
@@ -45,7 +47,7 @@ export function PackingList({ tripId }: { tripId: Id<"trips"> }) {
               <motion.div className="h-full rounded-full bg-success" initial={false} animate={{ width: `${pct}%` }} transition={{ duration: 0.4, ease: EASE_OUT }} />
             </div>
             <span className="text-sm font-semibold tabular-nums text-muted-foreground">
-              {packed}/{items.length} packed
+              {t("packing.packed", { done: packed, total: items.length })}
             </span>
           </div>
         )}
@@ -81,12 +83,12 @@ export function PackingList({ tripId }: { tripId: Id<"trips"> }) {
                     item.claimedBy ? (item.claimedBy.isMe ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground") : "text-muted-foreground opacity-0 hover:bg-muted group-hover:opacity-100 focus:opacity-100",
                   )}
                 >
-                  {item.claimedBy ? (item.claimedBy.isMe ? "You're bringing it" : `${item.claimedBy.name.split(" ")[0]} brings it`) : "I'll bring it"}
+                  {item.claimedBy ? (item.claimedBy.isMe ? t("packing.youBring") : t("packing.theyBring", { name: item.claimedBy.name.split(" ")[0]! })) : t("packing.illBring")}
                 </button>
                 <button
                   onClick={() => void remove({ itemId: item._id })}
                   className="text-sm text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100 focus:opacity-100"
-                  aria-label={`Remove ${item.text}`}
+                  aria-label={t("packing.removeItem", { item: item.text })}
                 >
                   ✕
                 </button>
@@ -106,12 +108,12 @@ export function PackingList({ tripId }: { tripId: Id<"trips"> }) {
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={items.length ? "Add something…" : "Nothing yet. Add an item or start with the essentials."}
+            placeholder={items.length ? t("packing.addPlaceholder") : t("packing.emptyPlaceholder")}
             maxLength={120}
             className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
           <button type="submit" className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground active:scale-[0.97]">
-            Add
+            {t("common.add")}
           </button>
         </form>
       </div>

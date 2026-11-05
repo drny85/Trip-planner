@@ -1,6 +1,7 @@
 "use client";
 
 import { forecastUrl, inForecastRange, localToday, parseForecast, type DayWeather } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { EASE_OUT } from "@/lib/motion";
@@ -36,6 +37,7 @@ export function useDayWeather(date: string | undefined, activities: Located[]) {
 }
 
 export function DayWeatherChip({ weather }: { weather: DayWeather | null }) {
+  const { t } = useI18n();
   if (!weather) return null;
   return (
     <motion.span
@@ -43,7 +45,7 @@ export function DayWeatherChip({ weather }: { weather: DayWeather | null }) {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.25, ease: EASE_OUT }}
       className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm font-semibold shadow-sm ring-1 ring-border"
-      title={`${weather.label}, ${weather.rainChance}% chance of rain`}
+      title={t("replan.rainChanceTitle", { label: t(`weather.${weather.kind}`), percent: weather.rainChance })}
     >
       <span aria-hidden>{weather.emoji}</span>
       {weather.high}° <span className="font-normal text-muted-foreground">{weather.low}°</span>

@@ -89,7 +89,7 @@ export const join = mutation({
     if (await findMembership(ctx, trip, userId)) return trip._id;
     const profile = await getCallerProfile(ctx);
     await ctx.db.insert("tripMembers", { tripId: trip._id, userId, role: "member", ...profile });
-    await notify(ctx, trip, { kind: "joined", actorId: userId, text: `${profile.name} joined the trip.` });
+    await notify(ctx, trip, { kind: "joined", actorId: userId, params: { name: profile.name } });
     return trip._id;
   },
 });

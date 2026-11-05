@@ -49,6 +49,29 @@
         {
           "color": "#0e7c66"
         }
+      ],
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": [
+              "en",
+              "es",
+              "fr",
+              "pt",
+              "de",
+              "ja"
+            ],
+            "android": [
+              "en",
+              "es",
+              "fr",
+              "pt",
+              "de",
+              "ja"
+            ]
+          }
+        }
       ]
     ],
     "experiments": {

@@ -1,3 +1,4 @@
+import { defaultLocale, isLocale, translator } from "@trip/i18n";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
@@ -7,17 +8,18 @@ import { listMembers } from "./lib/members";
 /** A shared packing list for everyone on the trip. */
 
 /** Starter items for "Add the essentials"; trip-specific extras are added by the people going. */
+/** Message keys of the starter packing items, added in the caller's language. */
 export const ESSENTIALS = [
-  "Passport or ID",
-  "Phone charger",
-  "Power adapter",
-  "Travel insurance details",
-  "Medications",
-  "Toiletries",
-  "Comfortable walking shoes",
-  "Reusable water bottle",
-  "Some local cash",
-];
+  "essential1",
+  "essential2",
+  "essential3",
+  "essential4",
+  "essential5",
+  "essential6",
+  "essential7",
+  "essential8",
+  "essential9",
+] as const;
 
 export const list = query({
   args: { tripId: v.id("trips") },
@@ -51,12 +53,13 @@ export const add = mutation({
 
 /** Adds the essentials that aren't on the list yet. */
 export const addEssentials = mutation({
-  args: { tripId: v.id("trips") },
-  handler: async (ctx, { tripId }) => {
+  args: { tripId: v.id("trips"), language: v.optional(v.string()) },
+  handler: async (ctx, { tripId, language }) => {
     const { userId } = await getMemberTrip(ctx, tripId);
     const existing = await ctx.db.query("packingItems").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect();
     const have = new Set(existing.map((i) => i.text.toLowerCase()));
-    const missing = ESSENTIALS.filter((t) => !have.has(t.toLowerCase()));
+    const t = translator(isLocale(language) ? language : defaultLocale);
+    const missing = ESSENTIALS.map((key) => t(`packing.${key}`)).filter((text) => !have.has(text.toLowerCase()));
     await Promise.all(missing.map((text) => ctx.db.insert("packingItems", { tripId, text, isPacked: false, addedBy: userId })));
     return missing.length;
   },

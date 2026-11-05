@@ -1,6 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { categoryLabel, cn, formatTime } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
@@ -40,20 +41,21 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
   const createInvite = useMutation(api.members.createInvite);
   const revokeInvite = useMutation(api.members.revokeInvite);
   const removeMember = useMutation(api.members.remove);
+  const { t } = useI18n();
   if (!data) return null;
   const count = data.members.length;
 
   const invite = async () => {
     const token = await createInvite({ tripId });
     const url = `${webUrl}/join/${token}`;
-    await Share.share({ message: `Join my trip on Trip Planner: ${url}`, url });
+    await Share.share({ message: t("mobileTogether.inviteMessage", { url }), url });
   };
 
   const manage = (m: (typeof data.members)[number]) => {
     if (!data.isOwner || m.role === "owner") return;
     Alert.alert(m.name, undefined, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove from trip", style: "destructive", onPress: () => void removeMember({ tripId, userId: m.userId }) },
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("mobileTogether.removeFromTrip"), style: "destructive", onPress: () => void removeMember({ tripId, userId: m.userId }) },
     ]);
   };
 
@@ -68,20 +70,20 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
           ))}
         </View>
         <View className="flex-1">
-          <Text className="text-base font-bold text-foreground">{count === 1 ? "Just you so far" : `${count} going`}</Text>
+          <Text className="text-base font-bold text-foreground">{count === 1 ? t("crew.justYou") : t("crew.going", { count })}</Text>
           <Text className="text-xs text-muted-foreground" numberOfLines={2}>
-            {data.members.map((m) => (m.isMe ? "You" : m.name.split(" ")[0])).join(", ")}
+            {data.members.map((m) => (m.isMe ? t("split.you") : m.name.split(" ")[0])).join(", ")}
           </Text>
         </View>
       </View>
       {data.isOwner && (
         <View className="flex-row gap-2">
           <Button size="sm" icon="plus" onPress={() => void invite()}>
-            Invite friends
+            {t("crew.invite")}
           </Button>
           {data.inviteToken && (
             <Button size="sm" variant="ghost" onPress={() => void revokeInvite({ tripId })}>
-              Turn off link
+              {t("mobileTogether.turnOffLink")}
             </Button>
           )}
         </View>
@@ -97,29 +99,28 @@ type Day = { _id: Id<"subTrips">; dayNumber: number };
 export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTrips: Day[] }) {
   const data = useQuery(api.suggestions.forTrip, { tripId });
   const router = useRouter();
+  const { t } = useI18n();
   if (!data) return null;
-  const dayName = (id: string) => `Day ${subTrips.find((d) => d._id === id)?.dayNumber ?? "?"}`;
+  const dayName = (id: string) => t("time.dayN", { day: subTrips.find((d) => d._id === id)?.dayNumber ?? "?" });
 
   return (
     <View className="mt-10 gap-3 px-4">
       <View className="flex-row items-end justify-between">
         <View className="flex-1">
-          <Text className="text-xs font-bold uppercase tracking-widest text-primary">Decide together</Text>
-          <Text className="text-2xl font-extrabold tracking-tight text-foreground">Ideas & votes</Text>
+          <Text className="text-xs font-bold uppercase tracking-widest text-primary">{t("ideas.eyebrow")}</Text>
+          <Text className="text-2xl font-extrabold tracking-tight text-foreground">{t("ideas.title")}</Text>
           <Text className="text-xs text-muted-foreground">
-            {data.memberCount === 1
-              ? "Ideas you suggest join the plan right away. Invite friends to vote together."
-              : `An idea joins the plan once more than half of the ${data.memberCount} travelers vote yes.`}
+            {data.memberCount === 1 ? t("mobileTogether.soloRule") : t("mobileTogether.rule", { count: data.memberCount })}
           </Text>
         </View>
         <Button size="sm" icon="sparkles" onPress={() => router.push({ pathname: "/trips/[tripId]/suggest", params: { tripId } })}>
-          Suggest
+          {t("mobileTogether.suggest")}
         </Button>
       </View>
 
       {data.open.length === 0 && (
         <View className="rounded-3xl border border-dashed border-border p-6">
-          <Text className="text-center text-sm text-muted-foreground">No open ideas. Suggest a place and let the group vote.</Text>
+          <Text className="text-center text-sm text-muted-foreground">{t("mobileTogether.empty")}</Text>
         </View>
       )}
       {data.open.map((idea) => (
@@ -135,7 +136,7 @@ export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTri
 
       {data.decided.length > 0 && (
         <View className="mt-2 gap-2">
-          <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Recently decided</Text>
+          <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{t("ideas.recentlyDecided")}</Text>
           {data.decided.map((s) => (
             <Animated.View key={s._id} entering={FadeIn.duration(220)} className="flex-row items-center gap-3 rounded-2xl bg-card px-4 py-3">
               <View className={cn("h-6 w-6 items-center justify-center rounded-full", s.status === "accepted" ? "bg-success" : "bg-muted-foreground")}>
@@ -144,7 +145,7 @@ export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTri
               <Text className="flex-1 font-semibold text-foreground" numberOfLines={1}>
                 {s.title}
               </Text>
-              <Text className="text-xs text-muted-foreground">{s.status === "accepted" ? `Added · ${dayName(s.subTripId)}` : "Not added"}</Text>
+              <Text className="text-xs text-muted-foreground">{s.status === "accepted" ? t("mobileTogether.added", { day: dayName(s.subTripId) }) : t("mobileTogether.notAdded")}</Text>
             </Animated.View>
           ))}
         </View>
@@ -156,7 +157,8 @@ export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTri
 function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: string }) {
   const vote = useMutation(api.suggestions.vote);
   const withdraw = useMutation(api.suggestions.withdraw);
-  const badge = categoryLabel(idea.category, idea.subcategory);
+  const { t, f, category } = useI18n();
+  const badge = category(idea.category, idea.subcategory);
   const { yes, no, members } = idea.tally;
 
   const cast = async (value: "yes" | "no") => {
@@ -169,8 +171,8 @@ function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: str
     <View className="gap-3 rounded-3xl bg-card p-4 shadow-sm shadow-black/5">
       <View className="flex-row items-center justify-between gap-2">
         <Text className="flex-1 text-xs font-semibold text-muted-foreground" numberOfLines={1}>
-          {idea.isMine ? "You" : idea.authorName} · {dayName}
-          {idea.startTime ? ` at ${formatTime(idea.startTime)}` : ""}
+          {t("mobileTogether.byLine", { name: idea.isMine ? t("split.you") : idea.authorName, day: dayName })}
+          {idea.startTime ? ` ${t("ideas.at", { time: f.time(idea.startTime) })}` : ""}
         </Text>
         <Text className="text-xs font-semibold" style={{ color: badge.color }}>
           {badge.emoji} {badge.text}
@@ -193,7 +195,7 @@ function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: str
         ))}
       </View>
       <Text className="text-xs text-muted-foreground">
-        {yes} yes · {no} no · {idea.yesNeeded === 1 ? "1 more yes adds it" : `${idea.yesNeeded} more yes votes add it`}
+        {t("ideas.tally", { yes, no })} · {t("ideas.moreNeeded", { count: idea.yesNeeded })}
       </Text>
 
       <View className="flex-row items-center gap-2">
@@ -209,13 +211,13 @@ function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: str
               className={cn(on && value === "no" && "bg-danger")}
               accessibilityState={{ selected: on }}
             >
-              {value === "yes" ? "👍 Yes" : "👎 No"}
+              {value === "yes" ? `👍 ${t("ideas.yes")}` : `👎 ${t("ideas.no")}`}
             </Button>
           );
         })}
         {idea.isMine && (
           <Button size="sm" variant="ghost" onPress={() => void withdraw({ suggestionId: idea._id })}>
-            Withdraw
+            {t("ideas.withdraw")}
           </Button>
         )}
       </View>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Activity } from "@trip/backend/types";
+import { useI18n } from "@trip/i18n/react";
 import { links } from "@trip/ui";
 import { AnimatePresence, motion } from "motion/react";
 import dynamic from "next/dynamic";
@@ -21,6 +22,7 @@ export function hasCoords(a: Activity): a is Activity & { latitude: number; long
 /** "Map" toggle for a day: an OpenStreetMap of the stops in order, plus a link to the full route. */
 export function DayMap({ activities }: { activities: Activity[] }) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   const stops: Stop[] = activities.filter(hasCoords);
   if (stops.length === 0) return null;
 
@@ -32,7 +34,7 @@ export function DayMap({ activities }: { activities: Activity[] }) {
           aria-expanded={open}
           className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-muted active:scale-[0.97]"
         >
-          🗺 {open ? "Hide map" : "Show map"}
+          🗺 {open ? t("map.hide") : t("map.show")}
         </button>
         <a
           href={links.route(activities)}
@@ -40,7 +42,7 @@ export function DayMap({ activities }: { activities: Activity[] }) {
           rel="noreferrer"
           className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-muted active:scale-[0.97]"
         >
-          🧭 Route for the day
+          🧭 {t("map.route")}
         </a>
       </div>
       <AnimatePresence initial={false}>

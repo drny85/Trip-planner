@@ -3,7 +3,9 @@
 import { api } from "@trip/backend/api";
 import { CATEGORIES, CATEGORY_TREE, type Category } from "@trip/backend/categories";
 import type { Id } from "@trip/backend/dataModel";
-import { categoryLabel, categoryMeta, cn, fallbackPhoto, formatTime, subcategoryMeta } from "@trip/ui";
+import type { Messages } from "@trip/i18n";
+import { useI18n } from "@trip/i18n/react";
+import { categoryMeta, cn, dayTitle, fallbackPhoto, subcategoryMeta } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
@@ -19,27 +21,26 @@ type Day = { _id: Id<"subTrips">; dayNumber: number; title: string };
 export function Ideas({ tripId, subTrips }: { tripId: Id<"trips">; subTrips: Day[] }) {
   const data = useQuery(api.suggestions.forTrip, { tripId });
   const [composing, setComposing] = useState(false);
+  const { t } = useI18n();
   if (!data) return null;
-  const dayName = (id: string) => `Day ${subTrips.find((d) => d._id === id)?.dayNumber ?? "?"}`;
+  const dayName = (id: string) => t("time.dayN", { day: subTrips.find((d) => d._id === id)?.dayNumber ?? "?" });
 
   return (
     <motion.section {...rise(0)} className="mt-16" aria-labelledby="ideas-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-widest text-primary">Decide together</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-primary">{t("ideas.eyebrow")}</p>
           <h2 id="ideas-title" className="mt-1 text-3xl font-extrabold tracking-tight">
-            Ideas & votes
+            {t("ideas.title")}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            An idea is added to the plan once more than half of the {data.memberCount} {data.memberCount === 1 ? "traveler" : "travelers"} vote yes.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("ideas.rule", { count: data.memberCount })}</p>
         </div>
         {!composing && (
           <button
             onClick={() => setComposing(true)}
             className="rounded-full bg-primary px-5 py-2.5 font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:opacity-90 active:scale-[0.97]"
           >
-            💡 Suggest an idea
+            💡 {t("ideas.suggest")}
           </button>
         )}
       </div>
@@ -66,13 +67,13 @@ export function Ideas({ tripId, subTrips }: { tripId: Id<"trips">; subTrips: Day
       </ul>
       {data.open.length === 0 && !composing && (
         <div className="mt-6 rounded-3xl border border-dashed border-border p-8 text-center text-muted-foreground">
-          No open ideas. Got a restaurant or a day trip in mind? Suggest it and let the group vote.
+          {t("ideas.empty")}
         </div>
       )}
 
       {data.decided.length > 0 && (
         <div className="mt-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Recently decided</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{t("ideas.recentlyDecided")}</p>
           <ul className="mt-3 flex flex-col gap-2">
             <AnimatePresence initial={false}>
               {data.decided.map((s) => (
@@ -89,7 +90,7 @@ export function Ideas({ tripId, subTrips }: { tripId: Id<"trips">; subTrips: Day
                   </span>
                   <span className="flex-1 truncate font-semibold">{s.title}</span>
                   <span className="text-muted-foreground">
-                    {s.status === "accepted" ? `Added to ${dayName(s.subTripId)}` : "Not enough votes"} · {s.tally.yes}–{s.tally.no}
+                    {s.status === "accepted" ? t("ideas.addedTo", { day: dayName(s.subTripId) }) : t("ideas.notEnough")} · {s.tally.yes}–{s.tally.no}
                   </span>
                 </motion.li>
               ))}
@@ -106,7 +107,8 @@ type Idea = NonNullable<FunctionReturnType<typeof api.suggestions.forTrip>>["ope
 function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
   const vote = useMutation(api.suggestions.vote);
   const withdraw = useMutation(api.suggestions.withdraw);
-  const badge = categoryLabel(idea.category, idea.subcategory);
+  const { t, f, category } = useI18n();
+  const badge = category(idea.category, idea.subcategory);
   const { yes, no, members } = idea.tally;
   const needed = Math.floor(members / 2) + 1;
 
@@ -114,8 +116,8 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
     <article className="flex h-full flex-col gap-3 rounded-3xl border border-border/70 bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between gap-2 text-xs font-semibold text-muted-foreground">
         <span>
-          {idea.isMine ? "You" : idea.authorName} suggested · {dayName}
-          {idea.startTime ? ` at ${formatTime(idea.startTime)}` : ""}
+          {idea.isMine ? t("ideas.youSuggested", { day: dayName }) : t("ideas.suggestedBy", { name: idea.authorName, day: dayName })}
+          {idea.startTime ? ` ${t("ideas.at", { time: f.time(idea.startTime) })}` : ""}
         </span>
         <span className="rounded-full px-2 py-0.5" style={{ backgroundColor: `${badge.color}1f`, color: badge.color }}>
           {badge.emoji} {badge.text}
@@ -126,7 +128,7 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
 
       {/* One segment per traveler: green for yes, red for no, and a marker at the majority line. */}
       <div className="mt-auto">
-        <div className="relative flex gap-1" aria-label={`${yes} yes, ${no} no, ${needed} needed`}>
+        <div className="relative flex gap-1" aria-label={t("ideas.tallyAria", { yes, no, needed })}>
           {Array.from({ length: members }, (_, i) => (
             <span
               key={i}
@@ -139,7 +141,7 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
           ))}
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground">
-          {yes} yes · {no} no · {idea.yesNeeded === 1 ? "1 more yes adds it" : `${idea.yesNeeded} more yes votes add it`}
+          {t("ideas.tally", { yes, no })} · {t("ideas.moreNeeded", { count: idea.yesNeeded })}
         </p>
       </div>
 
@@ -161,13 +163,13 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
                   : "border-border hover:bg-muted",
               )}
             >
-              {value === "yes" ? "👍 Yes" : "👎 No"}
+              {value === "yes" ? `👍 ${t("ideas.yes")}` : `👎 ${t("ideas.no")}`}
             </motion.button>
           );
         })}
         {idea.isMine && (
           <button onClick={() => void withdraw({ suggestionId: idea._id })} className="px-2 text-xs font-semibold text-muted-foreground hover:text-danger">
-            Withdraw
+            {t("ideas.withdraw")}
           </button>
         )}
       </div>
@@ -183,6 +185,7 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
 function SuggestForm({ subTrips, onDone }: { subTrips: Day[]; onDone: () => void }) {
   const create = useMutation(api.suggestions.create);
   const [saving, setSaving] = useState(false);
+  const { t } = useI18n();
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -234,62 +237,62 @@ function SuggestForm({ subTrips, onDone }: { subTrips: Day[]; onDone: () => void
     >
       <div className="grid gap-3 rounded-3xl border border-primary/30 bg-card p-5 shadow-lg shadow-primary/5 sm:grid-cols-2">
         <label className={cn(label, "sm:col-span-2")}>
-          What&apos;s the idea?
-          <input autoFocus required placeholder="Sunset drinks with a view" className={input} value={form.title} onChange={set("title")} />
+          {t("ideas.whatsTheIdea")}
+          <input autoFocus required placeholder={t("ideas.ideaPlaceholder")} className={input} value={form.title} onChange={set("title")} />
         </label>
         <label className={label}>
-          Day
+          {t("ideas.day")}
           <select className={input} value={form.subTripId} onChange={set("subTripId")}>
             {subTrips.map((d) => (
               <option key={d._id} value={d._id}>
-                Day {d.dayNumber} · {d.title.replace(/^Day \d+\s*·\s*/, "")}
+                {t("time.dayN", { day: d.dayNumber })} · {dayTitle(d.title)}
               </option>
             ))}
           </select>
         </label>
         <label className={label}>
-          Time
+          {t("ideas.time")}
           <input type="time" className={input} value={form.startTime} onChange={set("startTime")} />
         </label>
         <label className={label}>
-          Category
+          {t("editor.category")}
           <select className={input} value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as Category, subcategory: "" }))}>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {categoryMeta[c].emoji} {categoryMeta[c].label}
+                {categoryMeta[c].emoji} {t(`categories.${c}`)}
               </option>
             ))}
           </select>
         </label>
         <label className={label}>
-          Type
+          {t("editor.type")}
           <select className={input} disabled={subs.length === 0} value={form.subcategory} onChange={set("subcategory")}>
-            <option value="">Any</option>
+            <option value="">{t("editor.any")}</option>
             {subs.map((s) => (
               <option key={s} value={s}>
-                {subcategoryMeta[s]?.emoji} {subcategoryMeta[s]?.label ?? s}
+                {subcategoryMeta[s]?.emoji} {t(`subcategories.${s as keyof Messages["subcategories"]}`)}
               </option>
             ))}
           </select>
         </label>
         <label className={cn(label, "sm:col-span-2")}>
-          Why it&apos;s worth it
+          {t("ideas.whyWorth")}
           <textarea rows={2} className={input} value={form.description} onChange={set("description")} />
         </label>
         <label className={label}>
-          Address
+          {t("editor.address")}
           <input className={input} value={form.address} onChange={set("address")} />
         </label>
         <label className={label}>
-          Cost per person
+          {t("ideas.costPerPerson")}
           <input type="number" min={0} step="any" inputMode="decimal" className={input} value={form.estimatedCost} onChange={set("estimatedCost")} />
         </label>
         <div className="flex justify-end gap-2 sm:col-span-2">
           <button type="button" onClick={onDone} className="rounded-full px-4 py-2 font-semibold text-muted-foreground hover:bg-muted">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" disabled={saving} className="rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">
-            {saving ? "Posting…" : "Post for a vote"}
+            {saving ? t("ideas.posting") : t("ideas.post")}
           </button>
         </div>
       </div>

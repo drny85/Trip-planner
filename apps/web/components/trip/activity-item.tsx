@@ -3,7 +3,8 @@
 import { api } from "@trip/backend/api";
 import { optimisticMove, optimisticRemove } from "@trip/backend/optimistic";
 import type { Activity, PublicTripDetails } from "@trip/backend/types";
-import { categoryLabel, cn, formatDuration, formatTime, getCategory, links } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, getCategory, links } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -35,7 +36,8 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
   const [adding, setAdding] = useState(false);
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
-  const badge = categoryLabel(activity.category, activity.subcategory);
+  const { t, f, category: categoryText } = useI18n();
+  const badge = categoryText(activity.category, activity.subcategory);
 
   return (
     <>
@@ -43,7 +45,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
       <motion.button
         role="checkbox"
         aria-checked={done}
-        aria-label={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
+        aria-label={t(done ? "activity.markNotDone" : "activity.markDone", { title: activity.title })}
         onClick={() => void toggleDone(activity, !done)}
         disabled={!canCheck}
         whileTap={canCheck ? { scale: 0.85 } : undefined}
@@ -125,7 +127,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                       transition={{ type: "spring", duration: 0.4, bounce: 0.45 }}
                       className="rounded-full bg-success px-3 py-1 text-sm font-bold text-white shadow-lg"
                     >
-                      ✓ Done
+                      ✓ {t("activity.done")}
                     </motion.span>
                   </motion.div>
                 )}
@@ -134,25 +136,25 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
 
             <div className={cn("flex min-w-0 flex-1 flex-col gap-1.5 p-5 transition-opacity", done && "opacity-60")}>
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
-                {activity.startTime && <span className="rounded-md bg-muted px-2 py-0.5 tabular-nums text-foreground">{formatTime(activity.startTime)}</span>}
-                {activity.durationMinutes ? <span>⏱ {formatDuration(activity.durationMinutes)}</span> : null}
+                {activity.startTime && <span className="rounded-md bg-muted px-2 py-0.5 tabular-nums text-foreground">{f.time(activity.startTime)}</span>}
+                {activity.durationMinutes ? <span>⏱ {f.duration(activity.durationMinutes)}</span> : null}
               </div>
               <h3 className={cn("text-lg font-bold leading-snug decoration-2 transition", done && "line-through")}>{activity.title}</h3>
               <p className="line-clamp-2 text-sm text-muted-foreground">{activity.description}</p>
               <p className="truncate text-xs text-muted-foreground">📍 {activity.address}</p>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                {activity.phone && <Pill href={links.phone(activity.phone)}>📞 Call</Pill>}
+                {activity.phone && <Pill href={links.phone(activity.phone)}>📞 {t("activity.call")}</Pill>}
                 <Pill href={links.directions(activity)} external>
-                  🧭 Directions
+                  🧭 {t("activity.directions")}
                 </Pill>
                 {activity.bookingUrl ? (
                   <Pill href={activity.bookingUrl} external primary>
-                    🎟 Reserve
+                    🎟 {t("activity.reserve")}
                   </Pill>
                 ) : activity.websiteUrl ? (
                   <Pill href={activity.websiteUrl} external>
-                    🌐 Website
+                    🌐 {t("activity.website")}
                   </Pill>
                 ) : null}
               </div>
@@ -163,28 +165,28 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
 
             {/* Edit / reorder controls (keyboard-friendly alternative to drag and drop) */}
             {!readOnly && <div className="flex shrink-0 gap-1 px-5 pb-4 sm:absolute sm:right-3 sm:top-3 sm:translate-y-1 sm:rounded-2xl sm:border sm:border-border sm:bg-card/95 sm:p-1 sm:opacity-0 sm:shadow-lg sm:backdrop-blur sm:transition sm:duration-200 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:focus-within:translate-y-0 sm:focus-within:opacity-100">
-              <IconButton label="Edit" onClick={() => setEditing(true)}>
+              <IconButton label={t("activity.edit")} onClick={() => setEditing(true)}>
                 ✎
               </IconButton>
-              <IconButton label="Add a step inside" onClick={() => setAdding(true)}>
+              <IconButton label={t("activity.addStep")} onClick={() => setAdding(true)}>
                 ＋
               </IconButton>
               <IconButton
-                label="Move earlier"
+                label={t("activity.moveEarlier")}
                 disabled={index === 0}
                 onClick={() => void move({ activityId: activity._id, toSubTripId: activity.subTripId, toIndex: index - 1 })}
               >
                 ↑
               </IconButton>
               <IconButton
-                label="Move later"
+                label={t("activity.moveLater")}
                 disabled={index >= count - 1}
                 onClick={() => void move({ activityId: activity._id, toSubTripId: activity.subTripId, toIndex: index + 1 })}
               >
                 ↓
               </IconButton>
               <select
-                aria-label="Move to day"
+                aria-label={t("activity.moveToDay")}
                 value={activity.subTripId}
                 onChange={(e) => {
                   const target = trip.subTrips.find((s) => s._id === e.target.value);
@@ -194,14 +196,14 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               >
                 {trip.subTrips.map((s) => (
                   <option key={s._id} value={s._id}>
-                    Day {s.dayNumber}
+                    {t("time.dayN", { day: s.dayNumber })}
                   </option>
                 ))}
               </select>
               <IconButton
-                label="Delete"
+                label={t("activity.delete")}
                 onClick={() => {
-                  if (confirm(`Delete "${activity.title}"?`)) void remove({ activityId: activity._id });
+                  if (confirm(t("activity.deleteConfirm", { title: activity.title }))) void remove({ activityId: activity._id });
                 }}
               >
                 🗑

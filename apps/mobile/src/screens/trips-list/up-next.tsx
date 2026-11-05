@@ -1,5 +1,6 @@
 import { api } from "@trip/backend/api";
-import { categoryLabel, countdown, formatDay, formatDuration, formatTime, localToday } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { localToday } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -29,10 +30,11 @@ export function UpNext() {
   const next = useCachedQuery(api.trips.upNext, { today }).data;
   const toggleDone = useToggleDone();
   const router = useRouter();
+  const { t, f, category } = useI18n();
   if (!next) return null;
 
   const { trip, day, activity, step, later } = next;
-  const badge = categoryLabel(activity.category, activity.subcategory);
+  const badge = category(activity.category, activity.subcategory);
   const target = step ?? activity;
   const pct = day.total ? Math.round((day.done / day.total) * 100) : 0;
 
@@ -44,7 +46,7 @@ export function UpNext() {
   return (
     <Animated.View entering={FadeIn.duration(300).easing(EASE_OUT)}>
       <PressableScale
-        accessibilityHint="Opens the trip"
+        accessibilityHint={t("mobileUpNext.opensTrip")}
         pressedScale={0.985}
         onPress={() => router.push({ pathname: "/trips/[tripId]", params: { tripId: trip._id } })}
         className="overflow-hidden rounded-[28px] bg-slate-950"
@@ -67,10 +69,10 @@ export function UpNext() {
                 />
                 <View className="h-2 w-2 rounded-full bg-emerald-300" />
               </View>
-              <Text className="text-[11px] font-bold uppercase tracking-widest text-white">Up next</Text>
+              <Text className="text-[11px] font-bold uppercase tracking-widest text-white">{t("upNext.label")}</Text>
             </View>
             <View className="rounded-full bg-white/10 px-3 py-1">
-              <Text className="text-xs font-semibold text-white">{countdown(next.startsInDays, day.dayNumber)}</Text>
+              <Text className="text-xs font-semibold text-white">{f.countdown(next.startsInDays, day.dayNumber)}</Text>
             </View>
           </View>
 
@@ -82,20 +84,20 @@ export function UpNext() {
             className="gap-1.5"
           >
             <Text className="text-xs font-semibold text-white/70" numberOfLines={1}>
-              {trip.title} · Day {day.dayNumber}
-              {day.date ? `, ${formatDay(day.date)}` : ""}
+              {t("upNext.tripDay", { trip: trip.title, day: day.dayNumber })}
+              {day.date ? `, ${f.day(day.date)}` : ""}
             </Text>
             <Text className="text-[28px] font-extrabold leading-8 text-white" numberOfLines={2}>
               {activity.title}
             </Text>
             <Text className="text-sm text-white/75" numberOfLines={1}>
-              {[formatTime(activity.startTime), `${badge.emoji} ${badge.text}`, activity.durationMinutes ? formatDuration(activity.durationMinutes) : null]
+              {[f.time(activity.startTime), `${badge.emoji} ${badge.text}`, activity.durationMinutes ? f.duration(activity.durationMinutes) : null]
                 .filter(Boolean)
                 .join(" · ")}
             </Text>
             {step && (
               <View className="mt-1 flex-row self-start rounded-2xl bg-white/10 px-3 py-2">
-                <Text className="text-sm text-white/60">Next step </Text>
+                <Text className="text-sm text-white/60">{t("mobileUpNext.nextStep")} </Text>
                 <Text className="text-sm font-semibold text-white" numberOfLines={1}>
                   {step.title}
                 </Text>
@@ -105,10 +107,10 @@ export function UpNext() {
 
           <View className="flex-row gap-2">
             <Button size="sm" variant="light" icon="check" onPress={markDone}>
-              {step ? "Step done" : "Mark done"}
+              {step ? t("mobileUpNext.stepDone") : t("upNext.markDone")}
             </Button>
             <Button size="sm" variant="glass" icon="directions" onPress={() => void openDirections(activity)}>
-              Directions
+              {t("upNext.directions")}
             </Button>
           </View>
 
@@ -120,8 +122,8 @@ export function UpNext() {
               />
             </View>
             <Text className="text-xs text-white/60">
-              {day.done} of {day.total} done on day {day.dayNumber}
-              {later[0] ? ` · then ${later[0].activity.title}` : ""}
+              {t("mobileUpNext.progress", { done: day.done, total: day.total, day: day.dayNumber })}
+              {later[0] ? ` · ${t("mobileUpNext.then", { title: later[0].activity.title })}` : ""}
             </Text>
           </View>
         </View>
