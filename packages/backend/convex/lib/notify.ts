@@ -1,10 +1,10 @@
-import { createFormat, defaultLocale, formatTagFor, isLocale, notificationText, translator, type Locale, type NotificationParams } from "@trip/i18n";
+import { createFormat, defaultLocale, formatTagFor, isLocale, notificationText, translator, type Locale, type NotificationKind, type NotificationParams } from "@trip/i18n";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { listMembers } from "./members";
 
-export type NotificationKind = "idea" | "accepted" | "rejected" | "joined" | "expense" | "settled";
+export type { NotificationKind };
 
 /** The language a user picked in the apps, or English. */
 export async function languageOf(ctx: QueryCtx, userId: string): Promise<Locale> {
@@ -17,7 +17,7 @@ export async function languageOf(ctx: QueryCtx, userId: string): Promise<Locale>
 
 /** A notification's text in one language. */
 export function renderNotification(locale: Locale, kind: NotificationKind, params: NotificationParams) {
-  return notificationText(translator(locale), createFormat(locale, formatTagFor(locale)).money, kind, params);
+  return notificationText(translator(locale), createFormat(locale, formatTagFor(locale)), kind, params);
 }
 
 /**

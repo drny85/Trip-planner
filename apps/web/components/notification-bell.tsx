@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { EASE_OUT } from "@/lib/motion";
 
-const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝" } as const;
+const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝", priceDrop: "📉", flightDelay: "⏰", flightGate: "🚪", flightCanceled: "⚠️" } as const;
 
 
 /** Bell with an unread badge, and a dropdown of what the crew has been up to. */
@@ -76,7 +76,7 @@ export function NotificationBell() {
                   <li key={n._id}>
                     <Link href={`/trips/${n.tripId}`} onClick={() => setOpen(false)} className={cn("flex gap-3 px-4 py-3 text-sm transition hover:bg-muted", !n.isRead && "bg-primary/5")}>
                       <span aria-hidden>{ICON[n.kind]}</span>
-                      <span className="flex-1">{n.params ? notificationText(t, f.money, n.kind, n.params) : n.text}</span>
+                      <span className="flex-1">{n.params ? notificationText(t, f, n.kind, n.params) : n.text}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">{f.ago(n._creationTime)}</span>
                     </Link>
                   </li>

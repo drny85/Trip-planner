@@ -11,10 +11,13 @@
   import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
   import type * as activities from "../activities.js";
 import type * as ai from "../ai.js";
+import type * as alerts from "../alerts.js";
 import type * as bookings from "../bookings.js";
+import type * as crons from "../crons.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
 import type * as journal from "../journal.js";
+import type * as lib_alerts from "../lib/alerts.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_bookings from "../lib/bookings.js";
 import type * as lib_budget from "../lib/budget.js";
@@ -60,10 +63,13 @@ import type * as users from "../users.js";
   declare const fullApi: ApiFromModules<{
     "activities": typeof activities,
 "ai": typeof ai,
+"alerts": typeof alerts,
 "bookings": typeof bookings,
+"crons": typeof crons,
 "expenses": typeof expenses,
 "http": typeof http,
 "journal": typeof journal,
+"lib/alerts": typeof lib_alerts,
 "lib/auth": typeof lib_auth,
 "lib/bookings": typeof lib_bookings,
 "lib/budget": typeof lib_budget,
