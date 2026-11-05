@@ -110,6 +110,13 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                 </View>
               )}
             </View>
+            {activity.photoCredit ? (
+              <View className="absolute bottom-1.5 right-2 max-w-[90%] rounded bg-black/45 px-1.5 py-0.5">
+                <Text numberOfLines={1} className="text-[10px] text-white/90">
+                  © {activity.photoCredit} · Google Maps
+                </Text>
+              </View>
+            ) : null}
             {done && (
               <View className="absolute inset-0 items-center justify-center bg-black/40">
                 <Text className="rounded-full bg-success px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">

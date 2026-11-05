@@ -240,6 +240,8 @@ export default defineSchema({
     /** Set on a sub-activity: the activity it belongs to. Nesting can go any depth. */
     parentId: v.optional(v.id("activities")),
     ...activityFields,
+    /** Photographer credit for a Google Places photo (Google requires showing it). Cleared when the photo changes. */
+    photoCredit: v.optional(v.string()),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     order: v.number(),

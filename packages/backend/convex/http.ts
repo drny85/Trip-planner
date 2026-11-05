@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { htmlToText, IMPORT_FILE_TYPES, MAX_IMPORT_BYTES } from "./lib/bookings";
+import { freshPhotoUri, isPlaceId } from "./lib/googlePlaces";
 
 const http = httpRouter();
 
@@ -105,6 +106,24 @@ http.route({
       fileName: storageId ? attachment?.name : undefined,
     });
     return new Response("ok", { status: 200 });
+  }),
+});
+
+/**
+ * Photo of a Google place: /place-photo?place=<placeId>&w=<width>. Redirects to a
+ * fresh Google photo URL, so no photo or API key is stored or sent to the apps.
+ * Those URLs are short-lived, so the redirect is cached for an hour only.
+ */
+http.route({
+  path: "/place-photo",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    const url = new URL(request.url);
+    const placeId = url.searchParams.get("place") ?? "";
+    if (!isPlaceId(placeId)) return new Response("Bad place", { status: 400 });
+    const uri = await freshPhotoUri(placeId, Number(url.searchParams.get("w") ?? 1200));
+    if (!uri) return new Response("No photo", { status: 404, headers: { "Cache-Control": "public, max-age=3600" } });
+    return new Response(null, { status: 302, headers: { Location: uri, "Cache-Control": "public, max-age=3600" } });
   }),
 });
 

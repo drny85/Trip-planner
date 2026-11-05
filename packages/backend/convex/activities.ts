@@ -94,7 +94,9 @@ export const update = mutation({
   },
   handler: async (ctx, { activityId, patch }) => {
     const activity = await getOwnedActivity(ctx, activityId);
-    const next = { ...patch };
+    const next: typeof patch & { photoCredit?: undefined } = { ...patch };
+    // A new photo isn't the photographer's any more.
+    if (patch.photoUrl !== undefined && patch.photoUrl !== activity.photoUrl) next.photoCredit = undefined;
     // Changing the category clears a subcategory that no longer fits; "" clears it on purpose.
     if (patch.category !== undefined || patch.subcategory !== undefined) {
       next.subcategory = checkedSubcategory(patch.category ?? activity.category, patch.subcategory ?? activity.subcategory);

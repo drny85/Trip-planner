@@ -116,6 +116,11 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               >
                 {badge.emoji} {badge.text}
               </span>
+              {activity.photoCredit && (
+                <span className="absolute bottom-1.5 right-2 max-w-[90%] truncate rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white/90">
+                  © {activity.photoCredit} · Google Maps
+                </span>
+              )}
               <AnimatePresence>
                 {done && (
                   <motion.div
