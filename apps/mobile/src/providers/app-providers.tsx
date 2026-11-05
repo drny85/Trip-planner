@@ -21,7 +21,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   if (!clerkKey) {
     return (
       <ConvexProvider client={convex}>
-        <SyncLanguage />
+        <SyncLanguage ready />
         {children}
       </ConvexProvider>
     );
@@ -31,7 +31,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ClerkProvider publishableKey={clerkKey} tokenCache={tokenCache}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SyncUser />
-        <SyncLanguage />
+        <SyncLanguageWhenSignedIn />
         {children}
       </ConvexProviderWithClerk>
     </ClerkProvider>
@@ -48,12 +48,16 @@ function SyncUser() {
   return null;
 }
 
-/** Saves the app language on the account, so notifications and AI trips use it too. */
-function SyncLanguage() {
-  const { locale } = useI18n();
+/** Waits for sign-in before saving the language. useConvexAuth only works under ConvexProviderWithClerk. */
+function SyncLanguageWhenSignedIn() {
   const { isLoading, isAuthenticated } = useConvexAuth();
+  return <SyncLanguage ready={!isLoading && isAuthenticated} />;
+}
+
+/** Saves the app language on the account, so notifications and AI trips use it too. */
+function SyncLanguage({ ready }: { ready: boolean }) {
+  const { locale } = useI18n();
   const setLanguage = useMutation(api.users.setLanguage);
-  const ready = !isLoading && (isAuthenticated || !authEnabled);
   useEffect(() => {
     if (ready) void setLanguage({ language: locale }).catch(() => {});
   }, [ready, locale, setLanguage]);

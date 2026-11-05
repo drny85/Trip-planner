@@ -19,7 +19,11 @@ export function LanguageScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-2 p-4 pb-16">
+    // The sheet has no native header: on a form sheet it drew over the first row.
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-2 p-4 pt-6 pb-16">
+      <Text accessibilityRole="header" className="mb-2 px-2 text-2xl font-bold text-foreground">
+        {t("mobile.titleLanguage")}
+      </Text>
       <Row selected={choice === null} title={t("mobile.useDevice")} hint={t("mobile.useDeviceHint", { language: localeNames[device] })} onPress={() => pick(null)} />
       <View className="h-2" />
       {locales.map((l) => (
