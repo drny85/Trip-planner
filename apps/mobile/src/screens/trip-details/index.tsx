@@ -16,6 +16,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
 import { webUrl } from "@/lib/open";
+import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
@@ -74,6 +75,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
       >
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
+        <BudgetCard trip={trip} />
         {trip.subTrips.map((subTrip, index) => (
           <View
             key={subTrip._id}

@@ -9,6 +9,8 @@
     "./types": "./convex/lib/types.ts",
     "./categories": "./convex/lib/categories.ts",
     "./tree": "./convex/lib/tree.ts",
+    "./budget": "./convex/lib/budget.ts",
+    "./upNext": "./convex/lib/upNext.ts",
     "./optimistic": "./src/optimistic.ts",
     "./schemas": "./src/tripSchema.ts"
   },

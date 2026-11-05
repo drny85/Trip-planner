@@ -23,6 +23,9 @@
       --color-accent: #f59e0b;
       --color-success: #16a34a;
       --color-danger: #dc2626;
+      /* Same in both themes: text and icons on photos and dark hero cards. */
+      --color-on-image: #ffffff;
+      --color-ink: #020617;
     }
     @variant dark {
       --color-background: #0b0f14;
@@ -36,6 +39,9 @@
       --color-accent: #fbbf24;
       --color-success: #4ade80;
       --color-danger: #f87171;
+      /* Same in both themes: text and icons on photos and dark hero cards. */
+      --color-on-image: #ffffff;
+      --color-ink: #020617;
     }
   }
 }

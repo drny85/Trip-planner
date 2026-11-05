@@ -20,7 +20,10 @@ export function ActivityEditor({ activity, onDone, compact = false }: { activity
     bookingUrl: activity.bookingUrl ?? "",
     category: (activity.category ?? "other") as Category,
     subcategory: activity.subcategory ?? "",
+    estimatedCost: activity.estimatedCost?.toString() ?? "",
+    actualCost: activity.actualCost?.toString() ?? "",
   });
+  const num = (text: string) => (text.trim() === "" || Number.isNaN(Number(text)) ? undefined : Math.max(0, Number(text)));
   const field = (key: keyof typeof form) => ({
     value: form[key],
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -44,6 +47,8 @@ export function ActivityEditor({ activity, onDone, compact = false }: { activity
           category: form.category,
           // "" clears it on the server.
           subcategory: form.subcategory,
+          estimatedCost: num(form.estimatedCost),
+          actualCost: num(form.actualCost),
         },
       });
       onDone();
@@ -93,6 +98,14 @@ export function ActivityEditor({ activity, onDone, compact = false }: { activity
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
         Start time
         <input type="time" className={input} {...field("startTime")} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
+        Estimated cost
+        <input type="number" min={0} step="any" inputMode="decimal" placeholder="Per person" className={input} {...field("estimatedCost")} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">
+        Actually spent
+        <input type="number" min={0} step="any" inputMode="decimal" placeholder="Per person" className={input} {...field("actualCost")} />
       </label>
       {!compact && <>
       <label className="flex flex-col gap-1 text-sm font-semibold text-muted-foreground">

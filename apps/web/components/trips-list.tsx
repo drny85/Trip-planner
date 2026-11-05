@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { rise } from "@/lib/motion";
 import { SmartImage } from "./smart-image";
+import { UpNext } from "./up-next";
 
 export function TripsList() {
   const trips = useQuery(api.trips.list);
@@ -22,6 +23,8 @@ export function TripsList() {
         </div>
         {trips && trips.length > 0 && <DemoButton variant="link" />}
       </motion.div>
+
+      <UpNext />
 
       {trips === undefined ? (
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
