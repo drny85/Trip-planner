@@ -14,6 +14,7 @@ import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { callPhone, openDirections, openInAppBrowser } from "@/lib/open";
 import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
+import { ActivityPhotos } from "./memories";
 import { SubSteps } from "./sub-steps";
 
 /** `canEdit` is false for trip members: they check things off but don't edit. */
@@ -140,6 +141,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                 </Button>
               ) : null}
             </View>
+            <ActivityPhotos activityId={activity._id} />
           </View>
         </PressableScale>
         <SubSteps parent={activity} tripId={tripId} canEdit={canEdit} />

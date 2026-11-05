@@ -70,6 +70,18 @@ export default defineSchema({
     .index("by_tripId_status", ["tripId", "status"])
     .index("by_subTripId", ["subTripId"]),
 
+  /** Photos travelers add to an activity, to relive the trip later. */
+  memories: defineTable({
+    tripId: v.id("trips"),
+    activityId: v.id("activities"),
+    storageId: v.id("_storage"),
+    uploadedBy: v.string(),
+    caption: v.optional(v.string()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_activityId", ["activityId"])
+    .index("by_storageId", ["storageId"]),
+
   votes: defineTable({
     suggestionId: v.id("suggestions"),
     tripId: v.id("trips"),

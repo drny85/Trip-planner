@@ -139,6 +139,13 @@ pnpm build       # Next.js production build
 - Every idea goes to a vote. The author's vote counts as yes. Once more than half of the travelers vote yes, it's added at the end of its day. Once that can no longer happen, it's dropped. When someone leaves, open ideas are re-checked against the smaller group.
 - In demo mode everyone is the same user, so try invites with Clerk turned on (see "Turn on sign-in").
 
+## Memories
+
+- Anyone on the trip can add photos to an activity: the 📷 button on web, or on mobile the camera or photo library (`expo-image-picker`). Photos are kept in Convex file storage, as images up to 15 MB.
+- Each card shows its photos, and the trip page has a Memories album grouped by day with a full-screen viewer. Photos can have captions. The person who added a photo, or the organizer, can delete it.
+- Deleting an activity or a trip deletes its photos.
+- Mobile needs a new development build after this change, because the image picker is a native module.
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.

@@ -36,7 +36,14 @@
         }
       ],
       "@clerk/expo",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Trip Planner lets you add photos from your library to the activities on your trips.",
+          "cameraPermission": "Trip Planner lets you take photos to add to the activities on your trips."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

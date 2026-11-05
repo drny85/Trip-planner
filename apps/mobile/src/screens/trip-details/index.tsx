@@ -18,6 +18,7 @@ import { Button } from "@/components/button";
 import { webUrl } from "@/lib/open";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
+import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { Crew, IdeasSection } from "./together";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
@@ -67,6 +68,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
   // Activities are rendered in a ScrollView (a trip has tens of items, not thousands), so
   // cards can animate in once and reflow smoothly when they are reordered.
   return (
+    <MemoriesProvider tripId={trip._id}>
     <View className="flex-1 bg-background">
       <Animated.ScrollView
         ref={scrollRef}
@@ -89,6 +91,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
             <DaySection subTrip={subTrip} tripId={trip._id} sectionIndex={index} canEdit={isOwner} />
           </View>
         ))}
+        <MemoriesGallery />
         <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
         {isOwner ? (
           <>
@@ -110,6 +113,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
         </Text>
       </Animated.View>
     </View>
+    </MemoriesProvider>
   );
 }
 

@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, type MutationCtx } from "./_generated/server";
 import { getMemberActivity, getOwnedActivity, getOwnedTrip } from "./lib/auth";
 import { isSubcategoryOf } from "./lib/categories";
+import { deleteMemory } from "./memories";
 import { activityFields } from "./lib/validators";
 
 /** Drops a subcategory that doesn't belong under the activity's category. */
@@ -156,7 +157,13 @@ export const remove = mutation({
   args: { activityId: v.id("activities") },
   handler: async (ctx, { activityId }) => {
     const activity = await getOwnedActivity(ctx, activityId);
-    await Promise.all((await subtree(ctx, activity)).map((a) => ctx.db.delete("activities", a._id)));
+    const tree = await subtree(ctx, activity);
+    // Photos attached to these activities go with them.
+    for (const a of tree) {
+      const photos = await ctx.db.query("memories").withIndex("by_activityId", (q) => q.eq("activityId", a._id)).collect();
+      await Promise.all(photos.map((m) => deleteMemory(ctx, m._id, m.storageId)));
+    }
+    await Promise.all(tree.map((a) => ctx.db.delete("activities", a._id)));
     await renumber(ctx, await siblings(ctx, activity.subTripId, activity.parentId));
   },
 });
