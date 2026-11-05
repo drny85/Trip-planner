@@ -295,6 +295,8 @@ export const de: Shape<typeof en> = {
     show: "Karte anzeigen",
     hide: "Karte ausblenden",
     route: "Tagesroute",
+    short: "Karte",
+    dayLabel: "Karte für Tag {day}",
   },
   share: {
     share: "Teilen",

@@ -292,6 +292,8 @@ export const en = {
     show: "Show map",
     hide: "Hide map",
     route: "Route for the day",
+    short: "Map",
+    dayLabel: "Map of day {day}",
   },
   share: {
     share: "Share",

@@ -295,6 +295,8 @@ export const ja: Shape<typeof en> = {
     show: "地図を表示",
     hide: "地図を隠す",
     route: "この日のルート",
+    short: "地図",
+    dayLabel: "{day}日目の地図",
   },
   share: {
     share: "共有",

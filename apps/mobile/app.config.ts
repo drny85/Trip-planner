@@ -120,6 +120,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     predictiveBackGestureEnabled: false,
     package: "com.tripplanner.app",
+    // Native day maps on Android use Google Maps, which needs a key; without one they stay hidden.
+    ...(process.env.GOOGLE_MAPS_ANDROID_API_KEY ? { config: { googleMaps: { apiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY } } } : {}),
   },
   web: {
     output: "single",
