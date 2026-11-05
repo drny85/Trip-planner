@@ -30,37 +30,74 @@ function addDays(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
-/** "2027-04-02" + "08:30" + 90 -> ["20270402T083000", "20270402T100000"]. */
-function span(date: string, time: string, minutes: number) {
-  const [h, m] = time.split(":").map(Number);
-  const start = (h ?? 0) * 60 + (m ?? 0);
-  const end = start + Math.max(15, minutes);
-  const endDate = addDays(date, Math.floor(end / 1440));
-  const e = end % 1440;
-  return [`${compact(date)}T${pad(h ?? 0)}${pad(m ?? 0)}00`, `${compact(endDate)}T${pad(Math.floor(e / 60))}${pad(e % 60)}00`] as const;
-}
-
 /** Long lines must be folded at 75 octets (RFC 5545); folding at 73 chars keeps it simple. */
 const fold = (line: string) => line.match(/.{1,73}/g)!.join("\r\n ");
 
-export function toICS(trip: CalTrip, now = new Date()) {
-  const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Trip Planner//EN", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${esc(trip.title)}`];
-  const event = (uid: string, title: string, when: string[], description = "", location = "") =>
-    lines.push("BEGIN:VEVENT", `UID:${uid}@tripplanner`, `DTSTAMP:${stamp}`, ...when, `SUMMARY:${esc(title)}`, ...(description ? [`DESCRIPTION:${esc(description)}`] : []), ...(location ? [`LOCATION:${esc(location)}`] : []), "END:VEVENT");
+/**
+ * One calendar event. Timed ones carry local wall-clock parts (no time zone);
+ * all-day ones carry just the date and the day after it.
+ */
+export type TripCalendarEvent = {
+  /** Stable across syncs: the activity id, or "<day id>-day". */
+  key: string;
+  title: string;
+  notes: string;
+  location: string;
+  allDay: boolean;
+  /** "YYYY-MM-DD" and, for timed events, "HH:MM". End is exclusive. */
+  start: { date: string; time?: string };
+  end: { date: string; time?: string };
+};
 
+/** Every event the trip puts on a calendar: timed activities and steps, and one all-day event per day. */
+export function calendarEvents(trip: CalTrip): TripCalendarEvent[] {
+  const out: TripCalendarEvent[] = [];
   for (const day of trip.subTrips) {
     const date = day.date ?? addDays(trip.startDate, day.dayNumber - 1);
     const walk = (nodes: CalActivity[]) =>
       nodes.forEach((a) => {
-        if (a.startTime && /^\d{1,2}:\d{2}$/.test(a.startTime)) {
-          const [start, end] = span(date, a.startTime, a.durationMinutes ?? 60);
-          event(a._id, a.title, [`DTSTART:${start}`, `DTEND:${end}`], a.description, a.address);
+        const m = a.startTime ? /^(\d{1,2}):(\d{2})$/.exec(a.startTime) : null;
+        if (m) {
+          const startMin = Number(m[1]) * 60 + Number(m[2]);
+          const endMin = startMin + Math.max(15, a.durationMinutes ?? 60);
+          const e = endMin % 1440;
+          out.push({
+            key: a._id,
+            title: a.title,
+            notes: a.description,
+            location: a.address,
+            allDay: false,
+            start: { date, time: `${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}` },
+            end: { date: addDays(date, Math.floor(endMin / 1440)), time: `${pad(Math.floor(e / 60))}:${pad(e % 60)}` },
+          });
         }
         walk(a.children);
       });
     walk(day.activities);
-    event(`${day._id}-day`, `${trip.title}: ${day.title}`, [`DTSTART;VALUE=DATE:${compact(date)}`, `DTEND;VALUE=DATE:${compact(addDays(date, 1))}`]);
+    out.push({ key: `${day._id}-day`, title: `${trip.title}: ${day.title}`, notes: "", location: "", allDay: true, start: { date }, end: { date: addDays(date, 1) } });
+  }
+  return out;
+}
+
+const stampOf = (p: { date: string; time?: string }) => (p.time ? `${compact(p.date)}T${p.time.replace(":", "")}00` : compact(p.date));
+
+export function toICS(trip: CalTrip, now = new Date()) {
+  const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Trip Planner//EN", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${esc(trip.title)}`];
+  for (const e of calendarEvents(trip)) {
+    const when = e.allDay
+      ? [`DTSTART;VALUE=DATE:${stampOf(e.start)}`, `DTEND;VALUE=DATE:${stampOf(e.end)}`]
+      : [`DTSTART:${stampOf(e.start)}`, `DTEND:${stampOf(e.end)}`];
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${e.key}@tripplanner`,
+      `DTSTAMP:${stamp}`,
+      ...when,
+      `SUMMARY:${esc(e.title)}`,
+      ...(e.notes ? [`DESCRIPTION:${esc(e.notes)}`] : []),
+      ...(e.location ? [`LOCATION:${esc(e.location)}`] : []),
+      "END:VEVENT",
+    );
   }
   lines.push("END:VCALENDAR");
   return lines.map(fold).join("\r\n") + "\r\n";

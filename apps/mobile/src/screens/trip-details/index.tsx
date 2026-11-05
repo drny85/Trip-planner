@@ -21,7 +21,8 @@ import { scheduleOnRN } from "react-native-worklets";
 import { Button } from "@/components/button";
 import { OfflineBanner } from "@/components/offline-banner";
 import { useCachedQuery } from "@/hooks/use-cached-query";
-import { shareCalendar } from "@/lib/calendar";
+import { addToCalendar } from "@/lib/calendar";
+import { refreshSyncedCalendar } from "@/lib/device-calendar";
 import { scheduleTripReminders } from "@/lib/notifications";
 import { shareItineraryPdf } from "@/lib/pdf";
 import { webUrl } from "@/lib/open";
@@ -67,10 +68,13 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   const dayOffsets = useRef<Record<string, number>>({});
   const { t } = useI18n();
 
-  // Re-schedule this trip's local reminders whenever its times or titles change.
-  const reminderKey = JSON.stringify(trip.subTrips.map((d) => [d.date, d.activities.map((a) => [a.title, a.startTime, a.children.map((c) => [c.title, c.startTime])])]));
+  // Re-schedule this trip's local reminders (and calendar events) whenever its times, titles or places change.
+  const step = (a: TripDetailsData["subTrips"][number]["activities"][number]) => [a.title, a.startTime, a.durationMinutes, a.address];
+  const reminderKey = JSON.stringify(trip.subTrips.map((d) => [d.date, d.title, d.activities.map((a) => [...step(a), a.children.map(step)])]));
   useEffect(() => {
     void scheduleTripReminders(trip).catch(() => undefined);
+    // If the trip was added to the phone's calendar, keep those events in step too.
+    void refreshSyncedCalendar(trip).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reminderKey captures what matters
   }, [trip._id, reminderKey]);
 
@@ -144,7 +148,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <SplitCostsSection tripId={trip._id} />
         <PackingSection tripId={trip._id} />
         <View className="mt-10 gap-2 px-4">
-          <Button variant="secondary" icon="calendar" onPress={() => void shareCalendar(trip).catch((e: unknown) => Alert.alert(t("mobile.couldntExport"), e instanceof Error ? e.message : undefined))}>
+          <Button variant="secondary" icon="calendar" onPress={() => addToCalendar(trip)}>
             {t("trip.addToCalendar")}
           </Button>
           <Button variant="secondary" icon="document" onPress={() => void shareItineraryPdf(trip).catch((e: unknown) => Alert.alert(t("print.couldnt"), e instanceof Error ? e.message : undefined))}>

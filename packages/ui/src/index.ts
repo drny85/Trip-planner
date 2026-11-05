@@ -14,7 +14,7 @@ export function tripLength(start: string, end: string) {
   const ms = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
   return Math.max(1, Math.round(ms / 86_400_000) + 1);
 }
-export { toICS } from "./calendar";
+export { calendarEvents, toICS, type TripCalendarEvent } from "./calendar";
 export { describeWeather, forecastUrl, inForecastRange, parseForecast, type DayWeather, type WeatherKind } from "./weather";
 
 /** "Day 2 · Kyoto" / "Día 2 · Kioto" / "2日目 · 京都" -> "Kyoto": drops the day prefix, since the apps show the day number already. */

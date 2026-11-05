@@ -65,3 +65,21 @@ describe("12-hour times", async () => {
     expect(parseTime("soon")).toBeNull();
   });
 });
+
+describe("calendarEvents", () => {
+  test("keeps stable keys and wraps past midnight", async () => {
+    const { calendarEvents } = await import("./calendar");
+    const events = calendarEvents({
+      _id: "t",
+      title: "Trip",
+      startDate: "2027-04-02",
+      subTrips: [
+        { _id: "d2", dayNumber: 2, title: "Day two", activities: [{ _id: "a", title: "Late show", description: "", address: "Club", startTime: "23:30", durationMinutes: 90, children: [] }] },
+      ],
+    });
+    expect(events).toEqual([
+      { key: "a", title: "Late show", notes: "", location: "Club", allDay: false, start: { date: "2027-04-03", time: "23:30" }, end: { date: "2027-04-04", time: "01:00" } },
+      { key: "d2-day", title: "Trip: Day two", notes: "", location: "", allDay: true, start: { date: "2027-04-03" }, end: { date: "2027-04-04" } },
+    ]);
+  });
+});
