@@ -20,6 +20,7 @@ import { DayWeatherChip } from "./day-weather";
 import { Ideas } from "./ideas";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingList } from "./packing-list";
+import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
 
@@ -225,6 +226,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
 
         <MemoriesGallery subTrips={trip.subTrips} />
         {mode !== "public" && <Ideas tripId={trip._id} subTrips={trip.subTrips} />}
+        {mode !== "public" && <SplitCosts tripId={trip._id} />}
         {mode !== "public" && <PackingList tripId={trip._id} />}
         {mode === "owner" && <DeleteTrip tripId={trip._id} title={trip.title} />}
         {mode === "member" && <LeaveTrip tripId={trip._id} title={trip.title} />}

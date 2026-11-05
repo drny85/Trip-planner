@@ -11,6 +11,7 @@
   import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
   import type * as activities from "../activities.js";
 import type * as ai from "../ai.js";
+import type * as expenses from "../expenses.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_budget from "../lib/budget.js";
 import type * as lib_categories from "../lib/categories.js";
@@ -20,6 +21,7 @@ import type * as lib_majority from "../lib/majority.js";
 import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
 import type * as lib_photos from "../lib/photos.js";
+import type * as lib_settle from "../lib/settle.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as lib_tree from "../lib/tree.js";
 import type * as lib_tripSchema from "../lib/tripSchema.js";
@@ -47,6 +49,7 @@ import type * as users from "../users.js";
   declare const fullApi: ApiFromModules<{
     "activities": typeof activities,
 "ai": typeof ai,
+"expenses": typeof expenses,
 "lib/auth": typeof lib_auth,
 "lib/budget": typeof lib_budget,
 "lib/categories": typeof lib_categories,
@@ -56,6 +59,7 @@ import type * as users from "../users.js";
 "lib/members": typeof lib_members,
 "lib/modelRouter": typeof lib_modelRouter,
 "lib/photos": typeof lib_photos,
+"lib/settle": typeof lib_settle,
 "lib/tokens": typeof lib_tokens,
 "lib/tree": typeof lib_tree,
 "lib/tripSchema": typeof lib_tripSchema,

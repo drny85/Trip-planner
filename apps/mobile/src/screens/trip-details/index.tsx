@@ -21,6 +21,7 @@ import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingSection } from "./packing";
+import { SplitCostsSection } from "./split-costs";
 import { Crew, IdeasSection } from "./together";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
@@ -95,6 +96,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
         ))}
         <MemoriesGallery />
         <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
+        <SplitCostsSection tripId={trip._id} />
         <PackingSection tripId={trip._id} />
         <View className="mt-10 px-4">
           <Button variant="secondary" icon="calendar" onPress={() => void shareCalendar(trip).catch((e: unknown) => Alert.alert("Couldn't export", e instanceof Error ? e.message : undefined))}>

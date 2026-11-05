@@ -83,6 +83,17 @@ export default defineSchema({
     .index("by_storageId", ["storageId"]),
 
   /** Shared packing list: anyone on the trip adds, ticks off or claims items. */
+  /** Shared costs. A settlement is a payment from `paidBy` to the one person in `splitAmong`. */
+  expenses: defineTable({
+    tripId: v.id("trips"),
+    description: v.string(),
+    amountCents: v.number(),
+    paidBy: v.string(),
+    splitAmong: v.array(v.string()),
+    createdBy: v.string(),
+    isSettlement: v.optional(v.boolean()),
+  }).index("by_tripId", ["tripId"]),
+
   packingItems: defineTable({
     tripId: v.id("trips"),
     text: v.string(),
