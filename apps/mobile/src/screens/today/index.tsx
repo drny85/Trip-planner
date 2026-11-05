@@ -93,7 +93,7 @@ function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day
       <WeatherStrip weather={weather} />
 
       {alerts.map((a) => (
-        <AlertCard key={a.kind} alert={a} day={day} canEdit={canEdit} onReplan={() => replan(a.reason)} />
+        <AlertCard key={a.kind} alert={a} day={day} canEdit={canEdit} onReplan={() => replan(reasonText({ t, f }, a, now))} />
       ))}
 
       {next ? (
@@ -366,4 +366,12 @@ function NotToday({ trip, today }: { trip: TripDetails; today: string }) {
 function outdoorText(t: ReturnType<typeof useI18n>["t"], places: string[]) {
   const listed = places.slice(0, 3).join(", ");
   return t("today.outdoors", { count: places.length, places: places.length > 3 ? t("today.andMore", { places: listed }) : listed });
+}
+
+/** The re-plan request for an alert, in the app language (the AI also writes back in it). */
+function reasonText(i18n: Pick<ReturnType<typeof useI18n>, "t" | "f">, alert: TodayAlert, now: number) {
+  const clock = i18n.f.time(fromMinutes(now));
+  return alert.kind === "rain"
+    ? i18n.t("today.reasonRain", { clock, time: i18n.f.time(alert.at), percent: alert.chance, places: alert.outdoor.join(", ") })
+    : i18n.t("today.reasonLate", { clock, minutes: alert.minutes });
 }

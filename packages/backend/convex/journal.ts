@@ -2,10 +2,11 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { isLocale } from "@trip/i18n";
+import { isLocale, translator, type MessageKey, type Messages } from "@trip/i18n";
 import { aiVia, generateViaAnthropic, generateViaGateway, languageInstruction } from "./ai";
 import { findMembership, getMemberActivity, getMemberTrip, getOptionalUserId, getOwnedTrip } from "./lib/auth";
 import { listMembers } from "./lib/members";
+import { languageOf } from "./lib/notify";
 import { modelsFor, nextTier, type Tier } from "./lib/modelRouter";
 import { STORY_PROMPT, type Story, type StoryInput, storyPrompt, storySchema, templateStory, toStory } from "./lib/story";
 import { newToken } from "./lib/tokens";
@@ -56,8 +57,9 @@ export const saveNote = mutation({
   args: { activityId: v.id("activities"), text: v.string() },
   handler: async (ctx, { activityId, text }) => {
     const { activity, userId } = await getMemberActivity(ctx, activityId);
+    const t = translator(await languageOf(ctx, userId));
     const clean = text.trim();
-    if (clean.length > MAX_NOTE) throw new Error(`Keep notes under ${MAX_NOTE} characters`);
+    if (clean.length > MAX_NOTE) throw new Error(t("errors.noteTooLong", { max: MAX_NOTE }));
     const existing = await ctx.db
       .query("journalNotes")
       .withIndex("by_activityId_authorId", (q) => q.eq("activityId", activityId).eq("authorId", userId))
@@ -70,7 +72,7 @@ export const saveNote = mutation({
       await ctx.db.patch("journalNotes", existing._id, { text: clean });
       return existing._id;
     }
-    if (!activity.isCompleted) throw new Error("Mark it done first, then add a note");
+    if (!activity.isCompleted) throw new Error(t("errors.noteNotDone"));
     return ctx.db.insert("journalNotes", { tripId: activity.tripId, activityId, authorId: userId, text: clean });
   },
 });
@@ -82,7 +84,7 @@ export const removeNote = mutation({
     const note = await ctx.db.get("journalNotes", noteId);
     if (!note) return;
     const { trip, userId } = await getMemberTrip(ctx, note.tripId);
-    if (note.authorId !== userId && trip.userId !== userId) throw new Error("Only the person who wrote it or the organizer can delete it");
+    if (note.authorId !== userId && trip.userId !== userId) throw new Error(translator(await languageOf(ctx, userId))("errors.noteDeleteForbidden"));
     await ctx.db.delete("journalNotes", noteId);
   },
 });
@@ -192,12 +194,13 @@ export const story = query({
       ctx.db.query("journalNotes").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
     ]);
     const isOwner = member.role === "owner";
+    const t = translator(await languageOf(ctx, userId!));
     const stuck = row?.status === "writing" && Date.now() - row.requestedAt >= WRITING_TIMEOUT_MS;
     const hasStory = Boolean(row?.title);
     const status = !row ? null : row.status === "writing" && !stuck ? "writing" : hasStory ? "ready" : "failed";
     return {
       status,
-      error: stuck ? "That took too long. Please try again." : status === "writing" ? undefined : row?.error,
+      error: stuck ? t("errors.storyTimeout") : status === "writing" ? undefined : row?.error && storyError(t, row.error),
       isPublished: row?.isPublished ?? false,
       model: row?.model,
       story: row && hasStory ? await resolveStory(ctx, trip, row) : null,
@@ -210,6 +213,14 @@ export const story = query({
     };
   },
 });
+
+/**
+ * A failed story stores a message key ("errors.storyRefused") so each reader
+ * sees it in their own language. Older rows hold plain English text.
+ */
+function storyError(t: ReturnType<typeof translator>, error: string) {
+  return error.startsWith("errors.") ? t(error as MessageKey<Messages>) : error;
+}
 
 /** A published story, for anyone with the trip's share link. */
 export const publicStory = query({
@@ -238,15 +249,16 @@ export const writeStory = mutation({
   args: { tripId: v.id("trips"), language: v.optional(v.string()) },
   handler: async (ctx, { tripId, language }) => {
     const { userId } = await getMemberTrip(ctx, tripId);
+    const t = translator(await languageOf(ctx, userId));
     const done = await ctx.db
       .query("activities")
       .withIndex("by_tripId", (q) => q.eq("tripId", tripId))
       .filter((q) => q.eq(q.field("isCompleted"), true))
       .first();
-    if (!done) throw new Error("Check off a few activities first, so there's something to write about");
+    if (!done) throw new Error(t("errors.storyNothingYet"));
     const row = await findStory(ctx, tripId);
     const now = Date.now();
-    if (row?.status === "writing" && now - row.requestedAt < WRITING_TIMEOUT_MS) throw new Error("The story is already being written");
+    if (row?.status === "writing" && now - row.requestedAt < WRITING_TIMEOUT_MS) throw new Error(t("errors.storyBusy"));
     if (row) await ctx.db.patch("tripStories", row._id, { status: "writing", requestedBy: userId, requestedAt: now, error: undefined });
     else await ctx.db.insert("tripStories", { tripId, status: "writing", requestedBy: userId, requestedAt: now, isPublished: false });
     await ctx.scheduler.runAfter(0, internal.journal.generateStory, { tripId, requestedAt: now, language });
@@ -259,7 +271,7 @@ export const publishStory = mutation({
   handler: async (ctx, { tripId, published }) => {
     const trip = await getOwnedTrip(ctx, tripId);
     const row = await findStory(ctx, tripId);
-    if (!row?.title) throw new Error("Write the story first");
+    if (!row?.title) throw new Error(translator(await languageOf(ctx, trip.userId))("errors.storyNotWritten"));
     await ctx.db.patch("tripStories", row._id, { isPublished: published });
     if (!published) return null;
     if (trip.shareToken) return trip.shareToken;
@@ -332,7 +344,7 @@ export const generateStory = internalAction({
     const via = aiVia();
     if (!via) {
       const story = templateStory(input);
-      return story ? save({ story, model: "template" }) : save({ error: "Check off a few activities first" });
+      return story ? save({ story, model: "template" }) : save({ error: "errors.storyNoDone" });
     }
     try {
       const content = storyPrompt(input);
@@ -341,15 +353,15 @@ export const generateStory = internalAction({
       while (tier) {
         const models = modelsFor(tier, via);
         const result = via === "gateway" ? await generateViaGateway(models, tier, content, spec) : await generateViaAnthropic(models[0]!, tier, content, spec);
-        if (result.refused) return save({ error: "The writer couldn't help with this trip. Try editing the notes." });
+        if (result.refused) return save({ error: "errors.storyRefused" });
         const story: Story | null = result.trip && !result.truncated ? toStory(result.trip, input) : null;
         if (story) return save({ story, model: result.model });
         tier = process.env.AI_MODEL ? null : nextTier(tier);
       }
-      return save({ error: "The story came back incomplete. Please try again." });
+      return save({ error: "errors.storyIncomplete" });
     } catch (e) {
       console.error("generateStory failed", e);
-      return save({ error: "Something went wrong writing the story. Please try again." });
+      return save({ error: "errors.storyFailed" });
     }
   },
 });
