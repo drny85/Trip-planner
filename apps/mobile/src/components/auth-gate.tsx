@@ -1,4 +1,4 @@
-import { useSession, useUser, useAuth } from "@clerk/expo";
+import { useAuth, useSession, useUser } from "@clerk/expo";
 import { useHostedAuth } from "@clerk/expo/hosted-auth";
 import { AuthView } from "@clerk/expo/native-components";
 import { useI18n } from "@trip/i18n/react";
@@ -17,10 +17,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
 }
 
 function ClerkGate({ children }: { children: ReactNode }) {
-  const [wantsAuth, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const { session } = useSession();
-  // The sheet closes itself once the session is fully active (after MFA or other session tasks).
-  const authOpen = wantsAuth && session?.status !== "active";
+  // Native components need pending sessions (MFA and other session tasks) to count as signed in.
+  const { isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
+  const active = isSignedIn && session?.status === "active";
+  // Close the sheet once sign-in has fully finished, and forget that it was open, so it doesn't
+  // pop up again by itself after a later sign-out. (State adjusted during render, not in an effect.)
+  if (authOpen && active) setAuthOpen(false);
 
   return (
     <>
@@ -36,7 +40,7 @@ function ClerkGate({ children }: { children: ReactNode }) {
       {/* Clerk's native sign-in (SwiftUI / Jetpack Compose). Mounted beside, not inside, the
           signed-out screen, so it isn't torn down while session tasks are still finishing. */}
       {Platform.OS !== "web" && (
-        <Modal visible={authOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAuthOpen(false)}>
+        <Modal visible={authOpen && !active} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAuthOpen(false)}>
           <AuthView onDismiss={() => setAuthOpen(false)} />
         </Modal>
       )}
