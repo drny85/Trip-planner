@@ -1,6 +1,6 @@
 import type { TripTreeInput } from "./validators";
 
-import { photoFor, unsplash } from "./photos";
+import { unsplash } from "./photos";
 
 /**
  * Dummy trip used to build the UI before AI generation exists.
@@ -9,21 +9,22 @@ import { photoFor, unsplash } from "./photos";
  */
 const PHOTOS: Record<string, string> = {
   "tokyo-skyline": "1540959733332-eab4deabeeaf",
-  sensoji: "1545569341-9eb8b30979d9",
-  tempura: "1579584425555-c3ce17fd4351",
+  sensoji: "1580167227251-be70f01b0c51",
+  tempura: "1570078362689-c57c33cca104",
   "ueno-park": "1522383225653-ed111181a951",
-  skytree: "1536098561742-ca998e48cbcc",
-  "meiji-jingu": "1528360983277-13d401cdc186",
+  skytree: "1681685544703-fd783db99515",
+  "meiji-jingu": "1703443371292-0d9081cc4787",
   takeshita: "1503899036084-c55cdd92da26",
   "shibuya-sky": "1542051841857-5f90071e7989",
   "omoide-yokocho": "1554797589-7241bb691973",
   tsukiji: "1553621042-f6e147245754",
-  teamlab: "1513407030348-c983a97b98d8",
-  shinkansen: "1474487548417-781cb71495f3",
+  teamlab: "1761263225198-c2bf51cc4d28",
+  shinkansen: "1514337224818-9787cf717f2a",
   "fushimi-inari": "1478436127897-769e1b3f0f36",
-  arashiyama: "1524413840807-0c3cb6fa808d",
-  kaiseki: "1617196034796-73dfa7b1fd56",
-  kinkakuji: "1493976040374-85c8e12f0c0e",
+  arashiyama: "1698618988744-737573cb6a7a",
+  kaiseki: "1766582931800-fd79665257fa",
+  kinkakuji: "1648383350531-97d64e7a6fb8",
+  "gion-machiya": "1771877538970-a8273438df6b",
 };
 const photo = (key: string) => unsplash(PHOTOS[key]!, 1000);
 
@@ -260,7 +261,7 @@ export const tokyoAdventure: TripTreeInput = {
           title: "Stay in a Gion machiya",
           description: "A restored wooden townhouse booked on Airbnb, a short walk from Yasaka Shrine.",
           address: "Gionmachi Minamigawa, Higashiyama Ward, Kyoto 605-0074",
-          photoUrl: photoFor("lodging", "gion-machiya", 1000),
+          photoUrl: photo("gion-machiya"),
           bookingUrl: "https://www.airbnb.com/",
           category: "lodging",
           subcategory: "airbnb",
@@ -272,7 +273,7 @@ export const tokyoAdventure: TripTreeInput = {
               title: "Pick up keys from the lockbox",
               description: "The host sends the code on the morning of arrival.",
               address: "Gionmachi Minamigawa, Higashiyama Ward, Kyoto 605-0074",
-              photoUrl: photoFor("lodging", "gion-machiya", 1000),
+              photoUrl: photo("gion-machiya"),
               category: "lodging",
               subcategory: "airbnb",
               durationMinutes: 10,
