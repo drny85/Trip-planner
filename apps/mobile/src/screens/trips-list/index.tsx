@@ -100,7 +100,12 @@ function TripCard({ trip }: { trip: Trip & { isOwner: boolean } }) {
   return (
     <Link href={{ pathname: "/trips/[tripId]", params: { tripId: trip._id } }} asChild>
       <PressableScale className="h-64 overflow-hidden rounded-[28px] bg-card" pressedScale={0.98}>
-        <SmartImage uri={trip.imageUrl} seed={trip._id} className="absolute inset-0" emoji="✈️" />
+        {/* iOS zooms this photo into the trip page's hero (Link.AppleZoomTarget there). */}
+        <Link.AppleZoom>
+          <View className="absolute inset-0">
+            <SmartImage uri={trip.imageUrl} seed={trip._id} className="absolute inset-0" emoji="✈️" />
+          </View>
+        </Link.AppleZoom>
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.75)"]}
           className="absolute inset-0"
