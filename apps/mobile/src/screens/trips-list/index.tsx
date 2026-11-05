@@ -1,7 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Trip } from "@trip/backend/types";
-import { formatDateRange, tripLength } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { formatDateRange, localToday, tripLength } from "@trip/ui";
+import { useMutation } from "convex/react";
 import { Link, Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
@@ -14,10 +14,12 @@ import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { enterUp } from "@/lib/motion";
 import { BellButton } from "@/screens/notifications";
+import { OfflineBanner } from "@/components/offline-banner";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 import { UpNext } from "./up-next";
 
 export function TripsList() {
-  const trips = useQuery(api.trips.list);
+  const { data: trips, isCached } = useCachedQuery(api.trips.list, {});
   const router = useRouter();
 
   return (
@@ -46,6 +48,8 @@ export function TripsList() {
           contentInsetAdjustmentBehavior="automatic"
           contentContainerClassName="gap-5 p-4 pb-16"
         >
+          <OfflineBanner cached={isCached} />
+          <PrefetchTrips trips={trips} />
           {trips.length === 0 ? (
             <EmptyState />
           ) : (
@@ -151,4 +155,28 @@ function EmptyState() {
       </Button>
     </Animated.View>
   );
+}
+
+/**
+ * Keeps an offline copy of every trip that hasn't ended yet, so the itinerary
+ * opens with no signal even if it wasn't viewed recently.
+ */
+function PrefetchTrips({ trips }: { trips: { _id: Trip["_id"]; endDate: string }[] }) {
+  const today = localToday();
+  return (
+    <>
+      {trips
+        .filter((t) => t.endDate >= today)
+        .slice(0, 6)
+        .map((t) => (
+          <PrefetchTrip key={t._id} tripId={t._id} />
+        ))}
+    </>
+  );
+}
+
+function PrefetchTrip({ tripId }: { tripId: Trip["_id"] }) {
+  useCachedQuery(api.trips.get, { tripId });
+  useCachedQuery(api.packing.list, { tripId });
+  return null;
 }

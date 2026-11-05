@@ -14,6 +14,7 @@ Notifications.setNotificationHandler({
 export async function getPushToken() {
   if (Platform.OS === "web" || !Device.isDevice) return null;
   if (Platform.OS === "android") {
+    // eslint-disable-next-line import/namespace -- re-exported with `export *`, which the rule can't follow
     await Notifications.setNotificationChannelAsync("default", { name: "Trip updates", importance: Notifications.AndroidImportance.DEFAULT });
   }
   const { status } = await Notifications.getPermissionsAsync();

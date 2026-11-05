@@ -1,7 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails as TripDetailsData } from "@trip/backend/types";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Alert, Share, Text, View } from "react-native";
@@ -15,6 +15,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
+import { OfflineBanner } from "@/components/offline-banner";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 import { shareCalendar } from "@/lib/calendar";
 import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
@@ -28,7 +30,7 @@ import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
-  const trip = useQuery(api.trips.get, { tripId });
+  const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
 
   if (trip === undefined) {
     return (
@@ -45,10 +47,10 @@ export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
       </View>
     );
   }
-  return <Itinerary trip={trip} />;
+  return <Itinerary trip={trip} isCached={isCached} />;
 }
 
-function Itinerary({ trip }: { trip: TripDetailsData }) {
+function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolean }) {
   const isOwner = trip.myRole === "owner";
   const insets = useSafeAreaInsets();
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -90,6 +92,7 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
       >
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
+        <OfflineBanner cached={isCached} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
         {trip.subTrips.map((subTrip, index) => (

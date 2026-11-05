@@ -152,6 +152,13 @@ pnpm build       # Next.js production build
 - **Add to calendar**: exports the itinerary as an `.ics` file, one event per timed activity or step plus an all-day event per day (`packages/ui/src/calendar.ts`). Web downloads it; mobile writes it with `expo-file-system` and opens the share sheet (`expo-sharing`), so it needs a new dev build.
 - **Weather**: each day shows the forecast for its first stop with coordinates, from [Open-Meteo](https://open-meteo.com) (free, no key). It only appears once the day is within 16 days, since that's as far as the forecast goes.
 
+## Split costs, notifications, AI re-plan and offline
+
+- **Split costs**: anyone on the trip logs what they paid and who it's split between. Balances and the fewest payments to settle up are worked out in whole cents (`convex/lib/settle.ts`), and "Mark paid" records a settlement.
+- **Notifications**: an in-app feed (bell on web and mobile) for new ideas, vote results, people joining, and shared costs (`convex/lib/notify.ts`). Phones also get a push through Expo's push service (`convex/push.ts`). Push needs an EAS project id in the app config (`eas init`) and a dev build with `expo-notifications`. Without them, the in-app feed still works. Mobile also schedules a local reminder 30 minutes before each timed activity of a trip you open.
+- **AI re-plan a day**: the organizer can ask the AI to re-plan one day ("it's going to rain", "lighter day", or their own words). When the forecast shows a 50% or higher chance of rain, the button becomes a "Rain plan". The proposal is shown first and applied only on "Use this plan". Kept stops keep their photos and steps, and a stop with photos is never removed (`ai.replanDay`, `activities.applyReplan`). It uses the same model routing as trip generation.
+- **Offline itinerary (mobile)**: the trips list, every trip that hasn't ended yet, its packing list and Up next are saved on the device (`useCachedQuery`). With no signal, the app shows the saved copy and a banner, and Convex sends queued changes once it reconnects. The cache is wiped on sign-out.
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.

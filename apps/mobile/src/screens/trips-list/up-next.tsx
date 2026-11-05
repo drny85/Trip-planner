@@ -1,6 +1,6 @@
 import { api } from "@trip/backend/api";
 import { categoryLabel, countdown, formatDay, formatDuration, localToday } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -12,6 +12,7 @@ import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { openDirections } from "@/lib/open";
 import { CSS_EASE_OUT, EASE_OUT } from "@/lib/motion";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 /** Soft pulse for the live dot; loops, so it lives in a CSS animation on the UI thread. */
 const pulse = {
@@ -25,7 +26,7 @@ const pulse = {
  */
 export function UpNext() {
   const [today] = useState(localToday);
-  const next = useQuery(api.trips.upNext, { today });
+  const next = useCachedQuery(api.trips.upNext, { today }).data;
   const setCompleted = useMutation(api.activities.setCompleted);
   const router = useRouter();
   if (!next) return null;
