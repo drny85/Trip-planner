@@ -192,7 +192,9 @@ const REPLAN_PROMPT = `You are an expert travel planner adjusting one day of an 
 - Replace the ones that don't fit the new conditions with real, currently operating places nearby with accurate street addresses.
 - When it's rainy or stormy, prefer indoor or covered places (museums, food halls, galleries, arcades, onsen, covered markets) and keep outdoor time short.
 - Keep the day's pace: about the same number of stops, in a sensible order with travel time between them. Keep meals at normal times.
-- Only include a phone number, booking URL or website when you are confident it is correct.`;
+- Only include a phone number, booking URL or website when you are confident it is correct.
+- Activities with "done": true already happened: keep them (pass their keepId) and don't change them.
+- When you're told the current time, it's the traveler's live day: schedule every remaining stop at or after that time, leaving travel time between stops, and favour places close to each other.`;
 
 type ReplanDay = {
   tripTitle: string;
@@ -200,16 +202,29 @@ type ReplanDay = {
   dayNumber: number;
   date?: string;
   location?: string;
-  activities: { id: string; title: string; category: string; startTime?: string; durationMinutes?: number; address: string; description: string }[];
+  activities: { id: string; title: string; category: string; startTime?: string; durationMinutes?: number; address: string; description: string; done: boolean }[];
 };
 export type ReplanProposal = {
   summary: string;
   model: string;
   activities: (
-    | { keepId: string; title: string; startTime: string; durationMinutes: number }
+    | { keepId: string; title: string; startTime?: string; durationMinutes?: number }
     | (ReturnType<typeof toNewActivity> & { isNew: true })
   )[];
 };
+
+/**
+ * Stops already done are never moved, re-timed or dropped, whatever the model
+ * said: they go first, as they were, and the plan follows.
+ */
+export function keepDoneFirst(current: ReplanDay["activities"], planned: ReplanProposal["activities"]): ReplanProposal["activities"] {
+  const done = current.filter((a) => a.done);
+  const doneIds = new Set(done.map((a) => a.id));
+  return [
+    ...done.map((a) => ({ keepId: a.id, title: a.title, startTime: a.startTime, durationMinutes: a.durationMinutes })),
+    ...planned.filter((a) => !("keepId" in a && doneIds.has(a.keepId))),
+  ];
+}
 
 const replanResult = v.object({
   summary: v.string(),
@@ -226,11 +241,13 @@ export const replanDay = action({
     subTripId: v.id("subTrips"),
     reason: v.string(),
     weather: v.optional(v.object({ label: v.string(), high: v.number(), low: v.number(), rainChance: v.number() })),
+    /** Local "HH:MM" when re-planning the rest of a day that's under way (today mode). */
+    now: v.optional(v.string()),
     /** App language; new stops and the summary are written in it. */
     language: v.optional(v.string()),
   },
   returns: replanResult,
-  handler: async (ctx, { subTripId, reason, weather, language }): Promise<ReplanProposal> => {
+  handler: async (ctx, { subTripId, reason, weather, now, language }): Promise<ReplanProposal> => {
     const userId = await getUserId(ctx);
     const locale = toLocaleArg(language);
     const t = translator(locale);
@@ -240,7 +257,7 @@ export const replanDay = action({
     if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
 
     const forecast = weather ? `Forecast: ${weather.label}, ${weather.high}°/${weather.low}°C, ${weather.rainChance}% chance of rain.\n` : "";
-    const content = `Trip: ${day.tripTitle} in ${day.destination}.\nDay ${day.dayNumber}${day.date ? ` (${day.date})` : ""}${day.location ? ` in ${day.location}` : ""}.\n${forecast}Why re-plan: ${reason.trim().slice(0, 300) || "Make the day better"}.\n\nCurrent plan (JSON):\n${JSON.stringify(day.activities)}`;
+    const content = `Trip: ${day.tripTitle} in ${day.destination}.\nDay ${day.dayNumber}${day.date ? ` (${day.date})` : ""}${day.location ? ` in ${day.location}` : ""}.\n${forecast}${now && /^\d{2}:\d{2}$/.test(now) ? `It's ${now} there right now. Only re-plan what's still ahead today.\n` : ""}Why re-plan: ${reason.trim().slice(0, 300) || "Make the day better"}.\n\nCurrent plan (JSON):\n${JSON.stringify(day.activities)}`;
 
     let tier: Tier | null = "standard";
     while (tier) {
@@ -254,10 +271,13 @@ export const replanDay = action({
         return {
           summary: plan.summary,
           model: result.model,
-          activities: plan.activities.map(({ keepId, ...a }) =>
-            keepId && known.has(keepId)
-              ? { keepId, title: day.activities.find((x) => x.id === keepId)!.title, startTime: a.startTime, durationMinutes: Math.max(0, Math.round(a.durationMinutes)) }
-              : { ...toNewActivity(a, day.destination), isNew: true as const },
+          activities: keepDoneFirst(
+            day.activities,
+            plan.activities.map(({ keepId, ...a }) =>
+              keepId && known.has(keepId)
+                ? { keepId, title: day.activities.find((x) => x.id === keepId)!.title, startTime: a.startTime, durationMinutes: Math.max(0, Math.round(a.durationMinutes)) }
+                : { ...toNewActivity(a, day.destination), isNew: true as const },
+            ),
           ),
         };
       }

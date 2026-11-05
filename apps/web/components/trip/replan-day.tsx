@@ -8,12 +8,13 @@ import { cn, type DayWeather } from "@trip/ui";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EASE_OUT } from "@/lib/motion";
 import { DayWeatherChip, useDayWeather } from "./day-weather";
 
 type Proposal = FunctionReturnType<typeof api.ai.replanDay>;
 type Stop = { _id: string; title: string; latitude?: number; longitude?: number; children?: Stop[] };
+export type ReplanDayInput = Day;
 type Day = { _id: Id<"subTrips">; dayNumber: number; date?: string; activities: Stop[] };
 
 const REASONS = [
@@ -50,11 +51,29 @@ export function DayExtras({ day, canEdit }: { day: Day; canEdit: boolean }) {
   );
 }
 
-function ReplanDialog({ day, weather, rainy, onClose }: { day: Day; weather: DayWeather | null; rainy: boolean; onClose: () => void }) {
+/**
+ * Today mode opens this with `initialReason` and `now`: it asks right away and only
+ * re-plans what's still ahead, so a re-plan is one tap plus "Use this plan".
+ */
+export function ReplanDialog({
+  day,
+  weather,
+  rainy,
+  onClose,
+  initialReason,
+  now,
+}: {
+  day: Day;
+  weather: DayWeather | null;
+  rainy: boolean;
+  onClose: () => void;
+  initialReason?: string;
+  now?: string;
+}) {
   const replan = useAction(api.ai.replanDay);
   const apply = useMutation(api.activities.applyReplan);
   const { t, f, locale, category } = useI18n();
-  const [reason, setReason] = useState(rainy ? t("replan.reasonRainText") : "");
+  const [reason, setReason] = useState(initialReason ?? (rainy ? t("replan.reasonRainText") : ""));
   const [state, setState] = useState<{ status: "idle" | "thinking" | "applying" } | { status: "error"; message: string }>({ status: "idle" });
   const [proposal, setProposal] = useState<Proposal | null>(null);
 
@@ -64,16 +83,24 @@ function ReplanDialog({ day, weather, rainy, onClose }: { day: Day; weather: Day
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
 
-  const ask = async () => {
+  const ask = async (why = reason) => {
     setState({ status: "thinking" });
     setProposal(null);
     try {
-      setProposal(await replan({ subTripId: day._id, reason, language: locale, weather: weather ? { label: weather.label, high: weather.high, low: weather.low, rainChance: weather.rainChance } : undefined }));
+      setProposal(await replan({ subTripId: day._id, reason: why, now, language: locale, weather: weather ? { label: weather.label, high: weather.high, low: weather.low, rainChance: weather.rainChance } : undefined }));
       setState({ status: "idle" });
     } catch (e) {
       setState({ status: "error", message: e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0]! : t("common.somethingWrong") });
     }
   };
+  // One tap from today mode: start thinking as soon as the dialog opens.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!initialReason || asked.current) return;
+    asked.current = true;
+    void ask(initialReason);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on open
+  }, []);
   const keptIds = new Set(proposal?.activities.flatMap((a) => ("keepId" in a ? [a.keepId] : [])));
   const removed = proposal ? day.activities.filter((a) => !keptIds.has(a._id)) : [];
 
@@ -91,7 +118,7 @@ function ReplanDialog({ day, weather, rainy, onClose }: { day: Day; weather: Day
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-card p-6 shadow-2xl"
       >
         <h2 id="replan-title" className="text-xl font-bold">
-          {t("replan.replanDay", { day: day.dayNumber })}
+          {now ? t("today.replanRest") : t("replan.replanDay", { day: day.dayNumber })}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {weather ? `${t("replan.forecast", { emoji: weather.emoji, label: t(`weather.${weather.kind}`), percent: weather.rainChance })} ` : ""}

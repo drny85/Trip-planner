@@ -68,7 +68,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-location",
       {
-        locationWhenInUsePermission: "Trip Planner uses your location to show what's next on today's plan and route you there.",
+        locationWhenInUsePermission: "Trip Planner uses your location while the app is open to show how long it takes to get to your next stop.",
         locationAlwaysAndWhenInUsePermission:
           "Trip Planner uses your location in the background to keep today's plan and directions up to date while you travel.",
         isIosBackgroundLocationEnabled: true,

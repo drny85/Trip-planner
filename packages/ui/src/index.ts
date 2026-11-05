@@ -19,3 +19,27 @@ export { describeWeather, forecastUrl, inForecastRange, parseForecast, type DayW
 
 /** "Day 2 · Kyoto" / "Día 2 · Kioto" / "2日目 · 京都" -> "Kyoto": drops the day prefix, since the apps show the day number already. */
 export const dayTitle = (title: string) => title.replace(/^[^·\d]*\d+[^·\d]*·\s*/, "") || title;
+export {
+  distanceKm,
+  estimateTravel,
+  findTodayDay,
+  fromMinutes,
+  hasCoords,
+  hourlyForecastUrl,
+  isOutdoor,
+  LATE_AFTER,
+  leaveBy,
+  minutesNow,
+  parseHourly,
+  rainSoon,
+  todayAlerts,
+  todayStatus,
+  toMinutes,
+  type Coords,
+  type HourWeather,
+  type LiveWeather,
+  type TodayAlert,
+  type TodayStatus,
+  type TodayStop,
+  type TravelEstimate,
+} from "./today";

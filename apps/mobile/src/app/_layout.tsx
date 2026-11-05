@@ -70,6 +70,7 @@ function AppStack() {
         name="trips/[tripId]/import"
         options={{ title: t("bookings.importTitle"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
+      <Stack.Screen name="trips/[tripId]/today" options={{ title: t("today.title") }} />
       <Stack.Screen name="notifications" options={{ title: t("notifications.title") }} />
       <Stack.Screen
         name="language"

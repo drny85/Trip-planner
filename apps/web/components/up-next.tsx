@@ -108,6 +108,14 @@ export function UpNext() {
             >
               🧭 {t("upNext.directions")}
             </a>
+            {next.startsInDays <= 0 && (
+              <Link
+                href={`/trips/${trip._id}/today`}
+                className="rounded-full bg-emerald-400/90 px-5 py-2.5 font-semibold text-slate-950 transition hover:bg-emerald-300 active:scale-[0.97]"
+              >
+                ☀️ {t("today.todayMode")}
+              </Link>
+            )}
             <Link
               href={`/trips/${trip._id}#day-${day._id}`}
               className="rounded-full px-5 py-2.5 font-semibold text-white/80 transition hover:text-white active:scale-[0.97]"

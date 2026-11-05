@@ -105,13 +105,18 @@ export function UpNext() {
             )}
           </Animated.View>
 
-          <View className="flex-row gap-2">
+          <View className="flex-row flex-wrap gap-2">
             <Button size="sm" variant="light" icon="check" onPress={markDone}>
               {step ? t("mobileUpNext.stepDone") : t("upNext.markDone")}
             </Button>
             <Button size="sm" variant="glass" icon="directions" onPress={() => void openDirections(activity)}>
               {t("upNext.directions")}
             </Button>
+            {next.startsInDays <= 0 && (
+              <Button size="sm" variant="glass" icon="sun" onPress={() => router.push({ pathname: "/trips/[tripId]/today", params: { tripId: trip._id } })}>
+                {t("today.title")}
+              </Button>
+            )}
           </View>
 
           <View className="gap-2">
