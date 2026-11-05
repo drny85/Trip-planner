@@ -60,3 +60,31 @@ export function countdown(startsInDays: number, dayNumber: number) {
   if (startsInDays === 0) return "Today";
   return `Day ${dayNumber} of your trip`;
 }
+
+/** "14:30" → "2:30 PM". Anything that isn't HH:MM passes through unchanged. */
+export function formatTime(hhmm: string | undefined | null): string {
+  if (!hhmm) return "";
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return hhmm;
+  const h = Number(m[1]);
+  if (h > 23) return hhmm;
+  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/**
+ * Reads what someone typed ("7:30 pm", "7pm", "19:30", "0930") into the stored
+ * 24-hour "HH:MM". Returns null when it isn't a time.
+ */
+export function parseTime(input: string): string | null {
+  const m = /^(\d{1,2})(?::?(\d{2}))?\s*([ap])?\.?\s*m?\.?$/i.exec(input.trim());
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2] ?? 0);
+  const ampm = m[3]?.toLowerCase();
+  if (min > 59) return null;
+  if (ampm) {
+    if (h < 1 || h > 12) return null;
+    h = (h % 12) + (ampm === "p" ? 12 : 0);
+  } else if (h > 23 || (m[2] === undefined && input.trim().length > 2)) return null;
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}

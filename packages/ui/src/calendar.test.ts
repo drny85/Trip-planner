@@ -43,3 +43,25 @@ describe("weather", () => {
     expect(inForecastRange("2026-12-10", "2026-11-05")).toBe(false);
   });
 });
+
+describe("12-hour times", async () => {
+  const { formatTime, parseTime } = await import("./format");
+  test("formats stored times as 12-hour", () => {
+    expect(formatTime("00:05")).toBe("12:05 AM");
+    expect(formatTime("09:30")).toBe("9:30 AM");
+    expect(formatTime("12:00")).toBe("12:00 PM");
+    expect(formatTime("23:45")).toBe("11:45 PM");
+    expect(formatTime("Morning")).toBe("Morning");
+    expect(formatTime(undefined)).toBe("");
+  });
+  test("reads typed times into HH:MM", () => {
+    expect(parseTime("7:30 pm")).toBe("19:30");
+    expect(parseTime("7pm")).toBe("19:00");
+    expect(parseTime("12 AM")).toBe("00:00");
+    expect(parseTime("12:15p.m.")).toBe("12:15");
+    expect(parseTime("19:30")).toBe("19:30");
+    expect(parseTime("9")).toBe("09:00");
+    expect(parseTime("13pm")).toBeNull();
+    expect(parseTime("soon")).toBeNull();
+  });
+});

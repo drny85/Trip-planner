@@ -62,3 +62,23 @@ export function photoFor(pool: PhotoPool, seed: string, width?: number) {
 }
 
 export { unsplash };
+
+/**
+ * Like `photoFor`, but remembers what it handed out, so one trip doesn't show the
+ * same stock photo on two different places until a pool runs out.
+ */
+export function photoPicker() {
+  const used = new Set<string>();
+  return (pool: PhotoPool, seed: string, width?: number) => {
+    const ids = POOLS[pool];
+    const start = hash(seed) % ids.length;
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[(start + i) % ids.length]!;
+      if (!used.has(id)) {
+        used.add(id);
+        return unsplash(id, width);
+      }
+    }
+    return unsplash(ids[start]!, width);
+  };
+}

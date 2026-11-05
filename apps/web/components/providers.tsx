@@ -2,6 +2,7 @@
 
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { api } from "@trip/backend/api";
+import { UndoToastProvider } from "./undo-toast";
 import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { MotionConfig } from "motion/react";
@@ -19,7 +20,9 @@ export function Providers({ children }: { children: ReactNode }) {
   // Motion respects the OS "reduce motion" setting everywhere.
   return (
     <MotionConfig reducedMotion="user">
-      <ConvexProviders>{children}</ConvexProviders>
+      <ConvexProviders>
+        <UndoToastProvider>{children}</UndoToastProvider>
+      </ConvexProviders>
     </MotionConfig>
   );
 }

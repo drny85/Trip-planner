@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { AuthGate } from "@/components/auth-gate";
 import { PushSetup } from "@/components/push-setup";
+import { UndoToastProvider } from "@/components/undo-toast";
 import { AppProviders } from "@/providers/app-providers";
 
 export default function RootLayout() {
@@ -13,6 +14,7 @@ export default function RootLayout() {
     <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <AppProviders>
         <AuthGate>
+          <UndoToastProvider>
           <PushSetup />
           <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
             <Stack.Screen name="index" options={{ title: "My Trips", headerLargeTitle: true }} />
@@ -45,6 +47,7 @@ export default function RootLayout() {
             <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
             <Stack.Screen name="join/[token]" options={{ title: "You're invited" }} />
           </Stack>
+          </UndoToastProvider>
         </AuthGate>
       </AppProviders>
       <StatusBar style="auto" />

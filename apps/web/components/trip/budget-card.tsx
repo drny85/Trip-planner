@@ -29,7 +29,6 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
           return { key: c.category, label: `${meta.emoji} ${meta.label}`, color: meta.color, ...c.money };
         })
       : budget.byDay.map((d) => ({ key: d.subTripId, label: `Day ${d.dayNumber}`, color: "var(--color-primary)", ...d.money }));
-  const max = Math.max(1, ...rows.map((r) => Math.max(r.estimated, r.actual)));
 
   return (
     <motion.section {...rise(1)} className="mt-6 rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6" aria-labelledby="budget-title">
@@ -40,7 +39,7 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
           </h2>
           <p className="mt-1 text-3xl font-extrabold tabular-nums">{money(estimated)}</p>
           <p className={cn("text-sm tabular-nums", over ? "font-semibold text-destructive" : "text-muted-foreground")}>
-            {money(actual)} spent{over ? ` · ${money(actual - estimated)} over` : ` · ${money(estimated - actual)} left`}
+            {money(actual)} spent on activities{over ? ` · ${money(actual - estimated)} over` : ` · ${money(estimated - actual)} left`}
           </p>
         </div>
         <div role="tablist" aria-label="Group budget by" className="flex rounded-full bg-muted p-1 text-sm font-semibold">
@@ -81,12 +80,23 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
             <li key={r.key} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-3 text-sm sm:grid-cols-[9rem_1fr_auto]">
               <span className="truncate font-semibold">{r.label}</span>
               <span className="relative h-2 overflow-hidden rounded-full bg-muted">
-                <span className="absolute inset-y-0 left-0 rounded-full opacity-30" style={{ width: `${(r.estimated / max) * 100}%`, backgroundColor: r.color }} />
-                <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${(r.actual / max) * 100}%`, backgroundColor: r.color }} />
+                {/* How much of this row's plan is spent: full when it's all spent, red when over. */}
+                <span
+                  className={cn("absolute inset-y-0 left-0 rounded-full", r.actual > r.estimated && "bg-danger")}
+                  style={{
+                    width: `${r.estimated ? Math.min(100, (r.actual / r.estimated) * 100) : r.actual > 0 ? 100 : 0}%`,
+                    backgroundColor: r.actual > r.estimated ? undefined : r.color,
+                  }}
+                />
               </span>
               <span className="text-right tabular-nums text-muted-foreground">
-                {r.actual > 0 && <span className="font-semibold text-foreground">{money(r.actual)} / </span>}
-                {money(r.estimated)}
+                {r.actual > 0 ? (
+                  <>
+                    <span className={cn("font-semibold", r.actual > r.estimated ? "text-danger" : "text-foreground")}>{money(r.actual)}</span> of {money(r.estimated)}
+                  </>
+                ) : (
+                  `${money(r.estimated)} planned`
+                )}
               </span>
             </li>
           ))}

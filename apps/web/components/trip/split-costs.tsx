@@ -145,7 +145,7 @@ function ExpenseForm({ tripId, members, currency, onDone }: { tripId: Id<"trips"
     >
       <label className="flex flex-col gap-1 text-sm font-semibold">
         What was it?
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Dinner at Ichiran" maxLength={80} className="rounded-xl border border-border bg-background px-3 py-2 font-normal outline-none focus:border-primary" />
+        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Dinner, taxi, museum tickets…" maxLength={80} className="rounded-xl border border-border bg-background px-3 py-2 font-normal outline-none focus:border-primary" />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold">
         Amount ({currency})

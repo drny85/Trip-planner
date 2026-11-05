@@ -1,12 +1,12 @@
 import { api } from "@trip/backend/api";
-import { categoryLabel, countdown, formatDay, formatDuration, localToday } from "@trip/ui";
-import { useMutation } from "convex/react";
+import { categoryLabel, countdown, formatDay, formatDuration, formatTime, localToday } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeIn, FadeInRight, FadeOutLeft, ReduceMotion } from "react-native-reanimated";
 import { Button } from "@/components/button";
+import { useToggleDone } from "@/components/undo-toast";
 import { LinearGradient } from "@/components/gradient";
 import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
@@ -27,7 +27,7 @@ const pulse = {
 export function UpNext() {
   const [today] = useState(localToday);
   const next = useCachedQuery(api.trips.upNext, { today }).data;
-  const setCompleted = useMutation(api.activities.setCompleted);
+  const toggleDone = useToggleDone();
   const router = useRouter();
   if (!next) return null;
 
@@ -38,7 +38,7 @@ export function UpNext() {
 
   const markDone = () => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    void setCompleted({ activityId: target._id, isCompleted: true });
+    void toggleDone(target, true);
   };
 
   return (
@@ -89,7 +89,7 @@ export function UpNext() {
               {activity.title}
             </Text>
             <Text className="text-sm text-white/75" numberOfLines={1}>
-              {[activity.startTime, `${badge.emoji} ${badge.text}`, activity.durationMinutes ? formatDuration(activity.durationMinutes) : null]
+              {[formatTime(activity.startTime), `${badge.emoji} ${badge.text}`, activity.durationMinutes ? formatDuration(activity.durationMinutes) : null]
                 .filter(Boolean)
                 .join(" · ")}
             </Text>

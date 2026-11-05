@@ -42,8 +42,8 @@ export function AddExpense({ tripId }: { tripId: Id<"trips"> }) {
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
-      <Field label="What was it?" value={description} onChangeText={setDescription} placeholder="Dinner at Ichiran" maxLength={80} autoFocus />
+    <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
+      <Field label="What was it?" value={description} onChangeText={setDescription} placeholder="Dinner, taxi, museum tickets…" maxLength={80} autoFocus />
       <Field label={`Amount (${data.currency})`} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" />
       <View className="gap-2">
         <Text className="text-sm font-semibold text-muted-foreground">Paid by</Text>

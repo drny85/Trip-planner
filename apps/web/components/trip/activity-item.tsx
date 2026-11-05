@@ -1,9 +1,9 @@
 "use client";
 
 import { api } from "@trip/backend/api";
-import { optimisticMove, optimisticRemove, optimisticSetCompleted } from "@trip/backend/optimistic";
+import { optimisticMove, optimisticRemove } from "@trip/backend/optimistic";
 import type { Activity, PublicTripDetails } from "@trip/backend/types";
-import { categoryLabel, cn, formatDuration, getCategory, links } from "@trip/ui";
+import { categoryLabel, cn, formatDuration, formatTime, getCategory, links } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -12,6 +12,7 @@ import { EASE_OUT } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
 import { ActivityPhotos } from "./memories";
 import { SubActivities } from "./sub-activities";
+import { useToggleDone } from "@/components/undo-toast";
 
 type Props = {
   activity: Activity;
@@ -27,7 +28,7 @@ type Props = {
 };
 
 export function ActivityItem({ activity, trip, index, count, isDragging, onDragStart, onDragEnd, readOnly = false, canCheck = !readOnly }: Props) {
-  const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
+  const toggleDone = useToggleDone();
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const remove = useMutation(api.activities.remove).withOptimisticUpdate(optimisticRemove);
   const [editing, setEditing] = useState(false);
@@ -43,7 +44,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
         role="checkbox"
         aria-checked={done}
         aria-label={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
-        onClick={() => void setCompleted({ activityId: activity._id, isCompleted: !done })}
+        onClick={() => void toggleDone(activity, !done)}
         disabled={!canCheck}
         whileTap={canCheck ? { scale: 0.85 } : undefined}
         className={cn(
@@ -133,7 +134,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
 
             <div className={cn("flex min-w-0 flex-1 flex-col gap-1.5 p-5 transition-opacity", done && "opacity-60")}>
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
-                {activity.startTime && <span className="rounded-md bg-muted px-2 py-0.5 tabular-nums text-foreground">{activity.startTime}</span>}
+                {activity.startTime && <span className="rounded-md bg-muted px-2 py-0.5 tabular-nums text-foreground">{formatTime(activity.startTime)}</span>}
                 {activity.durationMinutes ? <span>⏱ {formatDuration(activity.durationMinutes)}</span> : null}
               </div>
               <h3 className={cn("text-lg font-bold leading-snug decoration-2 transition", done && "line-through")}>{activity.title}</h3>

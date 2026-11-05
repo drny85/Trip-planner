@@ -2,15 +2,16 @@
 
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { optimisticMove, optimisticRemove, optimisticSetCompleted } from "@trip/backend/optimistic";
+import { optimisticMove, optimisticRemove } from "@trip/backend/optimistic";
 import type { Activity } from "@trip/backend/types";
-import { categoryLabel, cn, fallbackPhoto, formatDuration } from "@trip/ui";
+import { categoryLabel, cn, fallbackPhoto, formatDuration, formatTime } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { EASE_OUT, layoutSpring } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
 import { ActivityPhotos } from "./memories";
+import { useToggleDone } from "@/components/undo-toast";
 
 /**
  * The steps nested under an activity, drawn as an indented tree. Each step can
@@ -83,7 +84,7 @@ function SubActivityRow({
   canCheck: boolean;
   depth: number;
 }) {
-  const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
+  const toggleDone = useToggleDone();
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const remove = useMutation(api.activities.remove).withOptimisticUpdate(optimisticRemove);
   const [editing, setEditing] = useState(false);
@@ -118,7 +119,7 @@ function SubActivityRow({
           aria-label={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
           disabled={!canCheck}
           whileTap={canCheck ? { scale: 0.85 } : undefined}
-          onClick={() => void setCompleted({ activityId: activity._id, isCompleted: !done })}
+          onClick={() => void toggleDone(activity, !done)}
           className={cn(
             "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 text-[10px] font-bold transition-colors duration-150",
             done ? "border-success bg-success text-card" : "border-border bg-card",
@@ -148,7 +149,7 @@ function SubActivityRow({
           </div>
           {(activity.startTime || activity.durationMinutes || activity.description) && (
             <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-              {[activity.startTime, activity.durationMinutes ? formatDuration(activity.durationMinutes) : null, activity.description]
+              {[formatTime(activity.startTime), activity.durationMinutes ? formatDuration(activity.durationMinutes) : null, activity.description]
                 .filter(Boolean)
                 .join(" · ")}
             </p>

@@ -1,6 +1,6 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { categoryLabel, cn } from "@trip/ui";
+import { categoryLabel, cn, formatTime } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
@@ -106,7 +106,11 @@ export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTri
         <View className="flex-1">
           <Text className="text-xs font-bold uppercase tracking-widest text-primary">Decide together</Text>
           <Text className="text-2xl font-extrabold tracking-tight text-foreground">Ideas & votes</Text>
-          <Text className="text-xs text-muted-foreground">Added once more than half of {data.memberCount} vote yes.</Text>
+          <Text className="text-xs text-muted-foreground">
+            {data.memberCount === 1
+              ? "Ideas you suggest join the plan right away. Invite friends to vote together."
+              : `An idea joins the plan once more than half of the ${data.memberCount} travelers vote yes.`}
+          </Text>
         </View>
         <Button size="sm" icon="sparkles" onPress={() => router.push({ pathname: "/trips/[tripId]/suggest", params: { tripId } })}>
           Suggest
@@ -166,7 +170,7 @@ function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: str
       <View className="flex-row items-center justify-between gap-2">
         <Text className="flex-1 text-xs font-semibold text-muted-foreground" numberOfLines={1}>
           {idea.isMine ? "You" : idea.authorName} · {dayName}
-          {idea.startTime ? ` at ${idea.startTime}` : ""}
+          {idea.startTime ? ` at ${formatTime(idea.startTime)}` : ""}
         </Text>
         <Text className="text-xs font-semibold" style={{ color: badge.color }}>
           {badge.emoji} {badge.text}

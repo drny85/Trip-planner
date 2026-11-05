@@ -1,13 +1,14 @@
 "use client";
 
 import { api } from "@trip/backend/api";
-import { categoryLabel, countdown, formatDay, formatDuration, links, localToday } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { categoryLabel, countdown, formatDay, formatDuration, formatTime, links, localToday } from "@trip/ui";
+import { useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { EASE_OUT } from "@/lib/motion";
 import { SmartImage } from "./smart-image";
+import { useToggleDone } from "./undo-toast";
 
 /**
  * Home-screen hero for the next thing to do: the first open activity of the
@@ -18,7 +19,7 @@ export function UpNext() {
   // Read the local date only in the browser: the server render has no "today" for the visitor.
   const today = useSyncExternalStore(noop, localToday, () => null);
   const next = useQuery(api.trips.upNext, today ? { today } : "skip");
-  const setCompleted = useMutation(api.activities.setCompleted);
+  const toggleDone = useToggleDone();
   const reduce = useReducedMotion();
   if (!next) return null;
 
@@ -72,7 +73,7 @@ export function UpNext() {
               className="mt-5"
             >
               <p className="flex flex-wrap items-center gap-2 text-sm text-white/70">
-                {activity.startTime && <span className="rounded-md bg-white/15 px-2 py-0.5 font-semibold tabular-nums text-white">{activity.startTime}</span>}
+                {activity.startTime && <span className="rounded-md bg-white/15 px-2 py-0.5 font-semibold tabular-nums text-white">{formatTime(activity.startTime)}</span>}
                 <span>
                   {badge.emoji} {badge.text}
                 </span>
@@ -92,7 +93,7 @@ export function UpNext() {
           <div className="mt-6 flex flex-wrap gap-2">
             <motion.button
               whileTap={{ scale: 0.96 }}
-              onClick={() => void setCompleted({ activityId: target._id, isCompleted: true })}
+              onClick={() => void toggleDone(target, true)}
               className="rounded-full bg-white px-5 py-2.5 font-semibold text-slate-950 shadow-lg transition hover:bg-white/90"
             >
               ✓ {step ? "Done with this step" : "Mark done"}
@@ -131,7 +132,7 @@ export function UpNext() {
                       transition={{ duration: 0.25, ease: EASE_OUT }}
                       className="flex items-center gap-2 truncate text-sm"
                     >
-                      <span className="w-12 shrink-0 tabular-nums text-white/50">{a.startTime ?? `Day ${dayNumber}`}</span>
+                      <span className="w-16 shrink-0 tabular-nums text-white/50">{a.startTime ? formatTime(a.startTime) : `Day ${dayNumber}`}</span>
                       <span className="truncate font-medium">{a.title}</span>
                     </motion.li>
                   ))}

@@ -3,17 +3,20 @@ import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails as TripDetailsData } from "@trip/backend/types";
 import { useMutation } from "convex/react";
 import { Stack, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Share, Text, View } from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scheduleOnRN } from "react-native-worklets";
 import { Button } from "@/components/button";
 import { OfflineBanner } from "@/components/offline-banner";
 import { useCachedQuery } from "@/hooks/use-cached-query";
@@ -68,6 +71,15 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
     scrollY.set(e.contentOffset.y);
   });
 
+  // Light status bar text over the photo; the normal one once the title bar covers it.
+  const [pastHero, setPastHero] = useState(false);
+  useAnimatedReaction(
+    () => scrollY.get() > HERO_HEIGHT - 110,
+    (now, before) => {
+      if (now !== before) scheduleOnRN(setPastHero, now);
+    },
+  );
+
   // A compact title bar fades in once the hero has scrolled away.
   const barStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.get(), [HERO_HEIGHT - 140, HERO_HEIGHT - 80], [0, 1], Extrapolation.CLAMP),
@@ -83,6 +95,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   return (
     <MemoriesProvider tripId={trip._id}>
     <View className="flex-1 bg-background">
+      <StatusBar style={pastHero ? "auto" : "light"} animated />
       <Animated.ScrollView
         ref={scrollRef}
         onScroll={onScroll}

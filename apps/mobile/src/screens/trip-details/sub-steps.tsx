@@ -1,12 +1,10 @@
-import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { optimisticSetCompleted } from "@trip/backend/optimistic";
 import type { Activity } from "@trip/backend/types";
-import { categoryLabel, cn, formatDuration } from "@trip/ui";
-import { useMutation } from "convex/react";
+import { categoryLabel, cn, formatDuration, formatTime } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { useToggleDone } from "@/components/undo-toast";
 import Animated from "react-native-reanimated";
 import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
@@ -28,11 +26,11 @@ export function SubSteps({ parent, tripId, canEdit, depth = 0 }: { parent: Activ
 }
 
 function StepRow({ activity, tripId, canEdit }: { activity: Activity; tripId: Id<"trips">; canEdit: boolean }) {
-  const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
+  const toggleDone = useToggleDone();
   const router = useRouter();
   const done = activity.isCompleted;
   const badge = categoryLabel(activity.category, activity.subcategory);
-  const meta = [activity.startTime, activity.durationMinutes ? formatDuration(activity.durationMinutes) : null].filter(Boolean).join(" · ");
+  const meta = [formatTime(activity.startTime), activity.durationMinutes ? formatDuration(activity.durationMinutes) : null].filter(Boolean).join(" · ");
 
   return (
     <PressableScale
@@ -49,7 +47,7 @@ function StepRow({ activity, tripId, canEdit }: { activity: Activity; tripId: Id
         hitSlop={12}
         onPress={() => {
           void Haptics.selectionAsync();
-          void setCompleted({ activityId: activity._id, isCompleted: !done });
+          void toggleDone(activity, !done);
         }}
       >
         <Animated.View

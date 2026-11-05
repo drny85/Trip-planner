@@ -4,7 +4,7 @@ import { formatDateRange, localToday, tripLength } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { Link, Stack, useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, useColorScheme, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { SignOutButton } from "@/components/auth-gate";
 import { Button } from "@/components/button";
@@ -71,18 +71,24 @@ export function TripsList() {
   );
 }
 
+/** On the green card in light mode; the card is a quiet tint in dark mode, so its icons are green there. */
+function PlanIcon({ name }: { name: "sparkles" | "chevron" }) {
+  const dark = useColorScheme() === "dark";
+  return <Icon name={name} size={name === "sparkles" ? 22 : 16} colorVar={dark ? "--color-primary" : "--color-primary-foreground"} />;
+}
+
 function PlanCta() {
   return (
     <Link href="/generate" asChild>
-      <PressableScale className="flex-row items-center gap-4 rounded-3xl bg-primary p-5">
-        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
-          <Icon name="sparkles" size={22} colorVar="--color-primary-foreground" />
+      <PressableScale className="flex-row items-center gap-4 rounded-3xl bg-primary p-5 dark:border dark:border-primary/30 dark:bg-primary/15">
+        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/20 dark:bg-primary/20">
+          <PlanIcon name="sparkles" />
         </View>
         <View className="flex-1">
-          <Text className="text-lg font-bold text-primary-foreground">Where to next?</Text>
-          <Text className="text-primary-foreground/80">Describe a trip and AI plans every day.</Text>
+          <Text className="text-lg font-bold text-primary-foreground dark:text-foreground">Where to next?</Text>
+          <Text className="text-primary-foreground/80 dark:text-muted-foreground">Describe a trip and AI plans every day.</Text>
         </View>
-        <Icon name="chevron" size={16} colorVar="--color-primary-foreground" />
+        <PlanIcon name="chevron" />
       </PressableScale>
     </Link>
   );

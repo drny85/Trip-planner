@@ -1,7 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { toApplyArgs } from "@trip/backend/replan";
-import { categoryLabel, cn } from "@trip/ui";
+import { categoryLabel, cn, formatTime } from "@trip/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
@@ -54,7 +54,7 @@ export function ReplanDay({ tripId, subTripId }: { tripId: Id<"trips">; subTripI
   const removed = proposal ? day.activities.filter((a) => !keptIds.has(a._id)) : [];
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
+    <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
       <Text className="text-sm text-muted-foreground">
         {weather ? `${weather.emoji} ${weather.label}, ${weather.rainChance}% chance of rain. ` : ""}Day {day.dayNumber}: tell the AI what to change. Nothing changes until you apply it.
       </Text>
@@ -89,7 +89,7 @@ export function ReplanDay({ tripId, subTripId }: { tripId: Id<"trips">; subTripI
             const isNew = !("keepId" in a);
             return (
               <Animated.View key={i} entering={FadeInDown.delay(i * 40).duration(220).easing(EASE_OUT)} className="flex-row items-center gap-3 rounded-2xl bg-card px-4 py-3">
-                <Text className="w-12 text-sm font-semibold text-muted-foreground">{a.startTime}</Text>
+                <Text className="w-16 text-sm font-semibold text-muted-foreground">{formatTime(a.startTime)}</Text>
                 <Text className="flex-1 font-semibold text-foreground" numberOfLines={1}>
                   {a.title}
                 </Text>

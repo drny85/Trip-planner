@@ -4,7 +4,7 @@ import { optimisticMove, optimisticRemove } from "@trip/backend/optimistic";
 import { CATEGORIES, CATEGORY_TREE, type Category } from "@trip/backend/categories";
 import { findNode } from "@trip/backend/tree";
 import type { Activity, TripDetails } from "@trip/backend/types";
-import { categoryLabel, categoryMeta, cn, fallbackPhoto, subcategoryMeta } from "@trip/ui";
+import { categoryLabel, categoryMeta, cn, fallbackPhoto, formatTime, parseTime, subcategoryMeta } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -37,7 +37,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
   const [form, setForm] = useState({
     title: activity.title,
     description: activity.description,
-    startTime: activity.startTime ?? "",
+    startTime: formatTime(activity.startTime),
     address: activity.address,
     phone: activity.phone ?? "",
     bookingUrl: activity.bookingUrl ?? "",
@@ -82,6 +82,8 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
 
   const save = async () => {
     if (!form.title.trim()) return Alert.alert("Add a title");
+    const startTime = form.startTime.trim() ? parseTime(form.startTime) : undefined;
+    if (startTime === null) return Alert.alert("Check the start time", "Try something like 9:30 AM or 7 PM.");
     setSaving(true);
     try {
       await update({
@@ -90,7 +92,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
           title: form.title.trim(),
           description: form.description.trim(),
           address: form.address.trim(),
-          startTime: form.startTime.trim() || undefined,
+          startTime,
           phone: form.phone.trim() || undefined,
           bookingUrl: form.bookingUrl.trim() || undefined,
           category: form.category,
@@ -124,6 +126,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
 
   return (
     <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
       className="flex-1 bg-background"
       contentContainerClassName="gap-4 p-5 pb-12"
       keyboardShouldPersistTaps="handled"
@@ -147,7 +150,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
         )}
       </View>
       <View className="flex-row gap-3">
-        <Field label="Start time" value={form.startTime} onChangeText={set("startTime")} placeholder="09:30" className="w-28" />
+        <Field label="Start time" value={form.startTime} onChangeText={set("startTime")} placeholder="9:30 AM" autoCapitalize="characters" className="w-32" />
         <Field label="Phone" value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" className="flex-1" />
       </View>
       <View className="flex-row gap-3">

@@ -3,7 +3,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { toApplyArgs } from "@trip/backend/replan";
-import { categoryLabel, cn, type DayWeather } from "@trip/ui";
+import { categoryLabel, cn, formatTime, type DayWeather } from "@trip/ui";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
@@ -127,7 +127,7 @@ function ReplanDialog({ day, weather, rainy, onClose }: { day: Day; weather: Day
                   const badge = isNew ? categoryLabel(a.category, a.subcategory) : null;
                   return (
                     <motion.li key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04, duration: 0.2 }} className="flex items-center gap-3 rounded-2xl border border-border px-3 py-2 text-sm">
-                      <span className="w-12 shrink-0 font-semibold tabular-nums text-muted-foreground">{a.startTime}</span>
+                      <span className="w-16 shrink-0 font-semibold tabular-nums text-muted-foreground">{formatTime(a.startTime)}</span>
                       <span className="flex-1 truncate font-semibold">{a.title}</span>
                       {isNew ? (
                         <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">New · {badge?.emoji}</span>
