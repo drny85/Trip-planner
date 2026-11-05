@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
 import { ActivityItem } from "./activity-item";
+import { BudgetCard } from "./budget-card";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
 
@@ -70,6 +71,7 @@ function Itinerary({ trip, readOnly = false }: { trip: PublicTripDetails | TripD
 
       <div className="mx-auto max-w-4xl px-4">
         <Stats trip={trip} readOnly={readOnly} />
+        <BudgetCard trip={trip} />
         {readOnly && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">

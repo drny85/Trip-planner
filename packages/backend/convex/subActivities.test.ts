@@ -138,3 +138,29 @@ describe("sub-activities", () => {
     expect((await t.run((ctx) => ctx.db.get("activities", id)))?.subcategory).toBe("dinner");
   });
 });
+
+describe("upNext", () => {
+  test("returns the first open activity and its first open step", async () => {
+    const { t, get } = await seeded();
+    let next = await t.query(api.trips.upNext, { today: "2027-03-30" });
+    expect(next?.activity.title).toBe("Visit Senso-ji Temple");
+    expect(next?.startsInDays).toBe(3);
+    expect(next?.later.map((l) => l.activity.title)).toEqual(["Tempura lunch at Daikokuya", "Ueno Park & Tokyo National Museum"]);
+
+    // Finish days 1 and 2: Tsukiji is next, with its first stall as the step.
+    const trip = await get();
+    for (const a of [...trip.subTrips[0]!.activities, ...trip.subTrips[1]!.activities]) {
+      await t.mutation(api.activities.setCompleted, { activityId: a._id, isCompleted: true });
+    }
+    await t.mutation(api.activities.setCompleted, { activityId: trip.subTrips[2]!.activities[0]!.children[0]!._id, isCompleted: true });
+    next = await t.query(api.trips.upNext, { today: "2027-04-04" });
+    expect(next?.activity.title).toBe("Tsukiji Outer Market breakfast");
+    expect(next?.step?.title).toBe("Tuna and sushi stalls");
+    expect(next?.day.dayNumber).toBe(3);
+  });
+
+  test("skips trips that have ended", async () => {
+    const { t } = await seeded();
+    expect(await t.query(api.trips.upNext, { today: "2027-05-01" })).toBeNull();
+  });
+});

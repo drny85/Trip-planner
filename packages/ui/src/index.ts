@@ -1,6 +1,6 @@
 export { categoryLabel, categoryMeta, fallbackPhoto, getCategory, getSubcategory, subcategoryMeta, type Category } from "./categories";
 export { cn } from "./cn";
-export { formatDateRange, formatDay, links } from "./format";
+export { countdown, formatDateRange, formatDay, formatMoney, links, localToday } from "./format";
 
 /** "90" -> "1 h 30 min". */
 export function formatDuration(minutes: number) {

@@ -13,6 +13,7 @@ import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { enterUp } from "@/lib/motion";
+import { UpNext } from "./up-next";
 
 export function TripsList() {
   const trips = useQuery(api.trips.list);
@@ -45,6 +46,7 @@ export function TripsList() {
             <EmptyState />
           ) : (
             <>
+              <UpNext />
               <Animated.View entering={enterUp(0)}>
                 <PlanCta />
               </Animated.View>

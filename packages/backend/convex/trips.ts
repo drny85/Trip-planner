@@ -4,6 +4,7 @@ import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { getOptionalUserId, getOwnedTrip } from "./lib/auth";
 import { insertTripTree } from "./lib/insertTripTree";
+import { pickUpNext, type UpNext } from "./lib/upNext";
 import { buildTree } from "./lib/tree";
 import { tripTreeInput } from "./lib/validators";
 import type { PublicTripDetails, TripDetails } from "./lib/types";
@@ -19,6 +20,29 @@ export const list = query({
       .withIndex("by_userId_startDate", (q) => q.eq("userId", userId))
       .order("asc")
       .collect();
+  },
+});
+
+/**
+ * The next thing to do across the user's trips: the trip under way, or else the
+ * soonest upcoming one, that still has open activities. `today` is the caller's
+ * local date ("YYYY-MM-DD") so "today" matches where the traveler is.
+ */
+export const upNext = query({
+  args: { today: v.string() },
+  handler: async (ctx, { today }): Promise<UpNext | null> => {
+    const userId = await getOptionalUserId(ctx);
+    if (!userId) return null;
+    const trips = await ctx.db
+      .query("trips")
+      .withIndex("by_userId_startDate", (q) => q.eq("userId", userId))
+      .order("asc")
+      .collect();
+    for (const trip of trips.filter((t) => t.endDate >= today)) {
+      const next = pickUpNext(await loadDetails(ctx, trip), today);
+      if (next) return next;
+    }
+    return null;
   },
 });
 

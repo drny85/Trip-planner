@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 import { EASE_OUT, rise } from "@/lib/motion";
 import { SmartImage } from "./smart-image";
+import { UpNext } from "./up-next";
 
 const u = (id: string, w = 900) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 
@@ -32,6 +33,10 @@ export function Landing() {
         <div className="animate-blob absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-primary/20 blur-3xl" />
         <div className="animate-blob absolute -right-24 top-40 h-[24rem] w-[24rem] rounded-full bg-accent/20 blur-3xl [animation-delay:-5s]" />
         <div className="animate-blob absolute bottom-0 left-1/3 h-[20rem] w-[20rem] rounded-full bg-sky-400/15 blur-3xl [animation-delay:-9s]" />
+      </div>
+
+      <div className="mx-auto max-w-6xl px-4 pt-8 empty:hidden">
+        <UpNext />
       </div>
 
       <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-16 sm:pt-24 lg:grid-cols-[1.1fr_1fr]">

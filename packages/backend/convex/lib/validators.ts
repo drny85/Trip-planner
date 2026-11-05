@@ -28,6 +28,8 @@ export const activityFields = {
   longitude: v.optional(v.number()),
   /** Rough cost per person in the trip's currency. */
   estimatedCost: v.optional(v.number()),
+  /** What was actually spent per person, entered by the traveler. */
+  actualCost: v.optional(v.number()),
 };
 
 /** One level of sub-activities in seed/AI input; deeper nesting is added in the app. */

@@ -42,7 +42,10 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
     bookingUrl: activity.bookingUrl ?? "",
     category: (activity.category ?? "other") as Category,
     subcategory: activity.subcategory ?? "",
+    estimatedCost: activity.estimatedCost?.toString() ?? "",
+    actualCost: activity.actualCost?.toString() ?? "",
   });
+  const num = (text: string) => (text.trim() === "" || Number.isNaN(Number(text)) ? undefined : Math.max(0, Number(text)));
   const [saving, setSaving] = useState(false);
   const [newStep, setNewStep] = useState("");
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
@@ -91,6 +94,8 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
           bookingUrl: form.bookingUrl.trim() || undefined,
           category: form.category,
           subcategory: form.subcategory,
+          estimatedCost: num(form.estimatedCost),
+          actualCost: num(form.actualCost),
         },
       });
       router.back();
@@ -143,6 +148,10 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
       <View className="flex-row gap-3">
         <Field label="Start time" value={form.startTime} onChangeText={set("startTime")} placeholder="09:30" className="w-28" />
         <Field label="Phone" value={form.phone} onChangeText={set("phone")} keyboardType="phone-pad" className="flex-1" />
+      </View>
+      <View className="flex-row gap-3">
+        <Field label="Estimated cost" value={form.estimatedCost} onChangeText={set("estimatedCost")} keyboardType="decimal-pad" placeholder="Per person" className="flex-1" />
+        <Field label="Actually spent" value={form.actualCost} onChangeText={set("actualCost")} keyboardType="decimal-pad" placeholder="Per person" className="flex-1" />
       </View>
       <Field label="Address" value={form.address} onChangeText={set("address")} />
       <Field

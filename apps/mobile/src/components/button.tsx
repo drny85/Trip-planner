@@ -4,25 +4,32 @@ import { ActivityIndicator, Text, type PressableProps } from "react-native";
 import { Icon, type IconName } from "./icon";
 import { PressableScale } from "./pressable-scale";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+/** `light` and `glass` sit on photos or dark hero cards and look the same in both themes. */
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "light" | "glass";
 
 const container: Record<Variant, string> = {
   primary: "bg-primary",
   secondary: "bg-muted",
   ghost: "bg-transparent",
   danger: "bg-danger/10",
+  light: "bg-on-image",
+  glass: "bg-on-image/15",
 };
 const label: Record<Variant, string> = {
   primary: "text-primary-foreground",
   secondary: "text-foreground",
   ghost: "text-primary",
   danger: "text-danger",
+  light: "text-ink",
+  glass: "text-on-image",
 };
 const iconColor: Record<Variant, `--color-${string}`> = {
   primary: "--color-primary-foreground",
   secondary: "--color-foreground",
   ghost: "--color-primary",
   danger: "--color-danger",
+  light: "--color-ink",
+  glass: "--color-on-image",
 };
 
 type Props = Omit<PressableProps, "children" | "style"> & {
