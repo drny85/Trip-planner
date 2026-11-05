@@ -10,6 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "@/components/gradient";
 import { Icon } from "@/components/icon";
+import { Link } from "expo-router";
 import { SmartImage } from "@/components/smart-image";
 import { CSS_EASE_OUT } from "@/lib/motion";
 
@@ -40,9 +41,12 @@ export function TripHero({ trip, scrollY }: { trip: TripDetails; scrollY: Shared
   return (
     <View>
       <View className="overflow-hidden" style={{ height: HERO_HEIGHT }}>
-        <Animated.View className="absolute inset-0" style={photoStyle}>
-          <SmartImage uri={trip.imageUrl} seed={trip._id} className="absolute inset-0" emoji="✈️" />
-        </Animated.View>
+        {/* The trip card's photo on My Trips zooms into this one (iOS 18+). */}
+        <Link.AppleZoomTarget>
+          <Animated.View className="absolute inset-0" style={photoStyle}>
+            <SmartImage uri={trip.imageUrl} seed={trip._id} className="absolute inset-0" emoji="✈️" />
+          </Animated.View>
+        </Link.AppleZoomTarget>
         <LinearGradient
           colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)", "rgba(0,0,0,0.8)"]}
           locations={[0, 0.35, 1]}

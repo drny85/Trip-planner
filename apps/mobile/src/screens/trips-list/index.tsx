@@ -29,7 +29,7 @@ export function TripsList() {
         options={{
           headerLeft: authEnabled ? () => <SignOutButton /> : undefined,
           headerRight: () => (
-            <View className="flex-row items-center gap-5">
+            <View className="flex-row items-center gap-7 px-2">
               <BellButton />
               <Pressable accessibilityLabel="Plan a new trip" onPress={() => router.push("/generate")} hitSlop={12}>
                 <Icon name="plus" size={22} colorVar="--color-primary" />
@@ -100,7 +100,12 @@ function TripCard({ trip }: { trip: Trip & { isOwner: boolean } }) {
   return (
     <Link href={{ pathname: "/trips/[tripId]", params: { tripId: trip._id } }} asChild>
       <PressableScale className="h-64 overflow-hidden rounded-[28px] bg-card" pressedScale={0.98}>
-        <SmartImage uri={trip.imageUrl} seed={trip._id} className="absolute inset-0" emoji="✈️" />
+        {/* iOS zooms this photo into the trip page's hero (Link.AppleZoomTarget there). */}
+        <Link.AppleZoom>
+          <View className="absolute inset-0">
+            <SmartImage uri={trip.imageUrl} seed={trip._id} className="absolute inset-0" emoji="✈️" />
+          </View>
+        </Link.AppleZoom>
         <LinearGradient
           colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.05)", "rgba(0,0,0,0.75)"]}
           className="absolute inset-0"
