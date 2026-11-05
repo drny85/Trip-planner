@@ -88,7 +88,11 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
 
   const jumpTo = (subTripId: string) => {
     const y = dayOffsets.current[subTripId];
-    if (y != null) scrollRef.current?.scrollTo({ y: y - insets.top - 56, animated: true });
+    if (y == null) return;
+    // A programmatic scroll doesn't always report through the scroll handler, and
+    // every day starts below the hero, so set the status bar for it directly.
+    setPastHero(true);
+    scrollRef.current?.scrollTo({ y: y - insets.top - 56, animated: true });
   };
 
   // Activities are rendered in a ScrollView (a trip has tens of items, not thousands), so

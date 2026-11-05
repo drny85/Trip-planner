@@ -61,7 +61,7 @@ function ToastView({ message, onUndo }: { message: string; onUndo: () => void })
       entering={(reduced ? FadeInDown.duration(1) : FadeInDown.springify().duration(320).dampingRatio(0.85)).withInitialValues({ opacity: 0, transform: [{ translateY: 24 }] })}
       exiting={FadeOutDown.duration(180).easing(EASE_OUT)}
       pointerEvents="box-none"
-      className="absolute inset-x-4"
+      className="absolute inset-x-4 z-50"
       style={{ bottom: insets.bottom + 16 }}
     >
       <View className="overflow-hidden rounded-2xl bg-foreground shadow-lg shadow-black/25" accessibilityLiveRegion="polite">
