@@ -20,6 +20,7 @@ import type * as lib_bookings from "../lib/bookings.js";
 import type * as lib_budget from "../lib/budget.js";
 import type * as lib_categories from "../lib/categories.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
+import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
 import type * as lib_majority from "../lib/majority.js";
 import type * as lib_members from "../lib/members.js";
@@ -67,6 +68,7 @@ import type * as users from "../users.js";
 "lib/budget": typeof lib_budget,
 "lib/categories": typeof lib_categories,
 "lib/fakeData": typeof lib_fakeData,
+"lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
 "lib/majority": typeof lib_majority,
 "lib/members": typeof lib_members,

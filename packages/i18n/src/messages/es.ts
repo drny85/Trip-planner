@@ -221,6 +221,8 @@ export const es: Shape<typeof en> = {
     addToCalendar: "Agregar al calendario",
   },
   activity: {
+    /** Credit on a Google Places photo, which Google requires. */
+    photoBy: "Foto: {name} · Google Maps",
     markDone: "Marcar {title} como hecho",
     markNotDone: "Marcar {title} como pendiente",
     done: "Hecho",

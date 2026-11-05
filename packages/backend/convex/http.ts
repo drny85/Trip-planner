@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { htmlToText, IMPORT_FILE_TYPES, MAX_IMPORT_BYTES } from "./lib/bookings";
+import { googlePhotoUri, googlePlacesKey } from "./lib/googlePlaces";
 
 const http = httpRouter();
 
@@ -105,6 +106,28 @@ http.route({
       fileName: storageId ? attachment?.name : undefined,
     });
     return new Response("ok", { status: 200 });
+  }),
+});
+
+/**
+ * GET /place-photo/<placeId>?w=1000 redirects to a current Google photo of a
+ * place. Google photo URLs expire and may not be stored, so activities link here
+ * instead; browsers and the apps cache the result for a day.
+ */
+http.route({
+  pathPrefix: "/place-photo/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url);
+    const placeId = decodeURIComponent(url.pathname.slice("/place-photo/".length));
+    const width = Math.min(Math.max(Number(url.searchParams.get("w")) || 1000, 100), 1600);
+    const key = googlePlacesKey();
+    if (!key || !placeId || !(await ctx.runQuery(internal.photos.isKnownPlace, { placeId }))) {
+      return new Response("Not found", { status: 404 });
+    }
+    const photo = await googlePhotoUri(placeId, key, width);
+    if (!photo) return new Response("Not found", { status: 404, headers: { "Cache-Control": "public, max-age=3600" } });
+    return new Response(null, { status: 302, headers: { Location: photo, "Cache-Control": "public, max-age=86400" } });
   }),
 });
 

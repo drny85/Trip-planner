@@ -4,7 +4,7 @@ import { api } from "@trip/backend/api";
 import { optimisticMove, optimisticRemove } from "@trip/backend/optimistic";
 import type { Activity, PublicTripDetails } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
-import { cn, getCategory, links } from "@trip/ui";
+import { cn, getCategory, googlePhotoCredit, links } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -39,6 +39,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
   const { t, f, category: categoryText } = useI18n();
+  const credit = googlePhotoCredit(activity);
   const badge = categoryText(activity.category, activity.subcategory);
 
   return (
@@ -110,6 +111,11 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                 className="absolute inset-0"
                 imgClassName={cn("transition duration-500 group-hover:scale-105", done && "grayscale")}
               />
+              {credit !== null && (
+                <span className="absolute bottom-1.5 right-2 max-w-[90%] truncate rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white/90">
+                  {credit ? t("activity.photoBy", { name: credit }) : "Google Maps"}
+                </span>
+              )}
               <span
                 className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-md"
                 style={{ backgroundColor: `${category.color}cc` }}

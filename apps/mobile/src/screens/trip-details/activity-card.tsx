@@ -1,7 +1,7 @@
 import type { Id } from "@trip/backend/dataModel";
 import type { Activity } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
-import { cn, getCategory } from "@trip/ui";
+import { cn, getCategory, googlePhotoCredit } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
@@ -27,6 +27,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
   const { t, f, category: categoryText } = useI18n();
+  const credit = googlePhotoCredit(activity);
   const badge = categoryText(activity.category, activity.subcategory);
   const booking = useBookingFor(activity._id);
   const router = useRouter();
@@ -91,6 +92,11 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
               tint={category.color}
               className="h-40 w-full"
             />
+            {credit !== null && (
+              <Text numberOfLines={1} className="absolute bottom-1.5 right-2 max-w-[90%] rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white/90">
+                {credit ? t("activity.photoBy", { name: credit }) : "Google Maps"}
+              </Text>
+            )}
             <LinearGradient colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]} className="absolute inset-x-0 top-0 h-16" />
             <View className="absolute left-3 top-3 flex-row gap-2">
               <View className="flex-row items-center gap-1 rounded-full bg-black/65 px-2.5 py-1">
