@@ -15,8 +15,8 @@ const firstCoords = (nodes: Located[]): { latitude: number; longitude: number } 
   return null;
 };
 
-/** Forecast for the day's first located stop; shows nothing until the day is within 16 days. */
-export function DayWeatherChip({ date, activities }: { date?: string; activities: Located[] }) {
+/** Forecast for the day's first located stop; null until the day is within 16 days. */
+export function useDayWeather(date: string | undefined, activities: Located[]) {
   const coords = firstCoords(activities);
   const [weather, setWeather] = useState<DayWeather | null>(null);
   const lat = coords?.latitude;
@@ -31,7 +31,10 @@ export function DayWeatherChip({ date, activities }: { date?: string; activities
       .catch(() => undefined);
     return () => ctrl.abort();
   }, [lat, lng, date]);
+  return weather;
+}
 
+export function DayWeatherChip({ weather }: { weather: DayWeather | null }) {
   if (!weather) return null;
   return (
     <Animated.View entering={FadeIn.duration(220).easing(EASE_OUT)} className="flex-row items-center gap-1 rounded-full bg-muted px-3 py-1.5" accessibilityLabel={`${weather.label}, high ${weather.high}, low ${weather.low}`}>

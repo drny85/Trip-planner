@@ -102,3 +102,23 @@ export function toTripTree(trip: GeneratedTrip): TripTreeInput {
     })),
   };
 }
+
+/**
+ * A revised plan for one day. Each stop either keeps an existing activity
+ * (`keepId`, possibly at a new time) or is a new one the model suggests.
+ */
+export const replanSchema = z.object({
+  summary: z.string().describe("One or two sentences, addressed to the traveler, on what changed and why"),
+  activities: z
+    .array(
+      z.object({
+        keepId: z.string().optional().describe("The id of an existing activity to keep. Leave it out for a new activity"),
+        ...generatedActivityFields,
+      }),
+    )
+    .describe("The whole day in time order, kept and new activities together"),
+});
+export type Replan = z.infer<typeof replanSchema>;
+
+/** A new activity from a re-plan, normalized like a generated one. */
+export const toNewActivity = (activity: z.infer<z.ZodObject<typeof generatedActivityFields>>, destination: string) => toActivity(activity, destination);

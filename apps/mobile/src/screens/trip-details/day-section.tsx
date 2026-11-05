@@ -1,6 +1,6 @@
 import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails } from "@trip/backend/types";
-import { formatDay } from "@trip/ui";
+import { cn, formatDay } from "@trip/ui";
 import { Text, View } from "react-native";
 import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
@@ -8,12 +8,16 @@ import { openDayRoute } from "@/lib/open";
 import Animated from "react-native-reanimated";
 import { enterUp, reflow } from "@/lib/motion";
 import { ActivityCard } from "./activity-card";
-import { DayWeatherChip } from "./day-weather";
+import { useRouter } from "expo-router";
+import { DayWeatherChip, useDayWeather } from "./day-weather";
 
 type Props = { subTrip: TripDetails["subTrips"][number]; tripId: Id<"trips">; sectionIndex: number; canEdit: boolean };
 
 export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
   const done = subTrip.activities.filter((a) => a.isCompleted).length;
+  const weather = useDayWeather(subTrip.date, subTrip.activities);
+  const router = useRouter();
+  const rainy = (weather?.rainChance ?? 0) >= 50;
   return (
     <View className="pt-8">
       <View className="flex-row items-end justify-between px-5 pb-4">
@@ -25,7 +29,7 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
           <Text className="text-2xl font-extrabold tracking-tight text-foreground">{subTrip.title.replace(/^Day \d+\s*·\s*/, "")}</Text>
         </View>
         <View className="flex-row items-center gap-2 pb-0.5">
-          <DayWeatherChip date={subTrip.date} activities={subTrip.activities} />
+          <DayWeatherChip weather={weather} />
           <Text className="text-sm text-muted-foreground">
             {done}/{subTrip.activities.length}
           </Text>
@@ -43,6 +47,18 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
           )}
         </View>
       </View>
+
+      {canEdit && subTrip.activities.length > 0 && (
+        <PressableScale
+          onPress={() => router.push({ pathname: "/trips/[tripId]/replan/[subTripId]", params: { tripId, subTripId: subTrip._id } })}
+          accessibilityRole="button"
+          className={cn("mx-5 mb-4 flex-row items-center justify-center gap-2 rounded-2xl py-2.5", rainy ? "bg-sky-500" : "bg-muted")}
+        >
+          <Text className={cn("text-sm font-semibold", rainy ? "text-white" : "text-foreground")}>
+            {rainy ? `☔ ${weather!.rainChance}% rain: make a rain plan` : "✨ Re-plan this day with AI"}
+          </Text>
+        </PressableScale>
+      )}
 
       {subTrip.activities.length === 0 ? (
         <Text className="mx-5 text-muted-foreground">Nothing planned for this day yet.</Text>

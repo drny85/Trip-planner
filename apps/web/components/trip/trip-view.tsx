@@ -16,10 +16,10 @@ import { ActivityItem } from "./activity-item";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
-import { DayWeatherChip } from "./day-weather";
 import { Ideas } from "./ideas";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingList } from "./packing-list";
+import { DayExtras } from "./replan-day";
 import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
@@ -153,7 +153,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
                       .join(" · ")}
                   </p>
                 </div>
-                <DayWeatherChip date={subTrip.date} activities={subTrip.activities} />
+                <DayExtras day={subTrip} canEdit={!readOnly} />
               </header>
 
               <DayMap activities={subTrip.activities} />

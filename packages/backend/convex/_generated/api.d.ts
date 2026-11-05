@@ -23,6 +23,7 @@ import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
 import type * as lib_notify from "../lib/notify.js";
 import type * as lib_photos from "../lib/photos.js";
+import type * as lib_replan from "../lib/replan.js";
 import type * as lib_settle from "../lib/settle.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as lib_tree from "../lib/tree.js";
@@ -65,6 +66,7 @@ import type * as users from "../users.js";
 "lib/modelRouter": typeof lib_modelRouter,
 "lib/notify": typeof lib_notify,
 "lib/photos": typeof lib_photos,
+"lib/replan": typeof lib_replan,
 "lib/settle": typeof lib_settle,
 "lib/tokens": typeof lib_tokens,
 "lib/tree": typeof lib_tree,

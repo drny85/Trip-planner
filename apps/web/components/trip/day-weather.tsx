@@ -17,7 +17,7 @@ const firstCoords = (nodes: Located[]): { latitude: number; longitude: number } 
 };
 
 /** The forecast for a day's first located stop, once the day is within 16 days. */
-export function DayWeatherChip({ date, activities }: { date?: string; activities: Located[] }) {
+export function useDayWeather(date: string | undefined, activities: Located[]) {
   const coords = firstCoords(activities);
   const [weather, setWeather] = useState<DayWeather | null>(null);
   const key = coords && date ? `${coords.latitude},${coords.longitude},${date}` : null;
@@ -32,7 +32,10 @@ export function DayWeatherChip({ date, activities }: { date?: string; activities
     return () => ctrl.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key captures coords and date
   }, [key]);
+  return weather;
+}
 
+export function DayWeatherChip({ weather }: { weather: DayWeather | null }) {
   if (!weather) return null;
   return (
     <motion.span

@@ -12,7 +12,8 @@
     "./budget": "./convex/lib/budget.ts",
     "./upNext": "./convex/lib/upNext.ts",
     "./optimistic": "./src/optimistic.ts",
-    "./schemas": "./src/tripSchema.ts"
+    "./schemas": "./src/tripSchema.ts",
+    "./replan": "./convex/lib/replan.ts"
   },
   "scripts": {
     "dev": "convex dev",
