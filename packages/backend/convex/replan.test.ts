@@ -53,3 +53,25 @@ test("undo puts back exactly what marking done changed", async () => {
   const after = (await ana.query(api.trips.get, { tripId }))!.subTrips.flatMap((d) => d.activities).find((a) => a._id === parent._id)!;
   expect([after.isCompleted, ...after.children.map((c) => c.isCompleted)]).toEqual([false, true, ...after.children.slice(1).map(() => false)]);
 });
+
+test("adding a step to a done activity reopens it", async () => {
+  const t = convexTest(schema, modules);
+  const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+  const tripId = await ana.mutation(api.seed.demoTrip, {});
+  const trip = (await ana.query(api.trips.get, { tripId }))!;
+  const parent = trip.subTrips.flatMap((d) => d.activities).find((a) => a.children.length > 0)!;
+  await ana.mutation(api.activities.setCompleted, { activityId: parent._id, isCompleted: true });
+  await ana.mutation(api.activities.create, {
+    subTripId: parent.subTripId,
+    parentId: parent.children[0]!._id,
+    title: "New step",
+    description: "",
+    address: "",
+    category: parent.category,
+    photoUrl: "https://example.com/p.jpg",
+  });
+  const after = (await ana.query(api.trips.get, { tripId }))!.subTrips.flatMap((d) => d.activities).find((a) => a._id === parent._id)!;
+  expect(after.isCompleted).toBe(false);
+  expect(after.children[0]!.isCompleted).toBe(false);
+  expect(after.children.slice(1).every((c) => c.isCompleted)).toBe(true);
+});

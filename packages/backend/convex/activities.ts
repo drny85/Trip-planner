@@ -114,6 +114,14 @@ export const create = mutation({
       if (parent.subTripId !== subTripId) throw new Error("A sub-activity must be on the same day as its parent");
     }
 
+    // A new open step means its parent (and theirs) isn't done any more.
+    for (let id = parentId; id; ) {
+      const a = await ctx.db.get("activities", id);
+      if (!a) break;
+      if (a.isCompleted) await ctx.db.patch("activities", id, { isCompleted: false, completedAt: undefined });
+      id = a.parentId;
+    }
+
     const existing = await siblings(ctx, subTripId, parentId);
     return ctx.db.insert("activities", {
       ...fields,

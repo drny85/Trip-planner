@@ -64,8 +64,9 @@ function StepBlock({ step, tripId, canEdit, depth }: { step: Activity; tripId: I
 function AddStepField({ parent, onDone }: { parent: Activity; onDone: () => void }) {
   const create = useMutation(api.activities.create);
   const [title, setTitle] = useState("");
-  const add = () => {
-    const t = title.trim();
+  // Return reports the field's own text, which can be ahead of state on a fast Return.
+  const add = (text = title) => {
+    const t = text.trim();
     if (!t) return onDone();
     setTitle("");
     void Haptics.selectionAsync();
@@ -88,7 +89,7 @@ function AddStepField({ parent, onDone }: { parent: Activity; onDone: () => void
         autoFocus
         value={title}
         onChangeText={setTitle}
-        onSubmitEditing={add}
+        onSubmitEditing={(e) => add(e.nativeEvent.text)}
         onBlur={() => !title.trim() && onDone()}
         submitBehavior="submit"
         returnKeyType="done"
