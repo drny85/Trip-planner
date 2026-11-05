@@ -462,6 +462,22 @@ export const ja: Shape<typeof en> = {
     hours: "営業時間",
     heading: "この場所について",
   },
+  /** The tour a signed-out person sees first on mobile. */
+  welcome: {
+    planTitle: "旅の計画が、1分で",
+    planBody: "行き先と好きなことを伝えるだけ。実在の場所・時間・費用つきで、毎日の予定ができあがります。",
+    placesTitle: "推測ではなく、実在の場所",
+    placesBody: "寺院から小さな天ぷら屋まで、すべての立ち寄り先に写真・評価・営業時間・道順。",
+    todayTitle: "「今日」モードで時間どおりに",
+    todayBody: "次の予定、出発時刻、天気がひと目で。遅れたり雨が降ったら、残りの1日をワンタップで組み直せます。",
+    togetherTitle: "みんなで計画",
+    togetherBody: "友だちを招待して、アイデアに投票、費用を割り勘、旅の物語を一緒に。それぞれの言語で。",
+    getStarted: "はじめる",
+    exploreSample: "サンプルの旅を見る",
+    sampleBadge: "サンプルの旅",
+    planYourOwn: "自分の旅を計画する",
+    freeNote: "無料ではじめられます。旅を保存するにはサインインしてください。",
+  },
   mobile: {
     titleTrips: "マイ旅行",
     titleEdit: "アクティビティを編集",

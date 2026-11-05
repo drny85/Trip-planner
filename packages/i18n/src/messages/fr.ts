@@ -462,6 +462,22 @@ export const fr: Shape<typeof en> = {
     hours: "Horaires",
     heading: "À propos de ce lieu",
   },
+  /** The tour a signed-out person sees first on mobile. */
+  welcome: {
+    planTitle: "Tout votre voyage, planifié en une minute",
+    planBody: "Dites où vous allez et ce que vous aimez. Chaque jour est planifié, avec de vrais lieux, horaires et prix.",
+    placesTitle: "De vrais lieux, pas des suppositions",
+    placesBody: "Photos, avis, horaires et itinéraires pour chaque étape, des temples aux petits bars à tempura.",
+    todayTitle: "Le mode Aujourd'hui vous garde à l'heure",
+    todayBody: "Voyez la suite, l'heure de départ et la météo. En retard ou sous la pluie ? Replanifiez le reste de la journée en un geste.",
+    togetherTitle: "Planifiez ensemble",
+    togetherBody: "Invitez vos amis à voter pour des idées, partager les frais et écrire ensemble le récit du voyage, chacun dans sa langue.",
+    getStarted: "Commencer",
+    exploreSample: "Voir un exemple de voyage",
+    sampleBadge: "Exemple de voyage",
+    planYourOwn: "Planifier mon voyage",
+    freeNote: "Gratuit pour commencer. Connectez-vous pour enregistrer vos voyages.",
+  },
   mobile: {
     titleTrips: "Mes voyages",
     titleEdit: "Modifier l’activité",

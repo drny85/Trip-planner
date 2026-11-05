@@ -13,7 +13,8 @@
     "./upNext": "./convex/lib/upNext.ts",
     "./optimistic": "./src/optimistic.ts",
     "./schemas": "./src/tripSchema.ts",
-    "./replan": "./convex/lib/replan.ts"
+    "./replan": "./convex/lib/replan.ts",
+    "./sample": "./convex/lib/fakeData.ts"
   },
   "scripts": {
     "dev": "convex dev",

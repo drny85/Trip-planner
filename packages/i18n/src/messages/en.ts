@@ -459,6 +459,22 @@ export const en = {
     hours: "Opening hours",
     heading: "About this place",
   },
+  /** The tour a signed-out person sees first on mobile. */
+  welcome: {
+    planTitle: "Your whole trip, planned in a minute",
+    planBody: "Say where you're going and what you love. Get every day planned, with real places, times and costs.",
+    placesTitle: "Real places, not guesses",
+    placesBody: "Photos, ratings, opening hours and directions for every stop, from temples to tiny tempura bars.",
+    todayTitle: "Today mode keeps you on time",
+    todayBody: "See what's next, when to leave and the weather. Running late or it rains? Re-plan the rest of the day in a tap.",
+    togetherTitle: "Plan it together",
+    togetherBody: "Invite friends to vote on ideas, split costs and write the trip story together, in their own language.",
+    getStarted: "Get started",
+    exploreSample: "Explore a sample trip",
+    sampleBadge: "Sample trip",
+    planYourOwn: "Plan your own trip",
+    freeNote: "Free to start. Sign in to save your trips.",
+  },
   mobile: {
     titleTrips: "My Trips",
     titleEdit: "Edit activity",

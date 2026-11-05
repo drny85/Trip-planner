@@ -6,8 +6,8 @@ import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { authEnabled } from "@/providers/app-providers";
 import { clearCache } from "@/lib/offline-cache";
-import { Button } from "./button";
 import { Image } from "./image";
+import { Welcome } from "./welcome";
 
 /** Renders children for signed-in users (or everyone in demo mode) and a sign-in screen otherwise. */
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -27,6 +27,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   );
 }
 
+/** The welcome tour, with sign-in behind "Get started" or "Plan your own trip". */
 function SignInScreen() {
   const { startHostedAuth } = useHostedAuth();
   const [error, setError] = useState<string | null>(null);
@@ -45,18 +46,7 @@ function SignInScreen() {
     }
   };
 
-  return (
-    <View className="flex-1 justify-center gap-6 bg-background p-8">
-      <View className="gap-2">
-        <Text className="text-4xl font-extrabold text-foreground">{t("mobile.signInTitle")}</Text>
-        <Text className="text-lg text-muted-foreground">{t("mobile.signInBody")}</Text>
-      </View>
-      <Button icon="sparkles" onPress={signIn} loading={busy}>
-        {t("mobile.signInStart")}
-      </Button>
-      {error && <Text className="text-center text-danger">{error}</Text>}
-    </View>
-  );
+  return <Welcome onSignIn={() => void signIn()} busy={busy} error={error} />;
 }
 
 /** Header button that signs out (hidden in demo mode). */
