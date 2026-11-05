@@ -1,7 +1,8 @@
 import type { Id } from "@trip/backend/dataModel";
 import type { Activity } from "@trip/backend/types";
 import { api } from "@trip/backend/api";
-import { categoryLabel, cn, fallbackPhoto, formatDuration, formatTime } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn, fallbackPhoto } from "@trip/ui";
 import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -19,6 +20,7 @@ import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
  */
 export function SubSteps({ parent, tripId, canEdit, depth = 0 }: { parent: Activity; tripId: Id<"trips">; canEdit: boolean; depth?: number }) {
   const [adding, setAdding] = useState(false);
+  const { t } = useI18n();
   if (parent.children.length === 0 && !canEdit) return null;
   return (
     <View className={cn("gap-1.5", depth === 0 ? "mt-2" : "ml-4 mt-1.5")}>
@@ -32,12 +34,12 @@ export function SubSteps({ parent, tripId, canEdit, depth = 0 }: { parent: Activ
           <Pressable
             onPress={() => setAdding(true)}
             accessibilityRole="button"
-            accessibilityLabel={`Add a step to ${parent.title}`}
+            accessibilityLabel={t("steps.addStepTo", { title: parent.title })}
             hitSlop={6}
             className="flex-row items-center gap-1.5 self-start rounded-full px-2 py-1.5 active:opacity-60"
           >
             <Icon name="plus" size={13} colorVar="--color-primary" />
-            <Text className="text-sm font-semibold text-primary">Add step</Text>
+            <Text className="text-sm font-semibold text-primary">{t("steps.addStep")}</Text>
           </Pressable>
         ))}
     </View>
@@ -64,23 +66,24 @@ function StepBlock({ step, tripId, canEdit, depth }: { step: Activity; tripId: I
 function AddStepField({ parent, onDone }: { parent: Activity; onDone: () => void }) {
   const create = useMutation(api.activities.create);
   const [title, setTitle] = useState("");
+  const { t } = useI18n();
   // Return reports the field's own text, which can be ahead of state on a fast Return.
   const add = (text = title) => {
-    const t = text.trim();
-    if (!t) return onDone();
+    const value = text.trim();
+    if (!value) return onDone();
     setTitle("");
     void Haptics.selectionAsync();
     void create({
       subTripId: parent.subTripId,
       parentId: parent._id,
-      title: t,
+      title: value,
       description: "",
       address: parent.address,
       latitude: parent.latitude,
       longitude: parent.longitude,
       category: parent.category,
       subcategory: parent.subcategory,
-      photoUrl: fallbackPhoto(`${parent.title}-${t}`),
+      photoUrl: fallbackPhoto(`${parent.title}-${value}`),
     });
   };
   return (
@@ -93,12 +96,12 @@ function AddStepField({ parent, onDone }: { parent: Activity; onDone: () => void
         onBlur={() => !title.trim() && onDone()}
         submitBehavior="submit"
         returnKeyType="done"
-        placeholder={`Add a step to "${parent.title}"`}
+        placeholder={t("steps.addPlaceholder", { title: parent.title })}
         placeholderTextColorClassName="accent-muted-foreground"
         className="flex-1 rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] text-foreground"
       />
-      <Pressable onPress={onDone} hitSlop={8} accessibilityRole="button" accessibilityLabel="Done adding steps" className="px-1 active:opacity-60">
-        <Text className="text-sm font-semibold text-primary">Done</Text>
+      <Pressable onPress={onDone} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("steps.doneAddingLabel")} className="px-1 active:opacity-60">
+        <Text className="text-sm font-semibold text-primary">{t("steps.doneAdding")}</Text>
       </Pressable>
     </View>
   );
@@ -108,12 +111,13 @@ function StepRow({ activity, tripId, canEdit, onAddInside }: { activity: Activit
   const toggleDone = useToggleDone();
   const router = useRouter();
   const done = activity.isCompleted;
-  const badge = categoryLabel(activity.category, activity.subcategory);
-  const meta = [formatTime(activity.startTime), activity.durationMinutes ? formatDuration(activity.durationMinutes) : null].filter(Boolean).join(" · ");
+  const { t, f, category } = useI18n();
+  const badge = category(activity.category, activity.subcategory);
+  const meta = [f.time(activity.startTime), activity.durationMinutes ? f.duration(activity.durationMinutes) : null].filter(Boolean).join(" · ");
 
   return (
     <PressableScale
-      accessibilityHint={canEdit ? "Opens the step editor" : undefined}
+      accessibilityHint={canEdit ? t("mobileActivity.opensStepEditor") : undefined}
       disabled={!canEdit}
       onPress={() => router.push({ pathname: "/trips/[tripId]/activity/[activityId]", params: { tripId, activityId: activity._id } })}
       pressedScale={0.98}
@@ -122,7 +126,7 @@ function StepRow({ activity, tripId, canEdit, onAddInside }: { activity: Activit
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done }}
-        accessibilityLabel={`Mark ${activity.title} as ${done ? "not done" : "done"}`}
+        accessibilityLabel={t(done ? "activity.markNotDone" : "activity.markDone", { title: activity.title })}
         hitSlop={12}
         onPress={() => {
           void Haptics.selectionAsync();
@@ -150,7 +154,7 @@ function StepRow({ activity, tripId, canEdit, onAddInside }: { activity: Activit
         </Text>
       </View>
       {canEdit && (
-        <Pressable onPress={onAddInside} hitSlop={10} accessibilityRole="button" accessibilityLabel={`Add a step inside ${activity.title}`} className="h-7 w-7 items-center justify-center rounded-full bg-muted active:opacity-60">
+        <Pressable onPress={onAddInside} hitSlop={10} accessibilityRole="button" accessibilityLabel={t("steps.addStepInside", { title: activity.title })} className="h-7 w-7 items-center justify-center rounded-full bg-muted active:opacity-60">
           <Icon name="plus" size={12} colorVar="--color-primary" />
         </Pressable>
       )}

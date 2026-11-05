@@ -1,6 +1,7 @@
 import { budgetSummary } from "@trip/backend/budget";
 import type { TripDetails } from "@trip/backend/types";
-import { cn, formatMoney, getCategory } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn } from "@trip/ui";
 import { useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
@@ -10,7 +11,8 @@ import { CSS_EASE_OUT, enterUp } from "@/lib/motion";
 export function BudgetCard({ trip }: { trip: TripDetails }) {
   const budget = useMemo(() => budgetSummary(trip), [trip]);
   const [view, setView] = useState<"category" | "day">("category");
-  const money = (n: number) => formatMoney(n, trip.currency ?? "USD");
+  const { t, f, category } = useI18n();
+  const money = (n: number) => f.money(n, trip.currency ?? "USD");
   const { estimated, actual } = budget.total;
   if (estimated === 0 && actual === 0) return null;
 
@@ -19,20 +21,20 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
   const rows =
     view === "category"
       ? budget.byCategory.map((c) => {
-          const meta = getCategory(c.category);
-          return { key: c.category, label: `${meta.emoji} ${meta.label}`, color: meta.color, ...c.money };
+          const meta = category(c.category);
+          return { key: c.category, label: `${meta.emoji} ${meta.text}`, color: meta.color, ...c.money };
         })
-      : budget.byDay.map((d) => ({ key: d.subTripId, label: `Day ${d.dayNumber}`, color: "#0e7c66", ...d.money }));
+      : budget.byDay.map((d) => ({ key: d.subTripId, label: t("time.dayN", { day: d.dayNumber }), color: "#0e7c66", ...d.money }));
   const bar = { transitionProperty: "width", transitionDuration: 400, transitionTimingFunction: CSS_EASE_OUT } as const;
 
   return (
     <Animated.View entering={enterUp(1)} className="mx-4 mt-4 gap-4 rounded-3xl bg-card p-5 shadow-sm shadow-black/5">
       <View className="flex-row items-end justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Budget per person</Text>
+          <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{t("budget.title")}</Text>
           <Text className="text-3xl font-extrabold text-foreground">{money(estimated)}</Text>
           <Text className={cn("text-sm", over ? "font-semibold text-danger" : "text-muted-foreground")}>
-            {money(actual)} spent on activities · {over ? `${money(actual - estimated)} over` : `${money(estimated - actual)} left`}
+            {t("budget.spent", { amount: money(actual) })} · {over ? t("budget.over", { amount: money(actual - estimated) }) : t("budget.left", { amount: money(estimated - actual) })}
           </Text>
         </View>
         <View className="flex-row rounded-full bg-muted p-1">
@@ -46,7 +48,7 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
               className={cn("rounded-full px-3 py-1.5", view === v && "bg-card")}
             >
               <Text className={cn("text-xs font-semibold", view === v ? "text-foreground" : "text-muted-foreground")}>
-                {v === "category" ? "Category" : "Day"}
+                {v === "category" ? t("mobileMoney.category") : t("mobileMoney.day")}
               </Text>
             </Pressable>
           ))}
@@ -63,7 +65,7 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
             <View className="flex-row justify-between">
               <Text className="text-sm font-semibold text-foreground">{r.label}</Text>
               <Text className={cn("text-sm", r.actual > r.estimated ? "font-semibold text-danger" : "text-muted-foreground")}>
-                {r.actual > 0 ? `${money(r.actual)} of ${money(r.estimated)}` : `${money(r.estimated)} planned`}
+                {r.actual > 0 ? `${money(r.actual)} ${t("budget.of", { amount: money(r.estimated) })}` : t("budget.planned", { amount: money(r.estimated) })}
               </Text>
             </View>
             {/* How much of this row's plan is spent: full when it's all spent, red when over. */}

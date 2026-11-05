@@ -9,6 +9,8 @@ export default defineSchema({
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    /** App language ("en", "es", …), so notifications reach them in it. */
+    language: v.optional(v.string()),
   }).index("by_clerkId", ["clerkId"]),
 
   trips: defineTable({
@@ -99,7 +101,18 @@ export default defineSchema({
     userId: v.string(),
     tripId: v.id("trips"),
     kind: v.union(v.literal("idea"), v.literal("accepted"), v.literal("rejected"), v.literal("joined"), v.literal("expense"), v.literal("settled")),
+    /** Rendered in the recipient's language when sent; the apps re-render `params` in the reader's current one. */
     text: v.string(),
+    params: v.optional(
+      v.object({
+        name: v.optional(v.string()),
+        title: v.optional(v.string()),
+        item: v.optional(v.string()),
+        count: v.optional(v.number()),
+        amountCents: v.optional(v.number()),
+        currency: v.optional(v.string()),
+      }),
+    ),
     isRead: v.boolean(),
   })
     .index("by_userId", ["userId"])

@@ -2,7 +2,8 @@
 
 import { budgetSummary } from "@trip/backend/budget";
 import type { PublicTripDetails } from "@trip/backend/types";
-import { cn, formatMoney, getCategory } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { cn } from "@trip/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
@@ -16,7 +17,8 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
   const budget = useMemo(() => budgetSummary(trip), [trip]);
   const [view, setView] = useState<"category" | "day">("category");
   const currency = trip.currency ?? "USD";
-  const money = (n: number) => formatMoney(n, currency);
+  const { t, f, category } = useI18n();
+  const money = (n: number) => f.money(n, currency);
   const { estimated, actual } = budget.total;
   if (estimated === 0 && actual === 0) return null;
 
@@ -25,24 +27,24 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
   const rows =
     view === "category"
       ? budget.byCategory.map((c) => {
-          const meta = getCategory(c.category);
-          return { key: c.category, label: `${meta.emoji} ${meta.label}`, color: meta.color, ...c.money };
+          const meta = category(c.category);
+          return { key: c.category, label: `${meta.emoji} ${meta.text}`, color: meta.color, ...c.money };
         })
-      : budget.byDay.map((d) => ({ key: d.subTripId, label: `Day ${d.dayNumber}`, color: "var(--color-primary)", ...d.money }));
+      : budget.byDay.map((d) => ({ key: d.subTripId, label: t("time.dayN", { day: d.dayNumber }), color: "var(--color-primary)", ...d.money }));
 
   return (
     <motion.section {...rise(1)} className="mt-6 rounded-3xl border border-border/70 bg-card p-5 shadow-sm sm:p-6" aria-labelledby="budget-title">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="budget-title" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Budget per person
+            {t("budget.title")}
           </h2>
           <p className="mt-1 text-3xl font-extrabold tabular-nums">{money(estimated)}</p>
           <p className={cn("text-sm tabular-nums", over ? "font-semibold text-destructive" : "text-muted-foreground")}>
-            {money(actual)} spent on activities{over ? ` · ${money(actual - estimated)} over` : ` · ${money(estimated - actual)} left`}
+            {t("budget.spent", { amount: money(actual) })} · {over ? t("budget.over", { amount: money(actual - estimated) }) : t("budget.left", { amount: money(estimated - actual) })}
           </p>
         </div>
-        <div role="tablist" aria-label="Group budget by" className="flex rounded-full bg-muted p-1 text-sm font-semibold">
+        <div role="tablist" aria-label={t("budget.groupBy")} className="flex rounded-full bg-muted p-1 text-sm font-semibold">
           {(["category", "day"] as const).map((v) => (
             <button
               key={v}
@@ -52,7 +54,7 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
               className={cn("relative rounded-full px-3 py-1.5 transition-colors", view === v ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
             >
               {view === v && <motion.span layoutId="budget-tab" className="absolute inset-0 -z-0 rounded-full bg-card shadow-sm" transition={{ duration: 0.2, ease: EASE_OUT }} />}
-              <span className="relative">{v === "category" ? "By category" : "By day"}</span>
+              <span className="relative">{v === "category" ? t("budget.byCategory") : t("budget.byDay")}</span>
             </button>
           ))}
         </div>
@@ -92,10 +94,10 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
               <span className="text-right tabular-nums text-muted-foreground">
                 {r.actual > 0 ? (
                   <>
-                    <span className={cn("font-semibold", r.actual > r.estimated ? "text-danger" : "text-foreground")}>{money(r.actual)}</span> of {money(r.estimated)}
+                    <span className={cn("font-semibold", r.actual > r.estimated ? "text-danger" : "text-foreground")}>{money(r.actual)}</span> {t("budget.of", { amount: money(r.estimated) })}
                   </>
                 ) : (
-                  `${money(r.estimated)} planned`
+                  t("budget.planned", { amount: money(r.estimated) })
                 )}
               </span>
             </li>

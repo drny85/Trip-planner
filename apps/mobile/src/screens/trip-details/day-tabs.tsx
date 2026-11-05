@@ -1,9 +1,11 @@
+import { useI18n } from "@trip/i18n/react";
 import type { TripDetails } from "@trip/backend/types";
 import { ScrollView, Text, View } from "react-native";
 import { PressableScale } from "@/components/pressable-scale";
 
 /** Horizontal day picker that scrolls the itinerary to a day. */
 export function DayTabs({ subTrips, onSelect }: { subTrips: TripDetails["subTrips"]; onSelect: (id: string) => void }) {
+  const { t } = useI18n();
   return (
     <ScrollView
       horizontal
@@ -19,7 +21,7 @@ export function DayTabs({ subTrips, onSelect }: { subTrips: TripDetails["subTrip
             className="flex-row items-center gap-2 rounded-full border border-border bg-card px-4 py-2"
           >
             <View className={done ? "h-2 w-2 rounded-full bg-success" : "h-2 w-2 rounded-full bg-primary"} />
-            <Text className="text-sm font-semibold text-foreground">Day {s.dayNumber}</Text>
+            <Text className="text-sm font-semibold text-foreground">{t("time.dayN", { day: s.dayNumber })}</Text>
             {s.location ? <Text className="text-sm text-muted-foreground">{s.location}</Text> : null}
           </PressableScale>
         );

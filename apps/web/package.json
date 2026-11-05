@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/nextjs": "^7.9.24",
     "@trip/backend": "workspace:*",
+    "@trip/i18n": "workspace:*",
     "@trip/ui": "workspace:*",
     "convex": "^1.49.0",
     "geist": "^1.9.1",

@@ -127,6 +127,13 @@ test("generateTrip calls Claude with a JSON schema and saves the tree", async ()
   expect(lunch).toMatchObject({ category: "food", websiteUrl: "https://www.timeoutmarket.com/lisboa/", order: 1 });
 });
 
+test("generateTrip writes the itinerary in the app language and errors in it too", async () => {
+  const t = convexTest(schema, modules);
+  await t.action(api.ai.generateTrip, { prompt: "2 days in Lisbon", language: "ja" });
+  expect(JSON.stringify(requests[0]!.body.system)).toContain("in Japanese");
+  await expect(t.action(api.ai.generateTrip, { prompt: "x", language: "es" })).rejects.toThrow("Describe el viaje que quieres");
+});
+
 test("through the gateway, a weekend goes to the cheap tier with cross-provider fallbacks", async () => {
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("AI_GATEWAY_API_KEY", "gateway-key");

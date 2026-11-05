@@ -1,6 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Trip } from "@trip/backend/types";
-import { formatDateRange, localToday, tripLength } from "@trip/ui";
+import { useI18n } from "@trip/i18n/react";
+import { localToday, tripLength } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { Link, Stack, useRouter } from "expo-router";
 import { useState } from "react";
@@ -22,6 +23,7 @@ import { UpNext } from "./up-next";
 export function TripsList() {
   const { data: trips, isCached } = useCachedQuery(api.trips.list, {});
   const router = useRouter();
+  const { t } = useI18n();
 
   return (
     <>
@@ -30,8 +32,11 @@ export function TripsList() {
           headerLeft: authEnabled ? () => <SignOutButton /> : undefined,
           headerRight: () => (
             <View className="flex-row items-center gap-7 px-2">
+              <Pressable accessibilityLabel={t("common.language")} onPress={() => router.push("/language")} hitSlop={12}>
+                <Text className="text-xl">🌐</Text>
+              </Pressable>
               <BellButton />
-              <Pressable accessibilityLabel="Plan a new trip" onPress={() => router.push("/generate")} hitSlop={12}>
+              <Pressable accessibilityLabel={t("mobileTrips.planNew")} onPress={() => router.push("/generate")} hitSlop={12}>
                 <Icon name="plus" size={22} colorVar="--color-primary" />
               </Pressable>
             </View>
@@ -79,6 +84,7 @@ function PlanIcon({ name }: { name: "sparkles" | "chevron" }) {
 }
 
 function PlanCta() {
+  const { t } = useI18n();
   return (
     <Link href="/generate" asChild>
       <PressableScale className="flex-row items-center gap-4 rounded-3xl bg-primary p-5 dark:border dark:border-primary/30 dark:bg-primary/15">
@@ -86,8 +92,8 @@ function PlanCta() {
           <PlanIcon name="sparkles" />
         </View>
         <View className="flex-1">
-          <Text className="text-lg font-bold text-primary-foreground dark:text-foreground">Where to next?</Text>
-          <Text className="text-primary-foreground/80 dark:text-muted-foreground">Describe a trip and AI plans every day.</Text>
+          <Text className="text-lg font-bold text-primary-foreground dark:text-foreground">{t("mobileTrips.whereNext")}</Text>
+          <Text className="text-primary-foreground/80 dark:text-muted-foreground">{t("mobileTrips.whereNextBody")}</Text>
         </View>
         <PlanIcon name="chevron" />
       </PressableScale>
@@ -97,6 +103,7 @@ function PlanCta() {
 
 function TripCard({ trip }: { trip: Trip & { isOwner: boolean } }) {
   const days = tripLength(trip.startDate, trip.endDate);
+  const { t, f } = useI18n();
   return (
     <Link href={{ pathname: "/trips/[tripId]", params: { tripId: trip._id } }} asChild>
       <PressableScale className="h-64 overflow-hidden rounded-[28px] bg-card" pressedScale={0.98}>
@@ -111,15 +118,15 @@ function TripCard({ trip }: { trip: Trip & { isOwner: boolean } }) {
           className="absolute inset-0"
         />
         <View className="absolute left-4 right-4 top-4 flex-row gap-2">
-          <Chip>{`${days} ${days === 1 ? "day" : "days"}`}</Chip>
-          {!trip.isOwner ? <Chip>👥 Joined</Chip> : trip.isAIGenerated && <Chip>✨ AI</Chip>}
+          <Chip>{t("time.days", { count: days })}</Chip>
+          {!trip.isOwner ? <Chip>{`👥 ${t("trips.joined")}`}</Chip> : trip.isAIGenerated && <Chip>{`✨ ${t("trips.ai")}`}</Chip>}
         </View>
         <View className="absolute inset-x-0 bottom-0 gap-1 p-5">
           <Text className="text-3xl font-extrabold tracking-tight text-white" numberOfLines={1}>
             {trip.title}
           </Text>
           <Text className="text-white/85">
-            {trip.destination} · {formatDateRange(trip.startDate, trip.endDate)}
+            {trip.destination} · {f.dateRange(trip.startDate, trip.endDate)}
           </Text>
         </View>
       </PressableScale>
@@ -139,6 +146,7 @@ function EmptyState() {
   const router = useRouter();
   const seed = useMutation(api.seed.demoTrip);
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   const loadDemo = async () => {
     setLoading(true);
@@ -155,15 +163,13 @@ function EmptyState() {
       <View className="h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
         <Icon name="sparkles" size={36} colorVar="--color-primary" />
       </View>
-      <Text className="text-center text-2xl font-extrabold text-foreground">Plan your first trip</Text>
-      <Text className="text-center text-muted-foreground">
-        Describe a trip and AI builds the whole itinerary, or load the sample Tokyo trip to look around.
-      </Text>
+      <Text className="text-center text-2xl font-extrabold text-foreground">{t("mobileTrips.firstTrip")}</Text>
+      <Text className="text-center text-muted-foreground">{t("trips.emptyBody")}</Text>
       <Button icon="sparkles" className="self-stretch" onPress={() => router.push("/generate")}>
-        Plan with AI
+        {t("nav.planWithAI")}
       </Button>
       <Button variant="secondary" className="self-stretch" loading={loading} onPress={loadDemo}>
-        Load demo trip
+        {t("trips.loadDemo")}
       </Button>
     </Animated.View>
   );

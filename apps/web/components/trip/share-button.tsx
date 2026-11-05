@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useMutation } from "convex/react";
@@ -14,6 +15,7 @@ export function ShareButton({ tripId, shareToken }: { tripId: Id<"trips">; share
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const url = shareToken && typeof window !== "undefined" ? `${window.location.origin}/share/${shareToken}` : null;
 
@@ -52,7 +54,7 @@ export function ShareButton({ tripId, shareToken }: { tripId: Id<"trips">; share
         aria-expanded={open}
         className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition hover:bg-white/30 active:scale-[0.97]"
       >
-        <span>↗</span> Share
+        <span>↗</span> {t("share.share")}
       </button>
       <AnimatePresence>
         {open && (
@@ -64,14 +66,14 @@ export function ShareButton({ tripId, shareToken }: { tripId: Id<"trips">; share
             style={{ transformOrigin: "top right" }}
             className="absolute right-0 mt-2 w-80 rounded-3xl border border-border bg-card p-4 text-foreground shadow-2xl"
           >
-            <p className="font-bold">Share this trip</p>
-            <p className="mt-1 text-sm text-muted-foreground">Anyone with the link can view the itinerary. They can&apos;t edit it.</p>
+            <p className="font-bold">{t("share.title")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("share.body")}</p>
             {url ? (
               <>
                 <div className="mt-3 flex gap-2">
                   <input readOnly value={url} onFocus={(e) => e.target.select()} className="min-w-0 flex-1 rounded-xl border border-border bg-muted px-3 py-2 text-xs" />
                   <button onClick={() => void copy(url)} className="rounded-xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground active:scale-[0.97]">
-                    {copied ? "Copied ✓" : "Copy"}
+                    {copied ? t("share.copied") : t("share.copy")}
                   </button>
                 </div>
                 <button
@@ -82,7 +84,7 @@ export function ShareButton({ tripId, shareToken }: { tripId: Id<"trips">; share
                   }}
                   className="mt-3 text-sm font-semibold text-danger hover:underline disabled:opacity-50"
                 >
-                  Stop sharing
+                  {t("share.stop")}
                 </button>
               </>
             ) : (
@@ -91,7 +93,7 @@ export function ShareButton({ tripId, shareToken }: { tripId: Id<"trips">; share
                 onClick={() => void enable()}
                 className="mt-3 w-full rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 active:scale-[0.98] disabled:opacity-50"
               >
-                {busy ? "Creating link…" : "Create link and copy"}
+                {busy ? t("share.creating") : t("share.create")}
               </button>
             )}
           </motion.div>
