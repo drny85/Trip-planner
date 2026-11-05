@@ -3,7 +3,7 @@ import { buildI18n, I18nProvider, type I18n } from "@trip/i18n/react";
 import { useLocales } from "expo-localization";
 import * as SecureStore from "expo-secure-store";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Platform, Settings } from "react-native";
+import { NativeModules, Platform, Settings, TurboModuleRegistry } from "react-native";
 
 /**
  * The app language: the one picked in the app if any, otherwise the phone's
@@ -29,12 +29,22 @@ function writeSaved(locale: Locale | null) {
       else globalThis.localStorage?.removeItem(KEY);
     } else if (locale) SecureStore.setItem(KEY, locale);
     else void SecureStore.deleteItemAsync(KEY);
-    // iOS's own per-app language, which native screens (Clerk's sign-in sheet, system
-    // dialogs) read. It takes effect the next time the app launches; null follows the phone.
-    if (Platform.OS === "ios") Settings.set({ AppleLanguages: locale ? [locale] : null });
+    // Takes effect the next time the app launches.
+    if (Platform.OS === "ios") setIosAppLanguage(locale);
   } catch {
     // Not saved; it still applies until the app restarts.
   }
+}
+
+/**
+ * iOS's own per-app language, which native screens (Clerk's sign-in sheet, system
+ * dialogs) read at launch. Clearing it needs deleteValues: a null passed to
+ * Settings.set is dropped on the way to native, so the override would stay.
+ */
+function setIosAppLanguage(locale: Locale | null) {
+  if (locale) return Settings.set({ AppleLanguages: [locale] });
+  const native = (TurboModuleRegistry.get("SettingsManager") ?? NativeModules.SettingsManager) as { deleteValues?: (keys: string[]) => void } | null;
+  native?.deleteValues?.(["AppleLanguages"]);
 }
 
 const holder: { current: I18n } = { current: buildI18n("en") };

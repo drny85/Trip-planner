@@ -13,7 +13,7 @@ const PHOTOS: Record<string, string> = {
   tempura: "1570078362689-c57c33cca104",
   "ueno-park": "1522383225653-ed111181a951",
   skytree: "1681685544703-fd783db99515",
-  "meiji-jingu": "1528360983277-13d401cdc186",
+  "meiji-jingu": "1703443371292-0d9081cc4787",
   takeshita: "1503899036084-c55cdd92da26",
   "shibuya-sky": "1542051841857-5f90071e7989",
   "omoide-yokocho": "1554797589-7241bb691973",

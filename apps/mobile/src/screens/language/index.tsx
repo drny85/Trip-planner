@@ -64,7 +64,14 @@ export function LanguageAndTheme({ onPickLanguage, onClose }: { onPickLanguage?:
             accessibilityState={{ selected: theme === o.value }}
             className={cn("flex-1 items-center rounded-xl py-2.5 active:opacity-70", theme === o.value && "bg-primary")}
           >
-            <Text className={cn("text-sm font-semibold", theme === o.value ? "text-primary-foreground" : "text-foreground")}>{t(o.key)}</Text>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              className={cn("px-1.5 text-center text-sm font-semibold", theme === o.value ? "text-primary-foreground" : "text-foreground")}
+            >
+              {t(o.key)}
+            </Text>
           </Pressable>
         ))}
       </View>
