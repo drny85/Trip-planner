@@ -197,17 +197,24 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
       >
         {currentDay ? (
           // Keyed by day, so the label fades over when you scroll into the next day.
-          <Animated.View key={currentDay._id} entering={FadeIn.duration(180)} className="items-center px-12">
+          // Wide side padding keeps the text clear of the floating back button; only
+          // the day's title shortens, so "Day N" always shows.
+          <Animated.View key={currentDay._id} entering={FadeIn.duration(180)} className="w-full items-center px-16">
             <Text className="text-xs font-semibold text-muted-foreground" numberOfLines={1}>
               {trip.title}
             </Text>
-            <Text className="text-base font-bold text-foreground" numberOfLines={1}>
-              {t("time.dayN", { day: currentDay.dayNumber })} · {dayTitle(currentDay.title)}
-              {currentDay.date ? <Text className="font-medium text-muted-foreground"> · {f.weekday(currentDay.date)}</Text> : null}
-            </Text>
+            <View className="max-w-full flex-row items-baseline">
+              <Text className="shrink-0 text-base font-bold text-foreground">{t("time.dayN", { day: currentDay.dayNumber })} · </Text>
+              <Text className="shrink text-base font-bold text-foreground" numberOfLines={1}>
+                {dayTitle(currentDay.title)}
+              </Text>
+              {currentDay.date ? (
+                <Text className="shrink-0 text-base font-medium text-muted-foreground"> · {f.weekday(currentDay.date)}</Text>
+              ) : null}
+            </View>
           </Animated.View>
         ) : (
-          <Animated.View key="trip" entering={FadeIn.duration(180)} className="px-12">
+          <Animated.View key="trip" entering={FadeIn.duration(180)} className="px-16">
             <Text className="text-base font-bold text-foreground" numberOfLines={1}>
               {trip.title}
             </Text>
