@@ -93,3 +93,102 @@ export function placePhotoUrl(placeId: string, width = 1000) {
   const site = process.env.CONVEX_SITE_URL;
   return site ? `${site}/place-photo/${encodeURIComponent(placeId)}?w=${width}` : null;
 }
+
+/** What the apps show about a place. Fetched live each time: Google's terms don't allow storing it. */
+export type PlaceDetails = {
+  name?: string;
+  rating?: number;
+  ratingCount?: number;
+  /** 1 (inexpensive) to 4 (very expensive). */
+  priceLevel?: number;
+  phone?: string;
+  website?: string;
+  mapsUrl?: string;
+  status?: "open" | "closedTemporarily" | "closedPermanently";
+  /** Right now, at the place. Missing when Google has no hours. */
+  openNow?: boolean;
+  /** Local "HH:MM" at the place when it next closes (if open) or opens (if closed). */
+  nextChange?: string;
+  /** Google's own lines for each day, in the requested language ("Monday: 9:00 AM – 5:00 PM"). */
+  weekHours?: string[];
+  summary?: string;
+};
+
+const PRICE = { PRICE_LEVEL_INEXPENSIVE: 1, PRICE_LEVEL_MODERATE: 2, PRICE_LEVEL_EXPENSIVE: 3, PRICE_LEVEL_VERY_EXPENSIVE: 4 } as const;
+const STATUS = { OPERATIONAL: "open", CLOSED_TEMPORARILY: "closedTemporarily", CLOSED_PERMANENTLY: "closedPermanently" } as const;
+
+/** "2026-11-05T22:00:00Z" at a place `offset` minutes from UTC → "17:00". */
+export function localClock(iso: string | undefined, offsetMinutes: number | undefined): string | undefined {
+  if (!iso || offsetMinutes === undefined) return undefined;
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return undefined;
+  const local = new Date(t + offsetMinutes * 60_000);
+  return `${String(local.getUTCHours()).padStart(2, "0")}:${String(local.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+type RawDetails = {
+  displayName?: { text?: string };
+  rating?: number;
+  userRatingCount?: number;
+  priceLevel?: keyof typeof PRICE | string;
+  internationalPhoneNumber?: string;
+  nationalPhoneNumber?: string;
+  websiteUri?: string;
+  googleMapsUri?: string;
+  businessStatus?: keyof typeof STATUS | string;
+  utcOffsetMinutes?: number;
+  currentOpeningHours?: { openNow?: boolean; nextCloseTime?: string; nextOpenTime?: string; weekdayDescriptions?: string[] };
+  regularOpeningHours?: { weekdayDescriptions?: string[] };
+  editorialSummary?: { text?: string };
+};
+
+export function parseDetails(raw: RawDetails): PlaceDetails {
+  const hours = raw.currentOpeningHours;
+  return {
+    name: raw.displayName?.text,
+    rating: raw.rating,
+    ratingCount: raw.userRatingCount,
+    priceLevel: PRICE[raw.priceLevel as keyof typeof PRICE],
+    phone: raw.internationalPhoneNumber ?? raw.nationalPhoneNumber,
+    website: raw.websiteUri,
+    mapsUrl: raw.googleMapsUri,
+    status: STATUS[raw.businessStatus as keyof typeof STATUS],
+    openNow: hours?.openNow,
+    nextChange: localClock(hours?.openNow ? hours.nextCloseTime : hours?.nextOpenTime, raw.utcOffsetMinutes),
+    weekHours: hours?.weekdayDescriptions ?? raw.regularOpeningHours?.weekdayDescriptions,
+    summary: raw.editorialSummary?.text,
+  };
+}
+
+/** Live details of a place, in `language` where Google has it. */
+export async function placeDetails(placeId: string, key: string, language: string): Promise<PlaceDetails | null> {
+  try {
+    const res = await fetch(`${API}/places/${encodeURIComponent(placeId)}?languageCode=${encodeURIComponent(language)}`, {
+      headers: {
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": [
+          "displayName",
+          "rating",
+          "userRatingCount",
+          "priceLevel",
+          "internationalPhoneNumber",
+          "nationalPhoneNumber",
+          "websiteUri",
+          "googleMapsUri",
+          "businessStatus",
+          "utcOffsetMinutes",
+          "currentOpeningHours",
+          "regularOpeningHours",
+          "editorialSummary",
+        ].join(","),
+      },
+    });
+    if (!res.ok) {
+      console.log(`Google Place Details failed (${res.status})`);
+      return null;
+    }
+    return parseDetails((await res.json()) as RawDetails);
+  } catch {
+    return null;
+  }
+}

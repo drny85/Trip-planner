@@ -101,7 +101,14 @@ export const update = mutation({
     }
     // A new photo isn't by the photographer credited for the old one.
     const photoCredit = patch.photoUrl !== undefined && patch.photoUrl !== activity.photoUrl ? undefined : activity.photoCredit;
-    await ctx.db.patch("activities", activityId, { ...next, photoCredit });
+    // A new name or address may be a different place: look it up again next time.
+    const movedPlace =
+      (patch.title !== undefined && patch.title !== activity.title) || (patch.address !== undefined && patch.address !== activity.address);
+    await ctx.db.patch("activities", activityId, {
+      ...next,
+      photoCredit,
+      ...(movedPlace ? { placeId: undefined, placeLookedUp: undefined } : {}),
+    });
   },
 });
 
