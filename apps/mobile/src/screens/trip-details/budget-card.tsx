@@ -23,7 +23,6 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
           return { key: c.category, label: `${meta.emoji} ${meta.label}`, color: meta.color, ...c.money };
         })
       : budget.byDay.map((d) => ({ key: d.subTripId, label: `Day ${d.dayNumber}`, color: "#0e7c66", ...d.money }));
-  const max = Math.max(1, ...rows.map((r) => Math.max(r.estimated, r.actual)));
   const bar = { transitionProperty: "width", transitionDuration: 400, transitionTimingFunction: CSS_EASE_OUT } as const;
 
   return (
@@ -33,7 +32,7 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
           <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Budget per person</Text>
           <Text className="text-3xl font-extrabold text-foreground">{money(estimated)}</Text>
           <Text className={cn("text-sm", over ? "font-semibold text-danger" : "text-muted-foreground")}>
-            {money(actual)} spent · {over ? `${money(actual - estimated)} over` : `${money(estimated - actual)} left`}
+            {money(actual)} spent on activities · {over ? `${money(actual - estimated)} over` : `${money(estimated - actual)} left`}
           </Text>
         </View>
         <View className="flex-row rounded-full bg-muted p-1">
@@ -63,14 +62,20 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
           <View key={r.key} className="gap-1.5">
             <View className="flex-row justify-between">
               <Text className="text-sm font-semibold text-foreground">{r.label}</Text>
-              <Text className="text-sm text-muted-foreground">
-                {r.actual > 0 ? `${money(r.actual)} / ` : ""}
-                {money(r.estimated)}
+              <Text className={cn("text-sm", r.actual > r.estimated ? "font-semibold text-danger" : "text-muted-foreground")}>
+                {r.actual > 0 ? `${money(r.actual)} of ${money(r.estimated)}` : `${money(r.estimated)} planned`}
               </Text>
             </View>
+            {/* How much of this row's plan is spent: full when it's all spent, red when over. */}
             <View className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <Animated.View className="absolute bottom-0 left-0 top-0 rounded-full opacity-30" style={[{ width: `${(r.estimated / max) * 100}%`, backgroundColor: r.color }, bar]} />
-              <Animated.View className="absolute bottom-0 left-0 top-0 rounded-full" style={[{ width: `${(r.actual / max) * 100}%`, backgroundColor: r.color }, bar]} />
+              <Animated.View
+                className={cn("absolute bottom-0 left-0 top-0 rounded-full", r.actual > r.estimated && "bg-danger")}
+                style={[
+                  { width: `${r.estimated ? Math.min(100, (r.actual / r.estimated) * 100) : r.actual > 0 ? 100 : 0}%` },
+                  r.actual > r.estimated ? null : { backgroundColor: r.color },
+                  bar,
+                ]}
+              />
             </View>
           </View>
         ))}

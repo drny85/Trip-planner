@@ -1,7 +1,7 @@
 import { api } from "@trip/backend/api";
 import { CATEGORIES, CATEGORY_TREE, type Category } from "@trip/backend/categories";
 import type { Id } from "@trip/backend/dataModel";
-import { categoryMeta, fallbackPhoto, subcategoryMeta } from "@trip/ui";
+import { categoryMeta, fallbackPhoto, parseTime, subcategoryMeta } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -33,6 +33,8 @@ export function SuggestIdea({ tripId }: { tripId: Id<"trips"> }) {
 
   const submit = async () => {
     if (!form.title.trim()) return Alert.alert("What's the idea?");
+    const startTime = form.startTime.trim() ? parseTime(form.startTime) : undefined;
+    if (startTime === null) return Alert.alert("Check the time", "Try something like 7:30 PM.");
     setSaving(true);
     try {
       const cost = Number(form.estimatedCost);
@@ -43,7 +45,7 @@ export function SuggestIdea({ tripId }: { tripId: Id<"trips"> }) {
         address: form.address.trim(),
         category: form.category,
         subcategory: form.subcategory || undefined,
-        startTime: form.startTime.trim() || undefined,
+        startTime,
         estimatedCost: form.estimatedCost && !Number.isNaN(cost) ? cost : undefined,
         photoUrl: fallbackPhoto(form.title),
       });
@@ -56,9 +58,9 @@ export function SuggestIdea({ tripId }: { tripId: Id<"trips"> }) {
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
+    <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
       <Text className="text-sm text-muted-foreground">Everyone on the trip can vote. It&apos;s added once more than half say yes.</Text>
-      <Field label="What's the idea?" value={form.title} onChangeText={set("title")} placeholder="Sunset cruise on the Sumida" autoFocus />
+      <Field label="What's the idea?" value={form.title} onChangeText={set("title")} placeholder="Sunset drinks with a view" autoFocus />
       <View className="gap-2">
         <Text className="text-sm font-semibold text-muted-foreground">Day</Text>
         <Chips options={trip.subTrips.map((d) => ({ value: d._id, label: `Day ${d.dayNumber}` }))} selected={dayId} onSelect={set("subTripId")} />
@@ -79,7 +81,7 @@ export function SuggestIdea({ tripId }: { tripId: Id<"trips"> }) {
         )}
       </View>
       <View className="flex-row gap-3">
-        <Field label="Time" value={form.startTime} onChangeText={set("startTime")} placeholder="19:30" className="w-28" />
+        <Field label="Time" value={form.startTime} onChangeText={set("startTime")} placeholder="7:30 PM" autoCapitalize="characters" className="w-32" />
         <Field label="Cost per person" value={form.estimatedCost} onChangeText={set("estimatedCost")} keyboardType="decimal-pad" className="flex-1" />
       </View>
       <Field label="Why it's worth it" value={form.description} onChangeText={set("description")} multiline />

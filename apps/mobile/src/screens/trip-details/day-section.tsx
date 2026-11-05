@@ -20,19 +20,22 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
   const rainy = (weather?.rainChance ?? 0) >= 50;
   return (
     <View className="pt-8">
-      <View className="flex-row items-end justify-between px-5 pb-4">
-        <View className="flex-1 gap-0.5">
+      <View className="gap-2 px-5 pb-4">
+        <View className="gap-0.5">
           <Text className="text-xs font-bold uppercase tracking-widest text-primary">
             Day {subTrip.dayNumber}
             {subTrip.date ? ` · ${formatDay(subTrip.date)}` : ""}
           </Text>
           <Text className="text-2xl font-extrabold tracking-tight text-foreground">{subTrip.title.replace(/^Day \d+\s*·\s*/, "")}</Text>
         </View>
-        <View className="flex-row items-center gap-2 pb-0.5">
+        <View className="flex-row flex-wrap items-center gap-2">
           <DayWeatherChip weather={weather} />
-          <Text className="text-sm text-muted-foreground">
-            {done}/{subTrip.activities.length}
-          </Text>
+          {subTrip.activities.length > 0 && (
+            <Text className="text-sm text-muted-foreground">
+              {done} of {subTrip.activities.length} done
+            </Text>
+          )}
+          <View className="flex-1" />
           {subTrip.activities.length > 0 && (
             <PressableScale
               onPress={() => void openDayRoute(subTrip.activities)}

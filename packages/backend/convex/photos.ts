@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
+import { decodeEntities } from "./lib/text";
 import { findPlacePhoto } from "./lib/wikiPhotos";
 
 /**
@@ -52,6 +53,40 @@ export const placesForTrip = internalQuery({
         .filter((a) => a.category !== "transport" && a.category !== "lodging")
         .map((a) => ({ activityId: a._id, title: a.title, context: cityOf.get(a.subTripId) ?? trip.destination })),
     };
+  },
+});
+
+/**
+ * One-off repair for trips planned before titles were cleaned up: turns HTML
+ * entities ("&amp;") in a trip's titles and descriptions back into characters.
+ * Run with `npx convex run photos:decodeTripText '{"tripId":"..."}'`.
+ */
+export const decodeTripText = internalMutation({
+  args: { tripId: v.id("trips") },
+  handler: async (ctx, { tripId }) => {
+    const trip = await ctx.db.get("trips", tripId);
+    if (!trip) return 0;
+    let fixed = 0;
+    const clean = <T extends Record<string, unknown>>(doc: T, keys: (keyof T & string)[]) => {
+      const patch: Record<string, string> = {};
+      for (const k of keys) {
+        const value = doc[k];
+        if (typeof value === "string" && decodeEntities(value) !== value) patch[k] = decodeEntities(value);
+      }
+      fixed += Object.keys(patch).length;
+      return Object.keys(patch).length ? patch : null;
+    };
+    const tripPatch = clean(trip, ["title", "description"]);
+    if (tripPatch) await ctx.db.patch("trips", tripId, tripPatch);
+    for (const day of await ctx.db.query("subTrips").withIndex("by_tripId_order", (q) => q.eq("tripId", tripId)).collect()) {
+      const patch = clean(day, ["title"]);
+      if (patch) await ctx.db.patch("subTrips", day._id, patch);
+    }
+    for (const a of await ctx.db.query("activities").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect()) {
+      const patch = clean(a, ["title", "description", "address"]);
+      if (patch) await ctx.db.patch("activities", a._id, patch);
+    }
+    return fixed;
   },
 });
 

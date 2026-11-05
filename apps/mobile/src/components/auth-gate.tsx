@@ -1,11 +1,12 @@
-import { useAuth } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { useHostedAuth } from "@clerk/expo/hosted-auth";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { authEnabled } from "@/providers/app-providers";
 import { clearCache } from "@/lib/offline-cache";
 import { Button } from "./button";
+import { Image } from "./image";
 
 /** Renders children for signed-in users (or everyone in demo mode) and a sign-in screen otherwise. */
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -64,14 +65,39 @@ export function SignOutButton() {
   return <SignOutButtonInner />;
 }
 
+/** The signed-in person's photo or initials; tapping it offers Sign out. */
 function SignOutButtonInner() {
   const { signOut } = useAuth();
+  const { user } = useUser();
+  const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "";
+  const initials =
+    name
+      .split(/[\s@.]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]!.toUpperCase())
+      .join("") || "?";
+  const ask = () =>
+    Alert.alert(name || "Your account", undefined, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: () => {
+          clearCache();
+          void signOut();
+        },
+      },
+    ]);
   return (
-    <Button variant="ghost" size="sm" icon="logout" onPress={() => {
-        clearCache();
-        void signOut();
-      }}>
-      Sign out
-    </Button>
+    <Pressable onPress={ask} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Account${name ? `, ${name}` : ""}. Sign out`} style={{ width: 32, height: 32 }} className="overflow-hidden rounded-full bg-primary active:opacity-70">
+      {user?.hasImage ? (
+        <Image source={user.imageUrl} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+      ) : (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-xs font-bold text-primary-foreground">{initials}</Text>
+        </View>
+      )}
+    </Pressable>
   );
 }

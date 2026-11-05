@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import type { Activity } from "@trip/backend/types";
-import { getCategory } from "@trip/ui";
+import { formatTime, getCategory } from "@trip/ui";
 import L from "leaflet";
 import { useEffect } from "react";
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
@@ -45,7 +45,7 @@ export default function DayMapLeaflet({ stops }: { stops: Stop[] }) {
           <Popup>
             <strong>{s.title}</strong>
             <br />
-            {s.startTime ? `${s.startTime} · ` : ""}
+            {s.startTime ? `${formatTime(s.startTime)} · ` : ""}
             {s.address}
           </Popup>
         </Marker>

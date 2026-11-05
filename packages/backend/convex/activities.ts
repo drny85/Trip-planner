@@ -58,11 +58,24 @@ export const setCompleted = mutation({
         id = parent.parentId;
       }
     }
-    await Promise.all(
-      targets
-        .filter((a) => a.isCompleted !== isCompleted)
-        .map((a) => ctx.db.patch("activities", a._id, { isCompleted, completedAt })),
-    );
+    const changed = targets.filter((a) => a.isCompleted !== isCompleted);
+    await Promise.all(changed.map((a) => ctx.db.patch("activities", a._id, { isCompleted, completedAt })));
+    // The exact rows that flipped, so "Undo" can put back just those.
+    return changed.map((a) => a._id);
+  },
+});
+
+/** Undo for setCompleted: flips exactly the activities it changed back. */
+export const restoreCompleted = mutation({
+  args: { activityIds: v.array(v.id("activities")), isCompleted: v.boolean() },
+  handler: async (ctx, { activityIds, isCompleted }) => {
+    if (activityIds.length === 0 || activityIds.length > 200) return;
+    const { activity: first } = await getMemberActivity(ctx, activityIds[0]!);
+    for (const id of activityIds) {
+      const a = await ctx.db.get("activities", id);
+      if (!a || a.tripId !== first.tripId) continue;
+      if (a.isCompleted !== isCompleted) await ctx.db.patch("activities", id, { isCompleted, completedAt: isCompleted ? Date.now() : undefined });
+    }
   },
 });
 

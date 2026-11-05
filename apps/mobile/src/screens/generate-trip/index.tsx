@@ -46,7 +46,7 @@ export function GenerateTrip() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="gap-5 p-5" keyboardShouldPersistTaps="handled">
+    <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-5 p-5" keyboardShouldPersistTaps="handled">
       {loading ? (
         <Planning />
       ) : (

@@ -1,14 +1,13 @@
-import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { optimisticSetCompleted } from "@trip/backend/optimistic";
 import type { Activity } from "@trip/backend/types";
-import { categoryLabel, cn, formatDuration, getCategory } from "@trip/ui";
-import { useMutation } from "convex/react";
+import { categoryLabel, cn, formatDuration, formatTime, getCategory } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { Button } from "@/components/button";
+import { LinearGradient } from "@/components/gradient";
+import { useToggleDone } from "@/components/undo-toast";
 import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
@@ -21,7 +20,7 @@ import { SubSteps } from "./sub-steps";
 type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean; canEdit: boolean };
 
 export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
-  const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
+  const toggleDone = useToggleDone();
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
   const badge = categoryLabel(activity.category, activity.subcategory);
@@ -29,14 +28,14 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
 
   const toggle = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    void setCompleted({ activityId: activity._id, isCompleted: !done });
+    void toggleDone(activity, !done);
   };
 
   return (
     <View className="flex-row pl-4 pr-4">
       {/* Timeline rail: start time, completion checkbox and connector */}
       <View className="w-12 items-center">
-        <Text className="pt-1 text-[11px] font-bold text-muted-foreground">{activity.startTime ?? ""}</Text>
+        <Text className="pt-1 text-[11px] font-bold text-muted-foreground">{formatTime(activity.startTime)}</Text>
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: done }}
@@ -87,14 +86,15 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
               tint={category.color}
               className="h-40 w-full"
             />
+            <LinearGradient colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]} className="absolute inset-x-0 top-0 h-16" />
             <View className="absolute left-3 top-3 flex-row gap-2">
-              <View className="flex-row items-center gap-1 rounded-full bg-black/45 px-2.5 py-1">
+              <View className="flex-row items-center gap-1 rounded-full bg-black/65 px-2.5 py-1">
                 <Text className="text-xs">{badge.emoji}</Text>
                 <Text className="text-xs font-semibold text-white">{badge.text}</Text>
               </View>
               {activity.durationMinutes ? (
-                <View className="flex-row items-center gap-1 rounded-full bg-black/45 px-2.5 py-1">
-                  <Icon name="clock" size={11} colorVar="--color-card" />
+                <View className="flex-row items-center gap-1 rounded-full bg-black/65 px-2.5 py-1">
+                  <Text className="text-[11px] text-white">⏱</Text>
                   <Text className="text-xs font-semibold text-white">{formatDuration(activity.durationMinutes)}</Text>
                 </View>
               ) : null}
@@ -128,8 +128,8 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                   Call
                 </Button>
               )}
-              <Button size="sm" variant="secondary" icon="directions" onPress={() => void openDirections(activity)}>
-                Directions
+              <Button size="sm" variant="secondary" icon="directions" onPress={() => void openDirections(activity)} accessibilityLabel="Directions">
+                Maps
               </Button>
               {activity.bookingUrl ? (
                 <Button size="sm" icon="ticket" onPress={() => void openInAppBrowser(activity.bookingUrl!)}>

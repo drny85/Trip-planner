@@ -1,3 +1,4 @@
+import { cn } from "@trip/ui";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useMutation, useQuery } from "convex/react";
@@ -105,9 +106,13 @@ export function ActivityPhotos({ activityId }: { activityId: Id<"activities"> })
         disabled={busy}
         hitSlop={6}
         accessibilityLabel="Add photos"
-        className="h-11 w-11 items-center justify-center rounded-xl border-2 border-dashed border-border"
+        className={cn(
+          "h-11 flex-row items-center justify-center gap-1.5 rounded-xl border border-dashed border-border active:opacity-70",
+          shown.length === 0 ? "px-3" : "w-11",
+        )}
       >
         {busy ? <ActivityIndicator size="small" /> : <Text className="text-base">📷</Text>}
+        {shown.length === 0 && !busy && <Text className="text-sm font-semibold text-muted-foreground">Add photos</Text>}
       </Pressable>
     </View>
   );

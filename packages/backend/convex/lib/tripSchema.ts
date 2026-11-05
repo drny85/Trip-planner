@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CATEGORIES, CATEGORY_TREE, isCategory, toSubcategory, type Category } from "./categories";
-import { photoFor } from "./photos";
+import { photoFor, photoPicker } from "./photos";
+import { decodeEntities } from "./text";
 import type { TripTreeInput } from "./validators";
 
 /**
@@ -74,30 +75,37 @@ export type GeneratedTrip = z.infer<typeof generatedTripSchema>;
 /** Only keep links that are real http(s) URLs. */
 const safeUrl = (url?: string) => (url && /^https?:\/\//i.test(url) ? url : undefined);
 
-function toActivity(activity: z.infer<z.ZodObject<typeof generatedActivityFields>>, destination: string) {
+function toActivity(activity: z.infer<z.ZodObject<typeof generatedActivityFields>>, destination: string, pick: typeof photoFor = photoFor) {
   const category = toCategory(activity.category);
   return {
     ...activity,
+    title: decodeEntities(activity.title),
+    description: decodeEntities(activity.description),
+    address: decodeEntities(activity.address),
     category,
     subcategory: toSubcategory(category, activity.subcategory),
     durationMinutes: Math.max(0, Math.round(activity.durationMinutes)),
     bookingUrl: safeUrl(activity.bookingUrl),
     websiteUrl: safeUrl(activity.websiteUrl),
-    photoUrl: photoFor(category, `${destination}-${activity.title}`, 1000),
+    photoUrl: pick(category, `${destination}-${activity.title}`, 1000),
   };
 }
 
 /** Converts the model's output into the tree `insertTripTree` stores. */
 export function toTripTree(trip: GeneratedTrip): TripTreeInput {
+  const pick = photoPicker();
   return {
     ...trip,
+    title: decodeEntities(trip.title),
+    description: decodeEntities(trip.description),
     imageUrl: photoFor("hero", trip.destination, 1600),
     subTrips: trip.subTrips.map((subTrip) => ({
       ...subTrip,
+      title: decodeEntities(subTrip.title),
       dayNumber: Math.max(1, Math.round(subTrip.dayNumber)),
       activities: subTrip.activities.map(({ subActivities, ...activity }) => ({
-        ...toActivity(activity, trip.destination),
-        subActivities: subActivities?.length ? subActivities.map((sub) => toActivity(sub, trip.destination)) : undefined,
+        ...toActivity(activity, trip.destination, pick),
+        subActivities: subActivities?.length ? subActivities.map((sub) => toActivity(sub, trip.destination, pick)) : undefined,
       })),
     })),
   };

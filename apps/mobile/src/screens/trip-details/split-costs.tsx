@@ -25,7 +25,9 @@ export function SplitCostsSection({ tripId }: { tripId: Id<"trips"> }) {
         <View className="flex-1">
           <Text className="text-xs font-bold uppercase tracking-widest text-primary">Fair and square</Text>
           <Text className="text-2xl font-extrabold tracking-tight text-foreground">Split costs</Text>
-          <Text className="text-xs text-muted-foreground">{money(data.totalCents)} spent by the group</Text>
+          <Text className="text-xs text-muted-foreground">
+            {data.totalCents > 0 ? `${money(data.totalCents)} in shared expenses so far` : "Log who paid for what, and see who owes whom."}
+          </Text>
         </View>
         <Button size="sm" icon="plus" onPress={() => router.push({ pathname: "/trips/[tripId]/expense", params: { tripId } })}>
           Expense

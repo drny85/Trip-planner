@@ -18,6 +18,18 @@ test("keywords keep the distinctive part of a place name", () => {
   expect(keywords("Jerónimos Monastery")).toEqual(["jeronimos", "monastery"]);
 });
 
+test("a page that only shares a generic word is not a match", async () => {
+  const { findPlacePhoto } = await import("./lib/wikiPhotos");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      new Response(JSON.stringify({ query: { pages: [{ title: "Sea cave", index: 1, thumbnail: { source: "https://upload.wikimedia.org/cave.jpg", width: 1200, height: 800 } }] } })),
+    ),
+  );
+  expect(await findPlacePhoto("Lunch at Sea Me - Peixaria Moderna", "Lisbon, Portugal")).toBeNull();
+  expect(await findPlacePhoto("LX Factory", "Lisbon, Portugal")).toBeNull();
+});
+
 test("enrichTrip swaps in Wikipedia photos only when the page matches the place", async () => {
   const searched: string[] = [];
   vi.stubGlobal(
@@ -25,12 +37,12 @@ test("enrichTrip swaps in Wikipedia photos only when the page matches the place"
     vi.fn(async (input: RequestInfo | URL) => {
       const query = new URL(String(input)).searchParams.get("gsrsearch") ?? "";
       searched.push(query);
-      const pages = query.startsWith("Visit Senso-ji Temple")
+      const pages = query.startsWith("senso temple")
         ? [
             { title: "Tokyo", index: 1, thumbnail: { source: "https://upload.wikimedia.org/tokyo.jpg", width: 1200, height: 800 } },
             { title: "Sensō-ji", index: 2, thumbnail: { source: "https://upload.wikimedia.org/sensoji.jpg", width: 1200, height: 800 } },
           ]
-        : query.startsWith("Tokyo & Kyoto")
+        : query.startsWith("tokyo kyoto")
           ? [{ title: "Tokyo", index: 1, thumbnail: { source: "https://upload.wikimedia.org/tokyo-hero.jpg", width: 1600, height: 900 } }]
           : // Unrelated result: must not be used.
             [{ title: "Osaka Castle", index: 1, thumbnail: { source: "https://upload.wikimedia.org/osaka.jpg", width: 1200, height: 800 } }];
@@ -54,6 +66,15 @@ test("enrichTrip swaps in Wikipedia photos only when the page matches the place"
   expect(others.map((a) => a.photoUrl)).toEqual(
     all(before).filter((a) => a.title !== "Visit Senso-ji Temple").map((a) => a.photoUrl),
   );
+  // Searches use the distinctive words plus the city, not the whole sentence.
+  expect(searched).toContain("senso temple Tokyo");
   // Transport legs aren't searched.
   expect(searched.some((q) => /shinkansen/i.test(q))).toBe(false);
+});
+
+test("decodeEntities turns HTML entities back into text", async () => {
+  const { decodeEntities } = await import("./lib/text");
+  expect(decodeEntities("Arrival &amp; Historic Alfama Walk")).toBe("Arrival & Historic Alfama Walk");
+  expect(decodeEntities("Caf&#233; &quot;A Brasileira&quot;")).toBe('Café "A Brasileira"');
+  expect(decodeEntities("Fish & chips &unknown;")).toBe("Fish & chips &unknown;");
 });

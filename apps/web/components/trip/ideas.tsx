@@ -3,7 +3,7 @@
 import { api } from "@trip/backend/api";
 import { CATEGORIES, CATEGORY_TREE, type Category } from "@trip/backend/categories";
 import type { Id } from "@trip/backend/dataModel";
-import { categoryLabel, categoryMeta, cn, fallbackPhoto, subcategoryMeta } from "@trip/ui";
+import { categoryLabel, categoryMeta, cn, fallbackPhoto, formatTime, subcategoryMeta } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
@@ -115,7 +115,7 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
       <div className="flex items-center justify-between gap-2 text-xs font-semibold text-muted-foreground">
         <span>
           {idea.isMine ? "You" : idea.authorName} suggested · {dayName}
-          {idea.startTime ? ` at ${idea.startTime}` : ""}
+          {idea.startTime ? ` at ${formatTime(idea.startTime)}` : ""}
         </span>
         <span className="rounded-full px-2 py-0.5" style={{ backgroundColor: `${badge.color}1f`, color: badge.color }}>
           {badge.emoji} {badge.text}
@@ -235,7 +235,7 @@ function SuggestForm({ subTrips, onDone }: { subTrips: Day[]; onDone: () => void
       <div className="grid gap-3 rounded-3xl border border-primary/30 bg-card p-5 shadow-lg shadow-primary/5 sm:grid-cols-2">
         <label className={cn(label, "sm:col-span-2")}>
           What&apos;s the idea?
-          <input autoFocus required placeholder="Sunset cruise on the Sumida River" className={input} value={form.title} onChange={set("title")} />
+          <input autoFocus required placeholder="Sunset drinks with a view" className={input} value={form.title} onChange={set("title")} />
         </label>
         <label className={label}>
           Day

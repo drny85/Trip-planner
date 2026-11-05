@@ -15,7 +15,7 @@ const icons = {
   plus: { ios: "plus", android: "add", web: "add" },
   ticket: { ios: "ticket.fill", android: "event_seat", web: "event_seat" },
   globe: { ios: "globe", android: "language", web: "language" },
-  pin: { ios: "mappin.and.ellipse", android: "location_on", web: "location_on" },
+  pin: { ios: "mappin", android: "location_on", web: "location_on" },
   clock: { ios: "clock", android: "schedule", web: "schedule" },
   calendar: { ios: "calendar", android: "calendar_today", web: "calendar_today" },
   chevron: { ios: "chevron.right", android: "chevron_right", web: "chevron_right" },
