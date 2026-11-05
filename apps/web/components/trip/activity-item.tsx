@@ -10,6 +10,7 @@ import { useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
+import { ActivityPhotos } from "./memories";
 import { SubActivities } from "./sub-activities";
 
 type Props = {
@@ -153,6 +154,9 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                     🌐 Website
                   </Pill>
                 ) : null}
+              </div>
+              <div className="mt-2">
+                <ActivityPhotos activityId={activity._id} />
               </div>
             </div>
 

@@ -16,6 +16,7 @@ import { ActivityItem } from "./activity-item";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { Ideas } from "./ideas";
+import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
 
@@ -74,6 +75,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
   };
 
   return (
+    <MemoriesProvider tripId={trip._id} enabled={canCheck}>
     <main className="pb-24">
       <Hero trip={trip} action={readOnly ? undefined : <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />} />
 
@@ -209,11 +211,13 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
           ))}
         </LayoutGroup>
 
+        <MemoriesGallery subTrips={trip.subTrips} />
         {mode !== "public" && <Ideas tripId={trip._id} subTrips={trip.subTrips} />}
         {mode === "owner" && <DeleteTrip tripId={trip._id} title={trip.title} />}
         {mode === "member" && <LeaveTrip tripId={trip._id} title={trip.title} />}
       </div>
     </main>
+    </MemoriesProvider>
   );
 }
 

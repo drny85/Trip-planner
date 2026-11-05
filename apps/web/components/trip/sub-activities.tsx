@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { EASE_OUT, layoutSpring } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
+import { ActivityPhotos } from "./memories";
 
 /**
  * The steps nested under an activity, drawn as an indented tree. Each step can
@@ -152,6 +153,9 @@ function SubActivityRow({
                 .join(" · ")}
             </p>
           )}
+          <div className="mt-1.5 empty:hidden">
+            <ActivityPhotos activityId={activity._id} compact />
+          </div>
           {nested > 0 && (
             <button onClick={() => setOpen((o) => !o)} className="mt-1 text-xs font-semibold text-primary hover:underline">
               {open ? "Hide" : "Show"} {nested} {nested === 1 ? "step" : "steps"}

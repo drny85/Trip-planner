@@ -28,6 +28,7 @@ import type * as lib_upNext from "../lib/upNext.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as lib_wikiPhotos from "../lib/wikiPhotos.js";
 import type * as members from "../members.js";
+import type * as memories from "../memories.js";
 import type * as photos from "../photos.js";
 import type * as seed from "../seed.js";
 import type * as suggestions from "../suggestions.js";
@@ -62,6 +63,7 @@ import type * as users from "../users.js";
 "lib/validators": typeof lib_validators,
 "lib/wikiPhotos": typeof lib_wikiPhotos,
 "members": typeof members,
+"memories": typeof memories,
 "photos": typeof photos,
 "seed": typeof seed,
 "suggestions": typeof suggestions,
