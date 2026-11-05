@@ -97,7 +97,7 @@ export function Welcome({ onSignIn, busy, error }: { onSignIn: () => void; busy:
       </View>
 
       <Modal visible={settingsOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSettingsOpen(false)}>
-        <LanguageAndTheme onPickLanguage={() => setSettingsOpen(false)} />
+        <LanguageAndTheme onPickLanguage={() => setSettingsOpen(false)} onClose={() => setSettingsOpen(false)} />
       </Modal>
 
       <SampleTrip
