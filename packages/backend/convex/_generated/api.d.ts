@@ -14,6 +14,7 @@ import type * as ai from "../ai.js";
 import type * as bookings from "../bookings.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
+import type * as groupVotes from "../groupVotes.js";
 import type * as journal from "../journal.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_bookings from "../lib/bookings.js";
@@ -24,6 +25,7 @@ import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as places from "../places.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
 import type * as lib_majority from "../lib/majority.js";
+import type * as lib_groupVotes from "../lib/groupVotes.js";
 import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
 import type * as lib_notify from "../lib/notify.js";
@@ -31,6 +33,7 @@ import type * as lib_photos from "../lib/photos.js";
 import type * as lib_replan from "../lib/replan.js";
 import type * as lib_settle from "../lib/settle.js";
 import type * as lib_story from "../lib/story.js";
+import type * as lib_subtree from "../lib/subtree.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as lib_tree from "../lib/tree.js";
 import type * as lib_tripSchema from "../lib/tripSchema.js";
@@ -63,6 +66,7 @@ import type * as users from "../users.js";
 "bookings": typeof bookings,
 "expenses": typeof expenses,
 "http": typeof http,
+"groupVotes": typeof groupVotes,
 "journal": typeof journal,
 "lib/auth": typeof lib_auth,
 "lib/bookings": typeof lib_bookings,
@@ -72,6 +76,7 @@ import type * as users from "../users.js";
 "lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
 "lib/majority": typeof lib_majority,
+"lib/groupVotes": typeof lib_groupVotes,
 "lib/members": typeof lib_members,
 "lib/modelRouter": typeof lib_modelRouter,
 "lib/notify": typeof lib_notify,
@@ -79,6 +84,7 @@ import type * as users from "../users.js";
 "lib/replan": typeof lib_replan,
 "lib/settle": typeof lib_settle,
 "lib/story": typeof lib_story,
+"lib/subtree": typeof lib_subtree,
 "lib/tokens": typeof lib_tokens,
 "lib/tree": typeof lib_tree,
 "lib/tripSchema": typeof lib_tripSchema,

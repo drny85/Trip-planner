@@ -4,7 +4,7 @@ import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { listMembers } from "./members";
 
-export type NotificationKind = "idea" | "accepted" | "rejected" | "joined" | "expense" | "settled";
+export type NotificationKind = "idea" | "accepted" | "rejected" | "joined" | "expense" | "settled" | "groupPlan";
 
 /** The language a user picked in the apps, or English. */
 export async function languageOf(ctx: QueryCtx, userId: string): Promise<Locale> {
