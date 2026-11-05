@@ -154,7 +154,7 @@ function Today({ trip, day, isPreview }: { trip: TripDetails; day: Day; isPrevie
             weather={dayWeather ? { ...dayWeather, emoji: weather!.now.emoji, kind: weather!.now.kind } : null}
             rainy={replan !== "custom" && replan.kind === "rain"}
             now={fromMinutes(now)}
-            initialReason={replan === "custom" ? undefined : replan.reason}
+            initialReason={replan === "custom" ? undefined : reasonText({ t, f }, replan, now)}
             onClose={() => setReplan(null)}
           />
         )}
@@ -419,3 +419,11 @@ function outdoorText(t: ReturnType<typeof useI18n>["t"], places: string[]) {
 
 /** True while `today` falls inside the trip, for the "Today" entry points. */
 export const isUnderWay = (trip: { startDate: string; endDate: string }, today: string) => today >= trip.startDate && today <= trip.endDate;
+
+/** The re-plan request for an alert, in the app language (the AI also writes back in it). */
+function reasonText(i18n: Pick<ReturnType<typeof useI18n>, "t" | "f">, alert: TodayAlert, now: number) {
+  const clock = i18n.f.time(fromMinutes(now));
+  return alert.kind === "rain"
+    ? i18n.t("today.reasonRain", { clock, time: i18n.f.time(alert.at), percent: alert.chance, places: alert.outdoor.join(", ") })
+    : i18n.t("today.reasonLate", { clock, minutes: alert.minutes });
+}
