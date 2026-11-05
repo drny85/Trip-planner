@@ -48,11 +48,15 @@ export default defineSchema({
     subTripId: v.id("subTrips"),
     /** Denormalized so a whole trip's activities load with one index read. */
     tripId: v.id("trips"),
+    /** Set on a sub-activity: the activity it belongs to. Nesting can go any depth. */
+    parentId: v.optional(v.id("activities")),
     ...activityFields,
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     order: v.number(),
   })
     .index("by_subTripId_order", ["subTripId", "order"])
+    .index("by_subTripId_parentId_order", ["subTripId", "parentId", "order"])
+    .index("by_parentId", ["parentId"])
     .index("by_tripId", ["tripId"]),
 });

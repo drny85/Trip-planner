@@ -120,6 +120,13 @@ pnpm lint
 pnpm build       # Next.js production build
 ```
 
+## Sub-activities and categories
+
+- Any activity can hold steps, and each step can hold its own steps, to any depth (`parentId` on `activities`). Completing an activity completes everything inside it; reopening a step reopens its parents. Moving or deleting an activity takes its steps with it.
+- Every activity has a category and an optional subcategory, for example Stays → Hotel, Home, Airbnb, or Dining → Breakfast, Lunch, Dinner. The list lives in `packages/backend/convex/lib/categories.ts`; labels and emoji are in `packages/ui/src/categories.ts`.
+- Web: hover a step for add, edit, reorder, nest (⇥) and un-nest (⇤). Mobile: tap a step to edit it, add steps or move it out a level.
+- AI trips can include one level of steps (for example, the stalls to try in a market); you can nest deeper in the app.
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.

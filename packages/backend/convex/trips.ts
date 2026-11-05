@@ -4,6 +4,7 @@ import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { getOptionalUserId, getOwnedTrip } from "./lib/auth";
 import { insertTripTree } from "./lib/insertTripTree";
+import { buildTree } from "./lib/tree";
 import { tripTreeInput } from "./lib/validators";
 import type { PublicTripDetails, TripDetails } from "./lib/types";
 
@@ -69,26 +70,25 @@ export const unshare = mutation({
 });
 
 async function loadDetails(ctx: QueryCtx, trip: Doc<"trips">): Promise<TripDetails> {
-  const subTrips = await ctx.db
-    .query("subTrips")
-    .withIndex("by_tripId_order", (q) => q.eq("tripId", trip._id))
-    .collect();
+  const [subTrips, activities] = await Promise.all([
+    ctx.db
+      .query("subTrips")
+      .withIndex("by_tripId_order", (q) => q.eq("tripId", trip._id))
+      .collect(),
+    ctx.db
+      .query("activities")
+      .withIndex("by_tripId", (q) => q.eq("tripId", trip._id))
+      .collect(),
+  ]);
 
-  const withActivities = await Promise.all(
-    subTrips.map(async (subTrip) => ({
-      ...subTrip,
-      activities: await ctx.db
-        .query("activities")
-        .withIndex("by_subTripId_order", (q) => q.eq("subTripId", subTrip._id))
-        .collect(),
-    })),
-  );
-
-  const all = withActivities.flatMap((s) => s.activities);
   return {
     ...trip,
-    subTrips: withActivities,
-    progress: { completed: all.filter((a) => a.isCompleted).length, total: all.length },
+    subTrips: subTrips.map((subTrip) => ({
+      ...subTrip,
+      activities: buildTree(activities.filter((a) => a.subTripId === subTrip._id)),
+    })),
+    // Every activity counts, sub-activities included.
+    progress: { completed: activities.filter((a) => a.isCompleted).length, total: activities.length },
   };
 }
 

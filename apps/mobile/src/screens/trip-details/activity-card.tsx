@@ -2,7 +2,7 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticSetCompleted } from "@trip/backend/optimistic";
 import type { Activity } from "@trip/backend/types";
-import { cn, formatDuration, getCategory } from "@trip/ui";
+import { categoryLabel, cn, formatDuration, getCategory } from "@trip/ui";
 import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -14,6 +14,7 @@ import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { callPhone, openDirections, openInAppBrowser } from "@/lib/open";
 import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
+import { SubSteps } from "./sub-steps";
 
 type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean };
 
@@ -21,6 +22,7 @@ export function ActivityCard({ activity, tripId, isLast }: Props) {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
+  const badge = categoryLabel(activity.category, activity.subcategory);
   const router = useRouter();
 
   const toggle = () => {
@@ -62,7 +64,8 @@ export function ActivityCard({ activity, tripId, isLast }: Props) {
         {!isLast && <View className="mt-2 w-0.5 flex-1 rounded-full bg-border" />}
       </View>
 
-      <PressableScale
+      <View className="mb-5 ml-2 flex-1">
+        <PressableScale
           accessibilityHint="Opens the activity editor"
           onPress={() =>
             router.push({
@@ -71,7 +74,6 @@ export function ActivityCard({ activity, tripId, isLast }: Props) {
             })
           }
           pressedScale={0.98}
-          containerClassName="mb-5 ml-2 flex-1"
           className="overflow-hidden rounded-3xl bg-card shadow-sm shadow-black/5"
         >
           <View>
@@ -84,8 +86,8 @@ export function ActivityCard({ activity, tripId, isLast }: Props) {
             />
             <View className="absolute left-3 top-3 flex-row gap-2">
               <View className="flex-row items-center gap-1 rounded-full bg-black/45 px-2.5 py-1">
-                <Text className="text-xs">{category.emoji}</Text>
-                <Text className="text-xs font-semibold text-white">{category.label}</Text>
+                <Text className="text-xs">{badge.emoji}</Text>
+                <Text className="text-xs font-semibold text-white">{badge.text}</Text>
               </View>
               {activity.durationMinutes ? (
                 <View className="flex-row items-center gap-1 rounded-full bg-black/45 px-2.5 py-1">
@@ -138,6 +140,8 @@ export function ActivityCard({ activity, tripId, isLast }: Props) {
             </View>
           </View>
         </PressableScale>
+        <SubSteps parent={activity} tripId={tripId} />
+      </View>
     </View>
   );
 }
