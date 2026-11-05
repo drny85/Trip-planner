@@ -3,7 +3,10 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { deleteTripBookings } from "./bookings";
-import { findMembership, getOptionalUserId, getOwnedTrip } from "./lib/auth";
+import { translator } from "@trip/i18n";
+import { findMembership, getOptionalUserId, getOwnedTrip, getUserId } from "./lib/auth";
+import { copyTripTree, isIsoDate } from "./lib/copyTrip";
+import { languageOf } from "./lib/notify";
 import { insertTripTree } from "./lib/insertTripTree";
 import { newToken } from "./lib/tokens";
 import { pickUpNext, type UpNext } from "./lib/upNext";
@@ -86,9 +89,33 @@ export const getShared = query({
       .withIndex("by_shareToken", (q) => q.eq("shareToken", token))
       .unique();
     if (!trip) return null;
-    const { userId: _userId, prompt: _prompt, shareToken: _token, myRole: _role, ...details } =
+    const { userId: _userId, prompt: _prompt, shareToken: _token, myRole: _role, copiedFromTripId: _from, ...details } =
       await loadDetails(ctx, trip);
     return details;
+  },
+});
+
+/**
+ * "Use this trip": copies a shared itinerary into the caller's own trips,
+ * moved to start on `startDate`. The copy is theirs to edit; nothing is checked
+ * off and none of the original travelers, photos, notes or bookings come along.
+ */
+export const copyShared = mutation({
+  args: { token: v.string(), startDate: v.string() },
+  handler: async (ctx, { token, startDate }) => {
+    const userId = await getUserId(ctx);
+    const t = translator(await languageOf(ctx, userId));
+    if (!isIsoDate(startDate)) throw new Error(t("errors.pickStartDate"));
+    const source =
+      token.length >= 16
+        ? await ctx.db
+            .query("trips")
+            .withIndex("by_shareToken", (q) => q.eq("shareToken", token))
+            .unique()
+        : null;
+    if (!source) throw new Error(t("errors.shareLinkOff"));
+    // Photos and Google place matches come along, so nothing is looked up again.
+    return copyTripTree(ctx, source, { userId, startDate });
   },
 });
 
@@ -125,8 +152,9 @@ async function loadDetails(ctx: QueryCtx, trip: Doc<"trips">): Promise<TripDetai
       .collect(),
   ]);
 
-  // The invite token never leaves the backend through this shape (see members.forTrip).
-  const { inviteToken: _invite, ...tripFields } = trip;
+  // The invite and booking-import tokens never leave the backend through this shape
+  // (see members.forTrip and bookings.ts); anyone with the share link sees it.
+  const { inviteToken: _invite, importToken: _import, ...tripFields } = trip;
   return {
     ...tripFields,
     myRole: "owner",

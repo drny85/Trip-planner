@@ -26,6 +26,7 @@ import { DayExtras } from "./replan-day";
 import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
+import { UseTripButton } from "./use-trip";
 import { TodayBanner } from "@/components/today/today-banner";
 
 export function TripView({ tripId }: { tripId: Id<"trips"> }) {
@@ -115,7 +116,8 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
       <Hero
         trip={trip}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {mode === "public" && storyToken && <UseTripButton token={storyToken} trip={trip} variant="hero" />}
             <CalendarButton trip={trip} />
             {!readOnly && <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />}
           </div>
@@ -132,11 +134,14 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
         {mode === "public" && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">
-              <span className="font-semibold">{t("trip.sharedTitle")}</span> <span className="text-muted-foreground">{t("trip.sharedBody")}</span>
+              <span className="font-semibold">{t("copyTrip.bannerTitle")}</span> <span className="text-muted-foreground">{t("copyTrip.bannerBody")}</span>
             </p>
-            <Link href="/trips/new" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 active:scale-[0.97]">
-              ✨ {t("trip.planYourOwn")}
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/trips/new" className="rounded-full bg-muted px-4 py-2 text-sm font-semibold active:scale-[0.97]">
+                ✨ {t("trip.planYourOwn")}
+              </Link>
+              {storyToken && <UseTripButton token={storyToken} trip={trip} variant="banner" />}
+            </div>
           </motion.div>
         )}
 

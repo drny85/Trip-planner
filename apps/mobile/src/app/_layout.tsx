@@ -87,6 +87,7 @@ function AppStack() {
         options={{ title: t("mobile.titleLanguage"), headerShown: false, presentation: "formSheet", sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true }}
       />
       <Stack.Screen name="join/[token]" options={{ title: t("mobile.titleInvited") }} />
+      <Stack.Screen name="share/[token]" options={{ title: t("copyTrip.screenTitle") }} />
     </Stack>
   );
 }
