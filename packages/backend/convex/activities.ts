@@ -99,7 +99,16 @@ export const update = mutation({
     if (patch.category !== undefined || patch.subcategory !== undefined) {
       next.subcategory = checkedSubcategory(patch.category ?? activity.category, patch.subcategory ?? activity.subcategory);
     }
-    await ctx.db.patch("activities", activityId, next);
+    // A new photo isn't by the photographer credited for the old one.
+    const photoCredit = patch.photoUrl !== undefined && patch.photoUrl !== activity.photoUrl ? undefined : activity.photoCredit;
+    // A new name or address may be a different place: look it up again next time.
+    const movedPlace =
+      (patch.title !== undefined && patch.title !== activity.title) || (patch.address !== undefined && patch.address !== activity.address);
+    await ctx.db.patch("activities", activityId, {
+      ...next,
+      photoCredit,
+      ...(movedPlace ? { placeId: undefined, placeLookedUp: undefined } : {}),
+    });
   },
 });
 

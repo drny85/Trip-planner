@@ -98,6 +98,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Trip Planner",
   slug: "trip-planner",
+  owner: "drny85",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -138,6 +139,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "@clerk/expo",
+    "@clerk/expo-native-components",
     "expo-secure-store",
     [
       "expo-image-picker",
@@ -205,7 +207,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     ...config.extra,
-    // Set after `eas init`; push notifications and EAS Update need it.
-    ...(process.env.EAS_PROJECT_ID ? { eas: { projectId: process.env.EAS_PROJECT_ID } } : {}),
+    // EAS project @drny85/trip-planner. Push notifications, EAS Build and EAS Update need it.
+    // It isn't a secret; EAS_PROJECT_ID overrides it (for example for a fork).
+    eas: { projectId: process.env.EAS_PROJECT_ID || "1bd2c08c-4ba8-4bc7-bb5a-757bc74e0537" },
   },
 });

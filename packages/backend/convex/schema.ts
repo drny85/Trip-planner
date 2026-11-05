@@ -233,6 +233,12 @@ export default defineSchema({
     order: v.number(),
   }).index("by_tripId_order", ["tripId", "order"]),
 
+  /**
+   * Places whose Google photo our /place-photo route may serve. Only place IDs we
+   * matched ourselves are served, so the route can't be used to spend our quota.
+   */
+  placePhotos: defineTable({ placeId: v.string() }).index("by_placeId", ["placeId"]),
+
   activities: defineTable({
     subTripId: v.id("subTrips"),
     /** Denormalized so a whole trip's activities load with one index read. */
@@ -240,6 +246,12 @@ export default defineSchema({
     /** Set on a sub-activity: the activity it belongs to. Nesting can go any depth. */
     parentId: v.optional(v.id("activities")),
     ...activityFields,
+    /** Photographer of a Google Places photo, shown with it as Google requires. */
+    photoCredit: v.optional(v.string()),
+    /** Google Places ID (the one thing Google lets us store), for live details like rating and hours. */
+    placeId: v.optional(v.string()),
+    /** Set once we've searched Google for this activity, so a miss isn't searched again. */
+    placeLookedUp: v.optional(v.boolean()),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     order: v.number(),

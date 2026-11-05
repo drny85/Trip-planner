@@ -53,12 +53,33 @@ async function pickCalendar(previous?: string): Promise<Calendar.ExpoCalendar> {
       // It was deleted; pick another below.
     }
   }
-  if (Platform.OS === "ios") return Calendar.getDefaultCalendarSync();
+  if (Platform.OS === "ios") {
+    try {
+      const cal = Calendar.getDefaultCalendarSync();
+      if (cal?.allowsModifications) return cal;
+    } catch {
+      // No default calendar set: use any writable one below.
+    }
+  }
   // Android has no single default: the primary writable calendar of an account, else any writable one.
-  const writable = (await Calendar.getCalendars()).filter((c) => c.allowsModifications);
+  // On iOS, asking for event calendars only avoids needing the Reminders permission.
+  const all = await Calendar.getCalendars(Platform.OS === "ios" ? Calendar.EntityTypes.EVENT : undefined);
+  const writable = all.filter((c) => c.allowsModifications);
   const cal = writable.find((c) => c.isPrimary) ?? writable[0];
-  if (!cal) throw new NoCalendarError();
-  return cal;
+  if (cal) return cal;
+  // An Android phone with no accounts has no calendar at all: make a local one.
+  if (Platform.OS === "android") {
+    return Calendar.createCalendar({
+      title: "Trip Planner",
+      name: "trip-planner",
+      color: "#0e7c66",
+      entityType: Calendar.EntityTypes.EVENT,
+      source: { isLocalAccount: true, name: "Trip Planner", type: Calendar.SourceType.LOCAL },
+      ownerAccount: "Trip Planner",
+      accessLevel: Calendar.CalendarAccessLevel.OWNER,
+    });
+  }
+  throw new NoCalendarError();
 }
 
 const local = (p: { date: string; time?: string }) => {

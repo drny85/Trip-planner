@@ -32,7 +32,7 @@ export function TripsList() {
           headerLeft: authEnabled ? () => <SignOutButton /> : undefined,
           headerRight: () => (
             <View className="flex-row items-center gap-7 px-2">
-              <Pressable accessibilityLabel={t("common.language")} onPress={() => router.push("/language")} hitSlop={12}>
+              <Pressable accessibilityLabel={t("mobile.titleSettings")} onPress={() => router.push("/language")} hitSlop={12}>
                 <Text className="text-xl">🌐</Text>
               </Pressable>
               <BellButton />

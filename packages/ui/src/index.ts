@@ -43,3 +43,12 @@ export {
   type TodayStop,
   type TravelEstimate,
 } from "./today";
+
+/**
+ * The credit to show on an activity photo from Google Places (Google requires
+ * it): the photographer's name, "" when Google gave none, or null for any other photo.
+ */
+export function googlePhotoCredit(activity: { photoUrl?: string; photoCredit?: string }): string | null {
+  if (!activity.photoUrl?.includes("/place-photo/")) return null;
+  return activity.photoCredit ?? "";
+}

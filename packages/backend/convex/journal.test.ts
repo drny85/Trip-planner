@@ -13,10 +13,14 @@ beforeEach(() => {
   // No AI key in tests: the story comes from the plain template.
   vi.stubEnv("AI_GATEWAY_API_KEY", "");
   vi.stubEnv("ANTHROPIC_API_KEY", "");
+  // The seed's background photo lookup must not reach the network: a slow or
+  // refused Wikipedia request made the story test time out under load.
+  vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { headers: { "content-type": "application/json" } })));
 });
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 async function setup() {
