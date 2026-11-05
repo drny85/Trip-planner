@@ -1,9 +1,9 @@
 import { useAuth, useSession, useUser } from "@clerk/expo";
 import { useHostedAuth } from "@clerk/expo/hosted-auth";
-import { AuthView } from "@clerk/expo/native-components";
+import { AuthView, UserButton } from "@clerk/expo/native-components";
 import { useI18n } from "@trip/i18n/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, Text, View } from "react-native";
 import { authEnabled } from "@/providers/app-providers";
 import { clearCache } from "@/lib/offline-cache";
@@ -25,6 +25,14 @@ function ClerkGate({ children }: { children: ReactNode }) {
   // Close the sheet once sign-in has fully finished, and forget that it was open, so it doesn't
   // pop up again by itself after a later sign-out. (State adjusted during render, not in an effect.)
   if (authOpen && active) setAuthOpen(false);
+
+  // Signing out can happen in Clerk's native profile sheet, so clear the offline cache on
+  // any signed-in → signed-out change rather than in a button handler.
+  const wasSignedIn = useRef(false);
+  useEffect(() => {
+    if (wasSignedIn.current && isSignedIn === false) clearCache();
+    if (isSignedIn !== undefined) wasSignedIn.current = isSignedIn;
+  }, [isSignedIn]);
 
   return (
     <>
@@ -72,13 +80,23 @@ function SignInScreen({ onOpenAuth }: { onOpenAuth: () => void }) {
   return <Welcome onSignIn={() => void signIn()} busy={busy} error={error} />;
 }
 
-/** Header button that signs out (hidden in demo mode). */
+/**
+ * The account button in the header (hidden in demo mode). On iOS and Android it's
+ * Clerk's native UserButton, which opens Clerk's profile sheet (account details,
+ * security, sign out). The web keeps the photo with a Sign out prompt.
+ */
 export function SignOutButton() {
   if (!authEnabled) return null;
+  if (Platform.OS !== "web")
+    return (
+      <View style={{ width: 32, height: 32 }}>
+        <UserButton />
+      </View>
+    );
   return <SignOutButtonInner />;
 }
 
-/** The signed-in person's photo or initials; tapping it offers Sign out. */
+/** Web: the signed-in person's photo or initials; tapping it offers Sign out. */
 function SignOutButtonInner() {
   const { signOut } = useAuth();
   const { user } = useUser();
