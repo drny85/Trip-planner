@@ -25,6 +25,7 @@ import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
+import { JournalProvider, StoryCard } from "./journal";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingSection } from "./packing";
 import { SplitCostsSection } from "./split-costs";
@@ -99,6 +100,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
   // cards can animate in once and reflow smoothly when they are reordered.
   return (
     <MemoriesProvider tripId={trip._id}>
+    <JournalProvider tripId={trip._id}>
     <View className="flex-1 bg-background">
       <StatusBar style={pastHero ? (scheme === "dark" ? "light" : "dark") : "light"} animated />
       <Animated.ScrollView
@@ -128,6 +130,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
           </View>
         ))}
         <MemoriesGallery />
+        <StoryCard tripId={trip._id} />
         <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
         <SplitCostsSection tripId={trip._id} />
         <PackingSection tripId={trip._id} />
@@ -156,6 +159,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         </Text>
       </Animated.View>
     </View>
+    </JournalProvider>
     </MemoriesProvider>
   );
 }

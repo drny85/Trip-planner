@@ -13,6 +13,7 @@ import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { callPhone, openDirections, openInAppBrowser } from "@/lib/open";
 import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
+import { ActivityNotes } from "./journal";
 import { ActivityPhotos } from "./memories";
 import { SubSteps } from "./sub-steps";
 
@@ -142,6 +143,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
               ) : null}
             </View>
             <ActivityPhotos activityId={activity._id} />
+            <ActivityNotes tripId={tripId} activityId={activity._id} isCompleted={done} />
           </View>
         </PressableScale>
         <SubSteps parent={activity} tripId={tripId} canEdit={canEdit} />
