@@ -49,6 +49,7 @@ export default function RootLayout() {
               name="trips/[tripId]/replan/[subTripId]"
               options={{ title: "Re-plan with AI", presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
             />
+            <Stack.Screen name="trips/[tripId]/today" options={{ title: "Today" }} />
             <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
             <Stack.Screen name="join/[token]" options={{ title: "You're invited" }} />
           </Stack>

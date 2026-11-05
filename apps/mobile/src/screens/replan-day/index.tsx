@@ -6,7 +6,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Button } from "@/components/button";
@@ -22,27 +22,27 @@ const REASONS = [
   { label: "👨‍👩‍👧 Kids", text: "Make it friendly for kids" },
 ];
 
-/** Sheet: ask the AI to re-plan one day, preview it, then apply or keep the old plan. */
-export function ReplanDay({ tripId, subTripId }: { tripId: Id<"trips">; subTripId: Id<"subTrips"> }) {
+/**
+ * Sheet: ask the AI to re-plan one day, preview it, then apply or keep the old plan.
+ * From today mode: `initialReason` starts the re-plan right away, and `now` keeps it to what's still ahead. */
+export function ReplanDay({ tripId, subTripId, initialReason, now }: { tripId: Id<"trips">; subTripId: Id<"subTrips">; initialReason?: string; now?: string }) {
   const trip = useQuery(api.trips.get, { tripId });
   const day = trip?.subTrips.find((d) => d._id === subTripId);
   const weather = useDayWeather(day?.date, day?.activities ?? []);
   const replan = useAction(api.ai.replanDay);
   const apply = useMutation(api.activities.applyReplan);
   const router = useRouter();
-  const [reason, setReason] = useState<string | null>(null);
+  const [reason, setReason] = useState<string | null>(initialReason ?? null);
   const [busy, setBusy] = useState<"thinking" | "applying" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  if (!day) return <ActivityIndicator className="mt-10" />;
-
   const rainy = (weather?.rainChance ?? 0) >= 50;
   const why = reason ?? (rainy ? REASONS[0]!.text : "");
-  const ask = async () => {
+  const ask = async (text = why) => {
     setBusy("thinking");
     setError(null);
     try {
-      setProposal(await replan({ subTripId, reason: why, weather: weather ? { label: weather.label, high: weather.high, low: weather.low, rainChance: weather.rainChance } : undefined }));
+      setProposal(await replan({ subTripId, reason: text, now, weather: weather ? { label: weather.label, high: weather.high, low: weather.low, rainChance: weather.rainChance } : undefined }));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
       setError(e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0]! : "Something went wrong");
@@ -50,6 +50,16 @@ export function ReplanDay({ tripId, subTripId }: { tripId: Id<"trips">; subTripI
       setBusy(null);
     }
   };
+  // One tap from today mode: ask as soon as the day has loaded.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!initialReason || !day || asked.current) return;
+    asked.current = true;
+    void ask(initialReason);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the day is ready
+  }, [day?._id]);
+  if (!day) return <ActivityIndicator className="mt-10" />;
+
   const keptIds = new Set(proposal?.activities.flatMap((a) => ("keepId" in a ? [a.keepId] : [])));
   const removed = proposal ? day.activities.filter((a) => !keptIds.has(a._id)) : [];
 

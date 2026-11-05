@@ -103,13 +103,18 @@ export function UpNext() {
             )}
           </Animated.View>
 
-          <View className="flex-row gap-2">
+          <View className="flex-row flex-wrap gap-2">
             <Button size="sm" variant="light" icon="check" onPress={markDone}>
               {step ? "Step done" : "Mark done"}
             </Button>
             <Button size="sm" variant="glass" icon="directions" onPress={() => void openDirections(activity)}>
               Directions
             </Button>
+            {next.startsInDays <= 0 && (
+              <Button size="sm" variant="glass" icon="sun" onPress={() => router.push({ pathname: "/trips/[tripId]/today", params: { tripId: trip._id } })}>
+                Today
+              </Button>
+            )}
           </View>
 
           <View className="gap-2">

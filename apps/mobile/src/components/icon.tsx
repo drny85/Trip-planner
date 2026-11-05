@@ -21,6 +21,8 @@ const icons = {
   chevron: { ios: "chevron.right", android: "chevron_right", web: "chevron_right" },
   share: { ios: "square.and.arrow.up", android: "share", web: "share" },
   route: { ios: "point.topleft.down.to.point.bottomright.curvepath.fill", android: "route", web: "route" },
+  location: { ios: "location.fill", android: "my_location", web: "my_location" },
+  sun: { ios: "sun.max.fill", android: "wb_sunny", web: "wb_sunny" },
   logout: { ios: "rectangle.portrait.and.arrow.right", android: "logout", web: "logout" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 

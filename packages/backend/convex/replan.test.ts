@@ -75,3 +75,45 @@ test("adding a step to a done activity reopens it", async () => {
   expect(after.children[0]!.isCompleted).toBe(false);
   expect(after.children.slice(1).every((c) => c.isCompleted)).toBe(true);
 });
+
+test("re-planning never drops or moves stops that are already done", async () => {
+  const { keepDoneFirst } = await import("./ai");
+  const current = [
+    { id: "a", title: "Breakfast", category: "food", startTime: "08:00", durationMinutes: 45, address: "", description: "", done: true },
+    { id: "b", title: "Garden", category: "nature", startTime: "10:00", durationMinutes: 90, address: "", description: "", done: false },
+  ];
+  // The model moved breakfast and forgot nothing else: breakfast is put back as it was, first.
+  const out = keepDoneFirst(current, [
+    { keepId: "b", title: "Garden", startTime: "13:00", durationMinutes: 60 },
+    { keepId: "a", title: "Breakfast", startTime: "15:00", durationMinutes: 30 },
+  ]);
+  expect(out).toEqual([
+    { keepId: "a", title: "Breakfast", startTime: "08:00", durationMinutes: 45 },
+    { keepId: "b", title: "Garden", startTime: "13:00", durationMinutes: 60 },
+  ]);
+});
+
+test("running late pushes every open stop later, and back again", async () => {
+  const t = convexTest(schema, modules);
+  const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+  const tripId = await ana.mutation(api.seed.demoTrip, {});
+  const day = (await ana.query(api.trips.get, { tripId }))!.subTrips[0]!;
+  const [first, second] = day.activities.filter((a) => a.startTime);
+  await ana.mutation(api.activities.setCompleted, { activityId: first!._id, isCompleted: true });
+
+  const moved = await ana.mutation(api.activities.shiftTimes, { subTripId: day._id, minutes: 30 });
+  expect(moved).toBeGreaterThan(0);
+  const after = (await ana.query(api.trips.get, { tripId }))!.subTrips[0]!.activities;
+  const at = (id: string) => after.find((a) => a._id === id)!.startTime;
+  expect(at(first!._id)).toBe(first!.startTime);
+  const [h, m] = second!.startTime!.split(":").map(Number);
+  const plus30 = h! * 60 + m! + 30;
+  expect(at(second!._id)).toBe(`${String(Math.floor(plus30 / 60)).padStart(2, "0")}:${String(plus30 % 60).padStart(2, "0")}`);
+
+  await ana.mutation(api.activities.shiftTimes, { subTripId: day._id, minutes: -30 });
+  const back = (await ana.query(api.trips.get, { tripId }))!.subTrips[0]!.activities;
+  expect(back.find((a) => a._id === second!._id)!.startTime).toBe(second!.startTime);
+
+  const ben = t.withIdentity({ subject: "ben", name: "Ben" });
+  await expect(ben.mutation(api.activities.shiftTimes, { subTripId: day._id, minutes: 30 })).rejects.toThrow();
+});

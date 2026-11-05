@@ -214,6 +214,7 @@ export const dayForReplan = internalQuery({
         durationMinutes: a.durationMinutes,
         address: a.address,
         description: a.description.slice(0, 200),
+        done: a.isCompleted,
       })),
     };
   },
@@ -247,7 +248,9 @@ export const applyReplan = mutation({
       if ("keepId" in item) {
         if (!byId.has(item.keepId) || kept.has(item.keepId)) continue;
         kept.add(item.keepId);
-        await ctx.db.patch("activities", item.keepId, { order: order++, startTime: item.startTime, durationMinutes: item.durationMinutes });
+        // Only what the plan sets: a kept stop without a time keeps its own.
+        const timing = Object.fromEntries(Object.entries({ startTime: item.startTime, durationMinutes: item.durationMinutes }).filter(([, val]) => val !== undefined));
+        await ctx.db.patch("activities", item.keepId, { order: order++, ...timing });
       } else {
         const subcategory = item.subcategory && isSubcategoryOf(item.category ?? "other", item.subcategory) ? item.subcategory : undefined;
         await ctx.db.insert("activities", { ...item, subcategory, tripId: day.tripId, subTripId, isCompleted: false, order: order++ });
@@ -260,5 +263,34 @@ export const applyReplan = mutation({
       if (photos.some(Boolean)) await ctx.db.patch("activities", a._id, { order: order++ });
       else await Promise.all(tree.map((x) => ctx.db.delete("activities", x._id)));
     }
+  },
+});
+
+/**
+ * "Running late": moves the start time of every open stop on a day (steps
+ * included) by `minutes`, keeping them on the same day. Done stops don't move.
+ * Returns how many moved; calling again with the opposite sign undoes it.
+ */
+export const shiftTimes = mutation({
+  args: { subTripId: v.id("subTrips"), minutes: v.number() },
+  handler: async (ctx, { subTripId, minutes }) => {
+    const day = await ctx.db.get("subTrips", subTripId);
+    if (!day) throw new Error("Day not found");
+    await getOwnedTrip(ctx, day.tripId);
+    const delta = Math.round(minutes);
+    if (delta === 0 || Math.abs(delta) > 12 * 60) throw new Error("Shift by up to 12 hours");
+    const rows = await ctx.db
+      .query("activities")
+      .withIndex("by_subTripId_order", (q) => q.eq("subTripId", subTripId))
+      .collect();
+    let moved = 0;
+    for (const a of rows) {
+      const m = a.startTime ? /^(\d{1,2}):(\d{2})$/.exec(a.startTime) : null;
+      if (a.isCompleted || !m) continue;
+      const next = Math.max(0, Math.min(23 * 60 + 59, Number(m[1]) * 60 + Number(m[2]) + delta));
+      await ctx.db.patch("activities", a._id, { startTime: `${String(Math.floor(next / 60)).padStart(2, "0")}:${String(next % 60).padStart(2, "0")}` });
+      moved++;
+    }
+    return moved;
   },
 });

@@ -49,6 +49,12 @@
         {
           "color": "#0e7c66"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Trip Planner uses your location while the app is open to show how long it takes to get to your next stop."
+        }
       ]
     ],
     "experiments": {
