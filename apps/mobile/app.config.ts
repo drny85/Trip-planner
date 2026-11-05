@@ -140,6 +140,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "@clerk/expo",
+    "@clerk/expo-native-components",
     "expo-secure-store",
     [
       "expo-image-picker",

@@ -1,4 +1,6 @@
 import "../../global.css";
+// Applies the saved light/dark choice before the first render.
+import "@/lib/theme";
 
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -82,7 +84,7 @@ function AppStack() {
       <Stack.Screen name="notifications" options={{ title: t("notifications.title") }} />
       <Stack.Screen
         name="language"
-        options={{ title: t("mobile.titleLanguage"), headerShown: false, presentation: "formSheet", sheetAllowedDetents: [0.6, 1], sheetGrabberVisible: true }}
+        options={{ title: t("mobile.titleLanguage"), headerShown: false, presentation: "formSheet", sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true }}
       />
       <Stack.Screen name="join/[token]" options={{ title: t("mobile.titleInvited") }} />
     </Stack>
