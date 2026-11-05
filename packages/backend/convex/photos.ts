@@ -19,7 +19,14 @@ export const enrichTrip = internalAction({
     if (!places) return;
 
     const hero = await findPlacePhoto(places.destination, "", 1600);
-    type Found = { activityId: (typeof places.activities)[number]["activityId"]; photoUrl: string; credit?: string; placeId?: string };
+    type Found = {
+      activityId: (typeof places.activities)[number]["activityId"];
+      /** Unset when only the Google place was found and Wikipedia's photo is kept. */
+      photoUrl?: string;
+      credit?: string;
+      placeId?: string;
+      lookedUp?: boolean;
+    };
     const found = new Map<string, Found>();
 
     // Train rides and hotel check-ins rarely have a Wikipedia page of their own,
@@ -34,16 +41,25 @@ export const enrichTrip = internalAction({
       });
     }
 
+    // Every place is looked up on Google too: its place ID gives the live rating,
+    // hours and phone (places.details). Its photo is used only where Wikipedia had none.
     const key = googlePlacesKey();
     if (key) {
-      const rest = places.activities.filter((a) => !found.has(a.activityId));
-      for (let i = 0; i < rest.length; i += 4) {
-        const batch = rest.slice(i, i + 4);
+      const all = places.activities.filter((a) => !a.placeId);
+      for (let i = 0; i < all.length; i += 4) {
+        const batch = all.slice(i, i + 4);
         const matches = await Promise.all(batch.map((a) => findGooglePlace(a.title, [a.address, a.context].filter(Boolean).join(", "), key)));
         batch.forEach((a, j) => {
           const m = matches[j];
-          const url = m && placePhotoUrl(m.placeId);
-          if (m && url) found.set(a.activityId, { activityId: a.activityId, photoUrl: url, credit: m.credit, placeId: m.placeId });
+          const wiki = found.get(a.activityId);
+          const url = m && !wiki ? placePhotoUrl(m.placeId) : null;
+          found.set(a.activityId, {
+            activityId: a.activityId,
+            photoUrl: wiki?.photoUrl ?? url ?? undefined,
+            credit: url ? m?.credit : undefined,
+            placeId: m?.placeId,
+            lookedUp: true,
+          });
         });
       }
     }
@@ -74,6 +90,7 @@ export const placesForTrip = internalQuery({
         .map((a) => ({
           activityId: a._id,
           title: a.title,
+          placeId: a.placeId,
           category: a.category,
           address: a.address,
           context: cityOf.get(a.subTripId) ?? trip.destination,
@@ -123,19 +140,22 @@ export const applyPhotos = internalMutation({
     activities: v.array(
       v.object({
         activityId: v.id("activities"),
-        photoUrl: v.string(),
+        photoUrl: v.optional(v.string()),
         credit: v.optional(v.string()),
         placeId: v.optional(v.string()),
+        lookedUp: v.optional(v.boolean()),
       }),
     ),
   },
   handler: async (ctx, { tripId, heroUrl, activities }) => {
     if (!(await ctx.db.get("trips", tripId))) return; // deleted meanwhile
     if (heroUrl) await ctx.db.patch("trips", tripId, { imageUrl: heroUrl });
-    for (const { activityId, photoUrl, credit, placeId } of activities) {
+    for (const { activityId, photoUrl, credit, placeId, lookedUp } of activities) {
       if (!(await ctx.db.get("activities", activityId))) continue;
-      await ctx.db.patch("activities", activityId, { photoUrl, photoCredit: credit });
-      if (placeId && !(await ctx.db.query("placePhotos").withIndex("by_placeId", (q) => q.eq("placeId", placeId)).unique())) {
+      if (photoUrl) await ctx.db.patch("activities", activityId, { photoUrl, photoCredit: credit });
+      if (lookedUp) await ctx.db.patch("activities", activityId, { placeId, placeLookedUp: true });
+      // Only places whose Google photo we use may be served by /place-photo.
+      if (placeId && photoUrl?.includes("/place-photo/") && !(await ctx.db.query("placePhotos").withIndex("by_placeId", (q) => q.eq("placeId", placeId)).unique())) {
         await ctx.db.insert("placePhotos", { placeId });
       }
     }

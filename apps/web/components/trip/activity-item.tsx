@@ -8,6 +8,7 @@ import { cn, getCategory, googlePhotoCredit, links } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { PlaceInfo } from "./place-info";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
@@ -36,6 +37,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
   const remove = useMutation(api.activities.remove).withOptimisticUpdate(optimisticRemove);
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [showPlace, setShowPlace] = useState(false);
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
   const { t, f, category: categoryText } = useI18n();
@@ -167,7 +169,23 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                     🌐 {t("activity.website")}
                   </Pill>
                 ) : null}
+                {/* Live Google details (rating, hours, phone). Needs sign-in, so not on share links. */}
+                {!readOnly && activity.category !== "transport" && (
+                  <button
+                    type="button"
+                    aria-expanded={showPlace}
+                    onClick={() => setShowPlace((v) => !v)}
+                    className={cn("rounded-full px-3.5 py-1.5 text-sm font-semibold transition active:scale-[0.96]", showPlace ? "bg-foreground text-background" : "bg-muted hover:bg-border")}
+                  >
+                    ★ {t("place.heading")}
+                  </button>
+                )}
               </div>
+              {showPlace && (
+                <div className="mt-2">
+                  <PlaceInfo activityId={activity._id} />
+                </div>
+              )}
               <div className="mt-2">
                 <ActivityPhotos activityId={activity._id} />
               </div>

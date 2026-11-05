@@ -14,6 +14,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View 
 import { Button } from "@/components/button";
 import { Chips, Field } from "@/components/form";
 import { Icon } from "@/components/icon";
+import { PlaceInfo } from "./place-info";
 
 type Props = { tripId: Id<"trips">; activityId: Id<"activities"> };
 
@@ -135,6 +136,7 @@ function EditForm({ trip, activity }: { trip: TripDetails; activity: Activity })
       contentContainerClassName="gap-4 p-5 pb-12"
       keyboardShouldPersistTaps="handled"
     >
+      <PlaceInfo activityId={activity._id} />
       <Field label={t("editor.title")} value={form.title} onChangeText={set("title")} />
       <Field label={t("editor.description")} value={form.description} onChangeText={set("description")} multiline />
 

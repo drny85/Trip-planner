@@ -446,6 +446,19 @@ export const en = {
     storyFailed: "Something went wrong writing the story. Please try again.",
     storyTimeout: "That took too long. Please try again.",
   },
+  /** Live details of a place from Google Maps (rating, hours, phone). */
+  place: {
+    reviews: { one: "{count} review", other: "{count} reviews" },
+    openNow: "Open now",
+    closedNow: "Closed now",
+    closesAt: "Closes {time}",
+    opensAt: "Opens {time}",
+    closedTemporarily: "Temporarily closed",
+    closedPermanently: "Permanently closed",
+    openInMaps: "Google Maps",
+    hours: "Opening hours",
+    heading: "About this place",
+  },
   mobile: {
     titleTrips: "My Trips",
     titleEdit: "Edit activity",

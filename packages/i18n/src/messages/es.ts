@@ -449,6 +449,19 @@ export const es: Shape<typeof en> = {
     storyFailed: "Algo salió mal al escribir la historia. Inténtalo de nuevo.",
     storyTimeout: "Tardó demasiado. Inténtalo de nuevo.",
   },
+  /** Live details of a place from Google Maps (rating, hours, phone). */
+  place: {
+    reviews: { one: "{count} reseña", other: "{count} reseñas" },
+    openNow: "Abierto ahora",
+    closedNow: "Cerrado ahora",
+    closesAt: "Cierra a las {time}",
+    opensAt: "Abre a las {time}",
+    closedTemporarily: "Cerrado temporalmente",
+    closedPermanently: "Cerrado definitivamente",
+    openInMaps: "Google Maps",
+    hours: "Horario",
+    heading: "Sobre este lugar",
+  },
   mobile: {
     titleTrips: "Mis viajes",
     titleEdit: "Editar actividad",

@@ -449,6 +449,19 @@ export const ja: Shape<typeof en> = {
     storyFailed: "物語の作成中に問題が発生しました。もう一度お試しください。",
     storyTimeout: "時間がかかりすぎました。もう一度お試しください。",
   },
+  /** Live details of a place from Google Maps (rating, hours, phone). */
+  place: {
+    reviews: { other: "{count}件のレビュー" },
+    openNow: "営業中",
+    closedNow: "営業時間外",
+    closesAt: "{time}に閉店",
+    opensAt: "{time}に開店",
+    closedTemporarily: "臨時休業",
+    closedPermanently: "閉業",
+    openInMaps: "Google マップ",
+    hours: "営業時間",
+    heading: "この場所について",
+  },
   mobile: {
     titleTrips: "マイ旅行",
     titleEdit: "アクティビティを編集",

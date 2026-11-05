@@ -21,6 +21,7 @@ import type * as lib_budget from "../lib/budget.js";
 import type * as lib_categories from "../lib/categories.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
 import type * as lib_googlePlaces from "../lib/googlePlaces.js";
+import type * as places from "../places.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
 import type * as lib_majority from "../lib/majority.js";
 import type * as lib_members from "../lib/members.js";
@@ -90,6 +91,7 @@ import type * as users from "../users.js";
 "notifications": typeof notifications,
 "packing": typeof packing,
 "photos": typeof photos,
+"places": typeof places,
 "push": typeof push,
 "seed": typeof seed,
 "suggestions": typeof suggestions,

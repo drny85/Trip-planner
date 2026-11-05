@@ -248,6 +248,10 @@ export default defineSchema({
     ...activityFields,
     /** Photographer of a Google Places photo, shown with it as Google requires. */
     photoCredit: v.optional(v.string()),
+    /** Google Places ID (the one thing Google lets us store), for live details like rating and hours. */
+    placeId: v.optional(v.string()),
+    /** Set once we've searched Google for this activity, so a miss isn't searched again. */
+    placeLookedUp: v.optional(v.boolean()),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     order: v.number(),
