@@ -15,8 +15,11 @@ import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
 import { ActivityItem } from "./activity-item";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
+import { CalendarButton } from "./calendar-button";
+import { DayWeatherChip } from "./day-weather";
 import { Ideas } from "./ideas";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
+import { PackingList } from "./packing-list";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
 
@@ -77,7 +80,15 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
   return (
     <MemoriesProvider tripId={trip._id} enabled={canCheck}>
     <main className="pb-24">
-      <Hero trip={trip} action={readOnly ? undefined : <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />} />
+      <Hero
+        trip={trip}
+        action={
+          <div className="flex gap-2">
+            <CalendarButton trip={trip} />
+            {!readOnly && <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />}
+          </div>
+        }
+      />
 
       <div className="mx-auto max-w-4xl px-4">
         <Stats trip={trip} readOnly={readOnly} />
@@ -141,6 +152,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
                       .join(" · ")}
                   </p>
                 </div>
+                <DayWeatherChip date={subTrip.date} activities={subTrip.activities} />
               </header>
 
               <DayMap activities={subTrip.activities} />
@@ -213,6 +225,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
 
         <MemoriesGallery subTrips={trip.subTrips} />
         {mode !== "public" && <Ideas tripId={trip._id} subTrips={trip.subTrips} />}
+        {mode !== "public" && <PackingList tripId={trip._id} />}
         {mode === "owner" && <DeleteTrip tripId={trip._id} title={trip.title} />}
         {mode === "member" && <LeaveTrip tripId={trip._id} title={trip.title} />}
       </div>

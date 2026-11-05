@@ -167,11 +167,12 @@ export const remove = mutation({
       .query("subTrips")
       .withIndex("by_tripId_order", (q) => q.eq("tripId", tripId))
       .collect();
-    const [members, suggestions, votes, memories] = await Promise.all([
+    const [members, suggestions, votes, memories, packing] = await Promise.all([
       ctx.db.query("tripMembers").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("suggestions").withIndex("by_tripId_status", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("votes").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("memories").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
+      ctx.db.query("packingItems").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
     ]);
     await Promise.all([
       ...activities.map((a) => ctx.db.delete("activities", a._id)),
@@ -181,6 +182,7 @@ export const remove = mutation({
       ...votes.map((x) => ctx.db.delete("votes", x._id)),
       ...memories.map((m) => ctx.db.delete("memories", m._id)),
       ...memories.map((m) => ctx.storage.delete(m.storageId)),
+      ...packing.map((p) => ctx.db.delete("packingItems", p._id)),
     ]);
     await ctx.db.delete("trips", tripId);
   },

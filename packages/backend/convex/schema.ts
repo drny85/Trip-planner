@@ -82,6 +82,16 @@ export default defineSchema({
     .index("by_activityId", ["activityId"])
     .index("by_storageId", ["storageId"]),
 
+  /** Shared packing list: anyone on the trip adds, ticks off or claims items. */
+  packingItems: defineTable({
+    tripId: v.id("trips"),
+    text: v.string(),
+    isPacked: v.boolean(),
+    addedBy: v.string(),
+    /** Who's bringing it, for shared things like a first-aid kit. */
+    claimedBy: v.optional(v.string()),
+  }).index("by_tripId", ["tripId"]),
+
   votes: defineTable({
     suggestionId: v.id("suggestions"),
     tripId: v.id("trips"),

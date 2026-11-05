@@ -15,10 +15,12 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/button";
+import { shareCalendar } from "@/lib/calendar";
 import { webUrl } from "@/lib/open";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
+import { PackingSection } from "./packing";
 import { Crew, IdeasSection } from "./together";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
@@ -93,6 +95,12 @@ function Itinerary({ trip }: { trip: TripDetailsData }) {
         ))}
         <MemoriesGallery />
         <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
+        <PackingSection tripId={trip._id} />
+        <View className="mt-10 px-4">
+          <Button variant="secondary" icon="calendar" onPress={() => void shareCalendar(trip).catch((e: unknown) => Alert.alert("Couldn't export", e instanceof Error ? e.message : undefined))}>
+            Add to calendar
+          </Button>
+        </View>
         {isOwner ? (
           <>
             <ShareTrip tripId={trip._id} title={trip.title} isShared={Boolean(trip.shareToken)} />

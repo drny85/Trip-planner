@@ -29,6 +29,7 @@ import type * as lib_validators from "../lib/validators.js";
 import type * as lib_wikiPhotos from "../lib/wikiPhotos.js";
 import type * as members from "../members.js";
 import type * as memories from "../memories.js";
+import type * as packing from "../packing.js";
 import type * as photos from "../photos.js";
 import type * as seed from "../seed.js";
 import type * as suggestions from "../suggestions.js";
@@ -64,6 +65,7 @@ import type * as users from "../users.js";
 "lib/wikiPhotos": typeof lib_wikiPhotos,
 "members": typeof members,
 "memories": typeof memories,
+"packing": typeof packing,
 "photos": typeof photos,
 "seed": typeof seed,
 "suggestions": typeof suggestions,

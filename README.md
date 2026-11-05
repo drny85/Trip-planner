@@ -146,6 +146,12 @@ pnpm build       # Next.js production build
 - Deleting an activity or a trip deletes its photos.
 - Mobile needs a new development build after this change, because the image picker is a native module.
 
+## Packing, calendar and weather
+
+- **Packing list**: one list per trip, shared by everyone going. "Add the essentials" fills in the basics, anyone can tick items off, and "I'll bring it" claims a shared item so it isn't packed twice (`convex/packing.ts`).
+- **Add to calendar**: exports the itinerary as an `.ics` file, one event per timed activity or step plus an all-day event per day (`packages/ui/src/calendar.ts`). Web downloads it; mobile writes it with `expo-file-system` and opens the share sheet (`expo-sharing`), so it needs a new dev build.
+- **Weather**: each day shows the forecast for its first stop with coordinates, from [Open-Meteo](https://open-meteo.com) (free, no key). It only appears once the day is within 16 days, since that's as far as the forecast goes.
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.
