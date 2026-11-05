@@ -1,17 +1,66 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+import { mutation, type MutationCtx } from "./_generated/server";
 import { getOwnedActivity, getOwnedTrip } from "./lib/auth";
+import { isSubcategoryOf } from "./lib/categories";
 import { activityFields } from "./lib/validators";
 
-/** Marks an activity done or not done. Clients call this with an optimistic update. */
+/** Drops a subcategory that doesn't belong under the activity's category. */
+const checkedSubcategory = (category: Doc<"activities">["category"], subcategory?: string) =>
+  subcategory && isSubcategoryOf(category ?? "other", subcategory) ? subcategory : undefined;
+
+/** The activity and everything nested under it, at any depth. */
+async function subtree(ctx: MutationCtx, root: Doc<"activities">): Promise<Doc<"activities">[]> {
+  const all = [root];
+  for (let i = 0; i < all.length; i++) {
+    const children = await ctx.db
+      .query("activities")
+      .withIndex("by_parentId", (q) => q.eq("parentId", all[i]!._id))
+      .collect();
+    all.push(...children);
+  }
+  return all;
+}
+
+/** Siblings in display order: same day, same parent (top level when parentId is undefined). */
+const siblings = (ctx: MutationCtx, subTripId: Id<"subTrips">, parentId: Id<"activities"> | undefined) =>
+  ctx.db
+    .query("activities")
+    .withIndex("by_subTripId_parentId_order", (q) => q.eq("subTripId", subTripId).eq("parentId", parentId))
+    .collect();
+
+/** Rewrites `order` to 0..n-1, touching only rows that changed. */
+const renumber = (ctx: MutationCtx, rows: Doc<"activities">[], extra: Partial<Doc<"activities">> = {}) =>
+  Promise.all(
+    rows.map((a, order) => {
+      const changed = a.order !== order || Object.entries(extra).some(([k, val]) => a[k as keyof typeof a] !== val);
+      return changed ? ctx.db.patch("activities", a._id, { ...extra, order }) : null;
+    }),
+  );
+
+/**
+ * Marks an activity done or not done. Done also completes everything nested under
+ * it; not done also reopens its ancestors (a parent can't be done with open steps).
+ */
 export const setCompleted = mutation({
   args: { activityId: v.id("activities"), isCompleted: v.boolean() },
   handler: async (ctx, { activityId, isCompleted }) => {
-    await getOwnedActivity(ctx, activityId);
-    await ctx.db.patch("activities", activityId, {
-      isCompleted,
-      completedAt: isCompleted ? Date.now() : undefined,
-    });
+    const activity = await getOwnedActivity(ctx, activityId);
+    const completedAt = isCompleted ? Date.now() : undefined;
+    const targets = isCompleted ? await subtree(ctx, activity) : [activity];
+    if (!isCompleted) {
+      for (let id = activity.parentId; id; ) {
+        const parent = await ctx.db.get("activities", id);
+        if (!parent) break;
+        targets.push(parent);
+        id = parent.parentId;
+      }
+    }
+    await Promise.all(
+      targets
+        .filter((a) => a.isCompleted !== isCompleted)
+        .map((a) => ctx.db.patch("activities", a._id, { isCompleted, completedAt })),
+    );
   },
 });
 
@@ -28,88 +77,85 @@ export const update = mutation({
     }),
   },
   handler: async (ctx, { activityId, patch }) => {
-    await getOwnedActivity(ctx, activityId);
-    await ctx.db.patch("activities", activityId, patch);
+    const activity = await getOwnedActivity(ctx, activityId);
+    const next = { ...patch };
+    // Changing the category clears a subcategory that no longer fits; "" clears it on purpose.
+    if (patch.category !== undefined || patch.subcategory !== undefined) {
+      next.subcategory = checkedSubcategory(patch.category ?? activity.category, patch.subcategory ?? activity.subcategory);
+    }
+    await ctx.db.patch("activities", activityId, next);
   },
 });
 
+/** Adds an activity at the end of a day, or as the last sub-activity of `parentId`. */
 export const create = mutation({
-  args: { subTripId: v.id("subTrips"), ...activityFields },
-  handler: async (ctx, { subTripId, ...fields }) => {
+  args: { subTripId: v.id("subTrips"), parentId: v.optional(v.id("activities")), ...activityFields },
+  handler: async (ctx, { subTripId, parentId, ...fields }) => {
     const subTrip = await ctx.db.get("subTrips", subTripId);
     if (!subTrip) throw new Error("Day not found");
     await getOwnedTrip(ctx, subTrip.tripId);
+    if (parentId) {
+      const parent = await getOwnedActivity(ctx, parentId);
+      if (parent.subTripId !== subTripId) throw new Error("A sub-activity must be on the same day as its parent");
+    }
 
-    const last = await ctx.db
-      .query("activities")
-      .withIndex("by_subTripId_order", (q) => q.eq("subTripId", subTripId))
-      .order("desc")
-      .first();
-
+    const existing = await siblings(ctx, subTripId, parentId);
     return ctx.db.insert("activities", {
       ...fields,
+      subcategory: checkedSubcategory(fields.category, fields.subcategory),
       subTripId,
+      parentId,
       tripId: subTrip.tripId,
       isCompleted: false,
-      order: (last?.order ?? -1) + 1,
+      order: (existing.at(-1)?.order ?? -1) + 1,
     });
   },
 });
 
 /**
- * Moves an activity to `toIndex` within `toSubTripId` (same day or another day)
- * and renumbers the affected days so `order` stays 0..n-1.
+ * Moves an activity (with everything nested under it) to `toIndex` among the
+ * children of `toParentId` on `toSubTripId`. Leave `toParentId` out to move it to
+ * the top level of that day. Siblings on both sides are renumbered.
  */
 export const move = mutation({
   args: {
     activityId: v.id("activities"),
     toSubTripId: v.id("subTrips"),
     toIndex: v.number(),
+    toParentId: v.optional(v.id("activities")),
   },
-  handler: async (ctx, { activityId, toSubTripId, toIndex }) => {
+  handler: async (ctx, { activityId, toSubTripId, toIndex, toParentId }) => {
     const activity = await getOwnedActivity(ctx, activityId);
     const target = await ctx.db.get("subTrips", toSubTripId);
     if (!target || target.tripId !== activity.tripId) throw new Error("Day not found");
 
-    const loadDay = (subTripId: typeof toSubTripId) =>
-      ctx.db
-        .query("activities")
-        .withIndex("by_subTripId_order", (q) => q.eq("subTripId", subTripId))
-        .collect();
+    const tree = await subtree(ctx, activity);
+    if (toParentId) {
+      if (tree.some((a) => a._id === toParentId)) throw new Error("Can't move an activity inside itself");
+      const parent = await getOwnedActivity(ctx, toParentId);
+      if (parent.subTripId !== toSubTripId) throw new Error("Parent is on a different day");
+    }
 
-    const sourceDay = (await loadDay(activity.subTripId)).filter((a) => a._id !== activityId);
-    const targetDay =
-      activity.subTripId === toSubTripId ? sourceDay : await loadDay(toSubTripId);
+    const sameList = activity.subTripId === toSubTripId && activity.parentId === toParentId;
+    const source = (await siblings(ctx, activity.subTripId, activity.parentId)).filter((a) => a._id !== activityId);
+    const dest = sameList ? source : await siblings(ctx, toSubTripId, toParentId);
+    dest.splice(Math.max(0, Math.min(toIndex, dest.length)), 0, activity);
 
-    const index = Math.max(0, Math.min(toIndex, targetDay.length));
-    targetDay.splice(index, 0, activity);
-
-    // Only write rows whose day or position actually changed.
-    const renumber = (day: typeof targetDay, subTripId: typeof toSubTripId) =>
-      Promise.all(
-        day.map((a, order) =>
-          a.order === order && a.subTripId === subTripId
-            ? null
-            : ctx.db.patch("activities", a._id, { order, subTripId }),
-        ),
-      );
-
-    await renumber(targetDay, toSubTripId);
-    if (activity.subTripId !== toSubTripId) await renumber(sourceDay, activity.subTripId);
+    await renumber(ctx, dest, { subTripId: toSubTripId, parentId: toParentId });
+    if (!sameList) await renumber(ctx, source);
+    // Descendants follow their parent to the new day.
+    if (activity.subTripId !== toSubTripId) {
+      await Promise.all(tree.slice(1).map((a) => ctx.db.patch("activities", a._id, { subTripId: toSubTripId })));
+    }
   },
 });
 
+/** Deletes an activity and everything nested under it. */
 export const remove = mutation({
   args: { activityId: v.id("activities") },
   handler: async (ctx, { activityId }) => {
     const activity = await getOwnedActivity(ctx, activityId);
-    await ctx.db.delete("activities", activityId);
-    const rest = await ctx.db
-      .query("activities")
-      .withIndex("by_subTripId_order", (q) => q.eq("subTripId", activity.subTripId))
-      .collect();
-    await Promise.all(
-      rest.map((a, order) => (a.order === order ? null : ctx.db.patch("activities", a._id, { order }))),
-    );
+    await Promise.all((await subtree(ctx, activity)).map((a) => ctx.db.delete("activities", a._id)));
+    await renumber(ctx, await siblings(ctx, activity.subTripId, activity.parentId));
   },
 });

@@ -3,13 +3,14 @@
 import { api } from "@trip/backend/api";
 import { optimisticMove, optimisticRemove, optimisticSetCompleted } from "@trip/backend/optimistic";
 import type { Activity, PublicTripDetails } from "@trip/backend/types";
-import { cn, formatDuration, getCategory, links } from "@trip/ui";
+import { categoryLabel, cn, formatDuration, getCategory, links } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
+import { SubActivities } from "./sub-activities";
 
 type Props = {
   activity: Activity;
@@ -27,8 +28,10 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
   const remove = useMutation(api.activities.remove).withOptimisticUpdate(optimisticRemove);
   const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
   const done = activity.isCompleted;
   const category = getCategory(activity.category);
+  const badge = categoryLabel(activity.category, activity.subcategory);
 
   return (
     <>
@@ -102,7 +105,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                 className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-md"
                 style={{ backgroundColor: `${category.color}cc` }}
               >
-                {category.emoji} {category.label}
+                {badge.emoji} {badge.text}
               </span>
               <AnimatePresence>
                 {done && (
@@ -156,6 +159,9 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               <IconButton label="Edit" onClick={() => setEditing(true)}>
                 ✎
               </IconButton>
+              <IconButton label="Add a step inside" onClick={() => setAdding(true)}>
+                ＋
+              </IconButton>
               <IconButton
                 label="Move earlier"
                 disabled={index === 0}
@@ -197,6 +203,8 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
           </div>
         )}
       </article>
+
+      <SubActivities parent={activity} readOnly={readOnly} adding={adding} onAddDone={() => setAdding(false)} />
     </>
   );
 }

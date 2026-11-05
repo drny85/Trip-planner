@@ -20,7 +20,7 @@ describe("trips", () => {
     expect(trip?.title).toBe("Tokyo Adventure");
     expect(trip?.subTrips.map((s) => s.dayNumber)).toEqual([1, 2, 3, 4]);
     expect(trip?.subTrips[0]?.activities[0]?.title).toBe("Visit Senso-ji Temple");
-    expect(trip?.progress).toEqual({ completed: 0, total: 15 });
+    expect(trip?.progress).toEqual({ completed: 0, total: 20 });
     expect(await t.query(api.trips.list, {})).toHaveLength(1);
   });
 

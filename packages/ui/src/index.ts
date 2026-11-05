@@ -1,4 +1,4 @@
-export { categoryMeta, fallbackPhoto, getCategory, type Category } from "./categories";
+export { categoryLabel, categoryMeta, fallbackPhoto, getCategory, getSubcategory, subcategoryMeta, type Category } from "./categories";
 export { cn } from "./cn";
 export { formatDateRange, formatDay, links } from "./format";
 

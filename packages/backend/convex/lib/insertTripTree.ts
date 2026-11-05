@@ -34,14 +34,24 @@ export async function insertTripTree(
       order: subIndex,
     });
 
-    for (const [activityIndex, activity] of activities.entries()) {
-      await ctx.db.insert("activities", {
+    for (const [activityIndex, { subActivities, ...activity }] of activities.entries()) {
+      const parentId = await ctx.db.insert("activities", {
         ...activity,
         tripId,
         subTripId,
         isCompleted: false,
         order: activityIndex,
       });
+      for (const [childIndex, child] of (subActivities ?? []).entries()) {
+        await ctx.db.insert("activities", {
+          ...child,
+          tripId,
+          subTripId,
+          parentId,
+          isCompleted: false,
+          order: childIndex,
+        });
+      }
     }
   }
 

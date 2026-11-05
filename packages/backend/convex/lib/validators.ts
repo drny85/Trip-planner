@@ -1,20 +1,13 @@
 import { v, type Infer } from "convex/values";
+import { CATEGORIES } from "./categories";
 
 /**
  * Shared validators. The schema, the mutations and (later) the AI action all
  * use these, so a trip tree has exactly one shape everywhere.
  */
 
-export const activityCategory = v.union(
-  v.literal("sightseeing"),
-  v.literal("food"),
-  v.literal("lodging"),
-  v.literal("transport"),
-  v.literal("shopping"),
-  v.literal("nightlife"),
-  v.literal("nature"),
-  v.literal("other"),
-);
+const [first, second, ...rest] = CATEGORIES.map((c) => v.literal(c));
+export const activityCategory = v.union(first!, second!, ...rest);
 
 /** Editable activity fields (everything except ids, order and completion). */
 export const activityFields = {
@@ -26,6 +19,8 @@ export const activityFields = {
   bookingUrl: v.optional(v.string()),
   websiteUrl: v.optional(v.string()),
   category: v.optional(activityCategory),
+  /** Key under `category` from CATEGORY_TREE, e.g. "airbnb" or "breakfast". */
+  subcategory: v.optional(v.string()),
   /** Local time, "HH:mm" (24h). */
   startTime: v.optional(v.string()),
   durationMinutes: v.optional(v.number()),
@@ -35,7 +30,11 @@ export const activityFields = {
   estimatedCost: v.optional(v.number()),
 };
 
-export const activityInput = v.object(activityFields);
+/** One level of sub-activities in seed/AI input; deeper nesting is added in the app. */
+export const activityInput = v.object({
+  ...activityFields,
+  subActivities: v.optional(v.array(v.object(activityFields))),
+});
 
 export const subTripInput = v.object({
   title: v.string(),
