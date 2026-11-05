@@ -119,3 +119,19 @@ describe("suggestions", () => {
     expect((await ana.query(api.suggestions.forTrip, { tripId }))!.open).toHaveLength(0);
   });
 });
+
+describe("packing list", () => {
+  test("shared between members, with essentials, claims and ticks", async () => {
+    const { ana, others, tripId, t } = await crew(1);
+    const ben = others[0]!;
+    expect(await ana.mutation(api.packing.addEssentials, { tripId })).toBeGreaterThan(5);
+    expect(await ana.mutation(api.packing.addEssentials, { tripId })).toBe(0);
+    const id = (await ben.mutation(api.packing.add, { tripId, text: "  First-aid kit " }))!;
+    await ben.mutation(api.packing.claim, { itemId: id });
+    await ana.mutation(api.packing.toggle, { itemId: id, isPacked: true });
+    const item = (await ana.query(api.packing.list, { tripId }))!.find((i) => i._id === id);
+    expect(item).toMatchObject({ text: "First-aid kit", isPacked: true, claimedBy: { name: "Ben", isMe: false } });
+    expect(await t.withIdentity({ subject: "zed" }).query(api.packing.list, { tripId })).toBeNull();
+    await expect(t.withIdentity({ subject: "zed" }).mutation(api.packing.remove, { itemId: id })).rejects.toThrow();
+  });
+});

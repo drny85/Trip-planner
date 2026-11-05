@@ -8,6 +8,7 @@ import { openDayRoute } from "@/lib/open";
 import Animated from "react-native-reanimated";
 import { enterUp, reflow } from "@/lib/motion";
 import { ActivityCard } from "./activity-card";
+import { DayWeatherChip } from "./day-weather";
 
 type Props = { subTrip: TripDetails["subTrips"][number]; tripId: Id<"trips">; sectionIndex: number; canEdit: boolean };
 
@@ -24,6 +25,7 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
           <Text className="text-2xl font-extrabold tracking-tight text-foreground">{subTrip.title.replace(/^Day \d+\s*·\s*/, "")}</Text>
         </View>
         <View className="flex-row items-center gap-2 pb-0.5">
+          <DayWeatherChip date={subTrip.date} activities={subTrip.activities} />
           <Text className="text-sm text-muted-foreground">
             {done}/{subTrip.activities.length}
           </Text>
