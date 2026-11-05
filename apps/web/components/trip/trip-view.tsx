@@ -17,6 +17,7 @@ import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
 import { Ideas } from "./ideas";
+import { JournalProvider, TripStory } from "./journal";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingList } from "./packing-list";
 import { DayExtras } from "./replan-day";
@@ -46,7 +47,28 @@ export function SharedTripView({ token }: { token: string }) {
         </Link>
       </div>
     );
-  return <Itinerary trip={trip} mode="public" />;
+  return <Itinerary trip={trip} mode="public" storyToken={token} />;
+}
+
+/** On a shared itinerary: a link to the trip's story, once the organizer publishes it. */
+function StoryBanner({ token }: { token: string }) {
+  const story = useQuery(api.journal.publicStory, { token });
+  if (!story) return null;
+  return (
+    <motion.div {...rise(0)}>
+      <Link
+        href={`/share/${token}/story`}
+        className="group mt-6 flex items-center gap-4 rounded-3xl bg-gradient-to-r from-primary to-emerald-500 p-5 text-primary-foreground shadow-lg shadow-primary/25 transition active:scale-[0.99]"
+      >
+        <span className="text-3xl">📖</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs font-semibold uppercase tracking-widest opacity-80">Read the story</span>
+          <span className="block truncate text-lg font-bold">{story.story.title}</span>
+        </span>
+        <span className="text-xl transition group-hover:translate-x-1">→</span>
+      </Link>
+    </motion.div>
+  );
 }
 
 export function TripSkeleton() {
@@ -64,7 +86,7 @@ type DragState = { activityId: Id<"activities"> } | null;
  * owner: edits everything. member (joined by invite): checks things off, suggests
  * and votes. public (share link): looks only.
  */
-function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode: "owner" | "member" | "public" }) {
+function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripDetails; mode: "owner" | "member" | "public"; storyToken?: string }) {
   const readOnly = mode !== "owner";
   const canCheck = mode !== "public";
   const move = useMutation(api.activities.move).withOptimisticUpdate(optimisticMove);
@@ -80,6 +102,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
 
   return (
     <MemoriesProvider tripId={trip._id} enabled={canCheck}>
+    <JournalProvider tripId={trip._id} enabled={canCheck}>
     <main className="pb-24">
       <Hero
         trip={trip}
@@ -95,6 +118,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
         <Stats trip={trip} readOnly={readOnly} />
         <BudgetCard trip={trip} />
         {mode !== "public" && <Crew tripId={trip._id} />}
+        {storyToken && <StoryBanner token={storyToken} />}
         {mode === "public" && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">
@@ -225,6 +249,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
         </LayoutGroup>
 
         <MemoriesGallery subTrips={trip.subTrips} />
+        {mode !== "public" && <TripStory tripId={trip._id} />}
         {mode !== "public" && <Ideas tripId={trip._id} subTrips={trip.subTrips} />}
         {mode !== "public" && <SplitCosts tripId={trip._id} />}
         {mode !== "public" && <PackingList tripId={trip._id} />}
@@ -232,6 +257,7 @@ function Itinerary({ trip, mode }: { trip: PublicTripDetails | TripDetails; mode
         {mode === "member" && <LeaveTrip tripId={trip._id} title={trip.title} />}
       </div>
     </main>
+    </JournalProvider>
     </MemoriesProvider>
   );
 }
