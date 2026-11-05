@@ -32,8 +32,12 @@ const MODELS: Record<Via, Record<Tier, readonly string[]>> = {
   },
 };
 
-/** Output budget per tier: a long multi-city trip needs more room than a weekend. */
-export const MAX_TOKENS: Record<Tier, number> = { simple: 8000, standard: 16000, complex: 16000 };
+/**
+ * Output budget per tier: a long multi-city trip needs more room than a weekend.
+ * Local tips and crowd forecasts add about a third. Kept under ~21k because the
+ * Anthropic SDK refuses longer non-streaming requests.
+ */
+export const MAX_TOKENS: Record<Tier, number> = { simple: 11000, standard: 20000, complex: 20000 };
 
 const NUMBER_WORDS: Record<string, number> = {
   a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,

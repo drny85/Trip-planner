@@ -181,6 +181,9 @@ export const remove = mutation({
     await Promise.all([
       ...activities.map((a) => ctx.db.delete("activities", a._id)),
       ...subTrips.map((s) => ctx.db.delete("subTrips", s._id)),
+      ...(await Promise.all(subTrips.map((s) => ctx.db.query("localPickSnapshots").withIndex("by_subTripId", (q) => q.eq("subTripId", s._id)).collect())))
+        .flat()
+        .map((snap) => ctx.db.delete("localPickSnapshots", snap._id)),
       ...members.map((m) => ctx.db.delete("tripMembers", m._id)),
       ...suggestions.map((s) => ctx.db.delete("suggestions", s._id)),
       ...votes.map((x) => ctx.db.delete("votes", x._id)),

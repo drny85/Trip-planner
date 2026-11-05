@@ -24,6 +24,7 @@ export function GenerateTripForm() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localFocus, setLocalFocus] = useState(false);
   const { t, locale } = useI18n();
 
   const submit = async (e: React.FormEvent) => {
@@ -31,7 +32,7 @@ export function GenerateTripForm() {
     setLoading(true);
     setError(null);
     try {
-      const tripId = await generate({ prompt, language: locale });
+      const tripId = await generate({ prompt, language: locale, localFocus });
       router.push(`/trips/${tripId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
@@ -78,8 +79,22 @@ export function GenerateTripForm() {
               </motion.button>
             ))}
           </div>
-          <motion.button
+          <motion.label
             {...rise(6)}
+            className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5"
+          >
+            <span className="text-2xl" aria-hidden>
+              💎
+            </span>
+            <span className="flex-1">
+              <span className="block font-semibold">{t("local.hiddenGems")}</span>
+              <span className="block text-sm text-muted-foreground">{t("local.hiddenGemsHint")}</span>
+            </span>
+            <input type="checkbox" role="switch" checked={localFocus} onChange={(e) => setLocalFocus(e.target.checked)} className="peer sr-only" />
+            <span aria-hidden className="relative h-7 w-12 shrink-0 rounded-full bg-muted transition-colors peer-checked:bg-primary peer-focus-visible:ring-4 peer-focus-visible:ring-primary/25 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5" />
+          </motion.label>
+          <motion.button
+            {...rise(7)}
             type="submit"
             whileTap={{ scale: 0.98 }}
             disabled={prompt.trim().length < 3}

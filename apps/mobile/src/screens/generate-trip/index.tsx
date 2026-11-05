@@ -4,7 +4,8 @@ import { api } from "@trip/backend/api";
 import { useAction } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ScrollView, Text, TextInput, View } from "react-native";
+import { ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { useCSSVariable } from "uniwind";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
@@ -20,13 +21,15 @@ export function GenerateTrip() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localFocus, setLocalFocus] = useState(false);
+  const primary = useCSSVariable("--color-primary");
   const { t, locale } = useI18n();
 
   const submit = async () => {
     setLoading(true);
     setError(null);
     try {
-      const tripId = await generate({ prompt, language: locale });
+      const tripId = await generate({ prompt, language: locale, localFocus });
       router.dismissTo({ pathname: "/trips/[tripId]", params: { tripId } });
     } catch (e) {
       setError(e instanceof Error ? cleanError(e.message) : t("common.somethingWrong"));
@@ -70,6 +73,21 @@ export function GenerateTrip() {
             </PressableScale>
           </Animated.View>
         ))}
+      </View>
+
+      <View className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4">
+        <Text className="text-2xl">💎</Text>
+        <View className="flex-1">
+          <Text className="font-semibold text-foreground">{t("local.hiddenGems")}</Text>
+          <Text className="text-sm text-muted-foreground">{t("local.hiddenGemsHint")}</Text>
+        </View>
+        <Switch
+          value={localFocus}
+          onValueChange={setLocalFocus}
+          disabled={loading}
+          accessibilityLabel={t("local.hiddenGems")}
+          trackColor={{ true: typeof primary === "string" ? primary : undefined }}
+        />
       </View>
 
       <Button icon="sparkles" loading={loading} disabled={prompt.trim().length < 3} onPress={submit}>

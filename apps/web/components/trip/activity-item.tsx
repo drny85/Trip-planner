@@ -9,6 +9,7 @@ import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { PlaceInfo } from "./place-info";
+import { LocalTips } from "./local-tips";
 import { SmartImage } from "@/components/smart-image";
 import { EASE_OUT } from "@/lib/motion";
 import { ActivityEditor } from "./activity-editor";
@@ -118,11 +119,13 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                   {credit ? t("activity.photoBy", { name: credit }) : "Google Maps"}
                 </span>
               )}
-              <span
-                className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-md"
-                style={{ backgroundColor: `${category.color}cc` }}
-              >
-                {badge.emoji} {badge.text}
+              <span className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                <span className="rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-md" style={{ backgroundColor: `${category.color}cc` }}>
+                  {badge.emoji} {badge.text}
+                </span>
+                {activity.isLocalPick && (
+                  <span className="rounded-full bg-violet-600/90 px-2.5 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur-md">💎 {t("local.gem")}</span>
+                )}
               </span>
               <AnimatePresence>
                 {done && (
@@ -154,6 +157,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
               <h3 className={cn("text-lg font-bold leading-snug decoration-2 transition", done && "line-through")}>{activity.title}</h3>
               <p className="line-clamp-2 text-sm text-muted-foreground">{activity.description}</p>
               <p className="truncate text-xs text-muted-foreground">📍 {activity.address}</p>
+              <LocalTips activity={activity} />
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {activity.phone && <Pill href={links.phone(activity.phone)}>📞 {t("activity.call")}</Pill>}

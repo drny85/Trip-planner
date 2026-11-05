@@ -23,6 +23,8 @@ import type * as lib_fakeData from "../lib/fakeData.js";
 import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as places from "../places.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
+import type * as lib_localPick from "../lib/localPick.js";
+import type * as localPicks from "../localPicks.js";
 import type * as lib_majority from "../lib/majority.js";
 import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
@@ -71,6 +73,7 @@ import type * as users from "../users.js";
 "lib/fakeData": typeof lib_fakeData,
 "lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
+"lib/localPick": typeof lib_localPick,
 "lib/majority": typeof lib_majority,
 "lib/members": typeof lib_members,
 "lib/modelRouter": typeof lib_modelRouter,
@@ -86,6 +89,7 @@ import type * as users from "../users.js";
 "lib/upNext": typeof lib_upNext,
 "lib/validators": typeof lib_validators,
 "lib/wikiPhotos": typeof lib_wikiPhotos,
+"localPicks": typeof localPicks,
 "members": typeof members,
 "memories": typeof memories,
 "notifications": typeof notifications,

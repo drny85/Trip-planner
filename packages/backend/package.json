@@ -14,7 +14,8 @@
     "./optimistic": "./src/optimistic.ts",
     "./schemas": "./src/tripSchema.ts",
     "./replan": "./convex/lib/replan.ts",
-    "./sample": "./convex/lib/fakeData.ts"
+    "./sample": "./convex/lib/fakeData.ts",
+    "./localPick": "./convex/lib/localPick.ts"
   },
   "scripts": {
     "dev": "convex dev",
