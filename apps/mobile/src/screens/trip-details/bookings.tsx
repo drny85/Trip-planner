@@ -1,6 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { cn, formatDay, formatTime } from "@trip/ui";
+import { useI18n, type I18n } from "@trip/i18n/react";
+import { cn } from "@trip/ui";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
@@ -50,9 +51,10 @@ export function BookingsProvider({ tripId, children }: { tripId: Id<"trips">; ch
 /** The booking filed under an activity, for the "Booked" pill on its card. */
 export const useBookingFor = (activityId: string) => useContext(Ctx).byActivity.get(activityId);
 
-const when = (b: { startDate?: string; startTime?: string }) => [b.startDate && formatDay(b.startDate), b.startTime && formatTime(b.startTime)].filter(Boolean).join(" · ");
+const when = (f: I18n["f"], b: { startDate?: string; startTime?: string }) => [b.startDate && f.day(b.startDate), b.startTime && f.time(b.startTime)].filter(Boolean).join(" · ");
 
 export function BookingsSection({ tripId, days }: { tripId: Id<"trips">; days: Day[] }) {
+  const { t } = useI18n();
   const { data } = useContext(Ctx);
   const router = useRouter();
   const [showAll, setShowAll] = useState(false);
@@ -64,14 +66,14 @@ export function BookingsSection({ tripId, days }: { tripId: Id<"trips">; days: D
     <View className="mt-6 gap-3 px-4">
       <View className="flex-row items-end justify-between gap-3">
         <View className="flex-1">
-          <Text className="text-xs font-bold uppercase tracking-widest text-primary">Flights, stays & tables</Text>
-          <Text className="text-2xl font-extrabold tracking-tight text-foreground">Bookings</Text>
+          <Text className="text-xs font-bold uppercase tracking-widest text-primary">{t("bookings.eyebrow")}</Text>
+          <Text className="text-2xl font-extrabold tracking-tight text-foreground">{t("bookings.title")}</Text>
           <Text className="text-xs text-muted-foreground">
-            {bookings.length ? `${bookings.length} confirmed · ` : ""}AI files confirmations into the right day
+            {bookings.length ? `${t("bookings.confirmed", { count: bookings.length })} · ` : ""}{t("bookings.intro")}
           </Text>
         </View>
         <Button size="sm" icon="plus" onPress={() => router.push({ pathname: "/trips/[tripId]/import", params: { tripId } })}>
-          Import
+          {t("bookings.importShort")}
         </Button>
       </View>
 
@@ -88,7 +90,7 @@ export function BookingsSection({ tripId, days }: { tripId: Id<"trips">; days: D
           ))}
           {bookings.length > 4 && (
             <Pressable onPress={() => setShowAll((s) => !s)} className="py-3">
-              <Text className="text-sm font-semibold text-primary">{showAll ? "Show fewer" : `Show all ${bookings.length}`}</Text>
+              <Text className="text-sm font-semibold text-primary">{showAll ? t("bookings.showFewer") : t("bookings.showAll", { count: bookings.length })}</Text>
             </Pressable>
           )}
         </View>
@@ -98,12 +100,13 @@ export function BookingsSection({ tripId, days }: { tripId: Id<"trips">; days: D
 }
 
 function SavedBooking({ booking: b }: { booking: Booking }) {
+  const { t, f } = useI18n();
   const remove = useMutation(api.bookings.remove);
   const onLongPress = () =>
-    Alert.alert(b.title, b.confirmationCode ? `Confirmation ${b.confirmationCode}` : undefined, [
-      ...(b.bookingUrl ? [{ text: "Manage booking", onPress: () => void openInAppBrowser(b.bookingUrl!) }] : []),
-      { text: "Remove booking", style: "destructive" as const, onPress: () => void remove({ bookingId: b._id }) },
-      { text: "Cancel", style: "cancel" as const },
+    Alert.alert(b.title, b.confirmationCode ? t("bookings.confirmation", { code: b.confirmationCode }) : undefined, [
+      ...(b.bookingUrl ? [{ text: t("bookings.manageBooking"), onPress: () => void openInAppBrowser(b.bookingUrl!) }] : []),
+      { text: t("bookings.removeBooking"), style: "destructive" as const, onPress: () => void remove({ bookingId: b._id }) },
+      { text: t("common.cancel"), style: "cancel" as const },
     ]);
   return (
     <Pressable onLongPress={onLongPress} onPress={b.bookingUrl ? () => void openInAppBrowser(b.bookingUrl!) : undefined} className="flex-row items-center gap-3 border-b border-border/60 py-3">
@@ -113,7 +116,7 @@ function SavedBooking({ booking: b }: { booking: Booking }) {
           {b.title}
         </Text>
         <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-          {[when(b), b.provider, b.details].filter(Boolean).join(" · ")}
+          {[when(f, b), b.provider, b.details].filter(Boolean).join(" · ")}
         </Text>
       </View>
       {b.confirmationCode && (
@@ -129,15 +132,16 @@ function SavedBooking({ booking: b }: { booking: Booking }) {
 type Choice = { include: boolean; subTripId?: Id<"subTrips">; activityId?: Id<"activities"> };
 
 function ImportCard({ imp, days }: { imp: Import; days: Day[] }) {
+  const { t } = useI18n();
   const dismiss = useMutation(api.bookings.dismiss);
-  const label = imp.source === "email" ? (imp.subject ?? "Forwarded email") : (imp.fileName ?? "Pasted confirmation");
+  const label = imp.source === "email" ? (imp.subject ?? t("bookings.forwarded")) : (imp.fileName ?? t("bookings.pasted"));
 
   if (imp.status === "processing")
     return (
       <View className="flex-row items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
         <ActivityIndicator />
         <Text className="flex-1 text-sm text-foreground" numberOfLines={1}>
-          <Text className="font-semibold">Reading your booking… </Text>
+          <Text className="font-semibold">{t("bookings.reading")} </Text>
           <Text className="text-muted-foreground">{label}</Text>
         </Text>
       </View>
@@ -146,9 +150,9 @@ function ImportCard({ imp, days }: { imp: Import; days: Day[] }) {
   if (imp.status === "failed")
     return (
       <View className="flex-row items-center gap-3 rounded-2xl bg-danger/10 p-4">
-        <Text className="flex-1 text-sm font-semibold text-danger">{imp.error ?? "Couldn't read that confirmation."}</Text>
+        <Text className="flex-1 text-sm font-semibold text-danger">{imp.error ?? t("bookings.errRefused")}</Text>
         <Button size="sm" variant="secondary" onPress={() => void dismiss({ importId: imp._id })}>
-          Dismiss
+          {t("bookings.dismiss")}
         </Button>
       </View>
     );
@@ -157,6 +161,7 @@ function ImportCard({ imp, days }: { imp: Import; days: Day[] }) {
 }
 
 function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: string }) {
+  const { t, f } = useI18n();
   const apply = useMutation(api.bookings.apply);
   const dismiss = useMutation(api.bookings.dismiss);
   const proposals = imp.proposals ?? [];
@@ -169,10 +174,8 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
   return (
     <View className="gap-3 rounded-3xl border border-primary/30 bg-primary/5 p-4">
       <Text className="text-sm text-foreground">
-        <Text className="font-semibold">
-          Found {proposals.length} booking{proposals.length === 1 ? "" : "s"}
-        </Text>
-        <Text className="text-muted-foreground"> in {label}. Check where each one goes.</Text>
+        <Text className="font-semibold">{t("bookings.found", { count: proposals.length })}</Text>
+        <Text className="text-muted-foreground"> {t("bookings.checkWhere", { source: label })}</Text>
       </Text>
       {proposals.map(({ booking: b, placement }, i) => {
         const c = choices[i];
@@ -197,7 +200,7 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
               <Text className="text-xl">{KIND_EMOJI[b.kind]}</Text>
               <View className="flex-1">
                 <Text className="font-semibold text-foreground">{b.title}</Text>
-                <Text className="text-xs text-muted-foreground">{[when(b), b.confirmationCode && `#${b.confirmationCode}`, b.provider].filter(Boolean).join(" · ")}</Text>
+                <Text className="text-xs text-muted-foreground">{[when(f, b), b.confirmationCode && `#${b.confirmationCode}`, b.provider].filter(Boolean).join(" · ")}</Text>
               </View>
             </Pressable>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-1.5">
@@ -210,8 +213,8 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
                     className={cn("rounded-full border px-3 py-1", on ? "border-primary bg-primary" : "border-border bg-background")}
                   >
                     <Text className={cn("text-xs font-semibold", on ? "text-primary-foreground" : "text-foreground")}>
-                      Day {d.dayNumber}
-                      {d.date ? ` · ${formatDay(d.date)}` : ""}
+                      {t("time.dayN", { day: d.dayNumber })}
+                      {d.date ? ` · ${f.day(d.date)}` : ""}
                     </Text>
                   </Pressable>
                 );
@@ -220,22 +223,22 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
             <Text className="text-xs text-muted-foreground">
               {attachedTo ? (
                 <>
-                  Adds to <Text className="font-semibold text-foreground">{attachedTo.title}</Text>.{" "}
+                  {t("bookings.addsTo", { title: attachedTo.title })}{" "}
                   <Text onPress={() => set({ activityId: undefined })} className="font-semibold text-primary">
-                    New stop instead
+                    {t("bookings.newInstead")}
                   </Text>
                 </>
               ) : (
-                `As a new stop${b.startTime ? ` at ${formatTime(b.startTime)}` : ""}`
+                b.startTime ? t("bookings.newStopAt", { time: f.time(b.startTime) }) : t("bookings.newStop")
               )}
-              {placement.outsideTrip && c.subTripId === placement.subTripId ? "  ·  Outside the trip dates" : ""}
+              {placement.outsideTrip && c.subTripId === placement.subTripId ? `  ·  ${t("bookings.outside")}` : ""}
             </Text>
           </View>
         );
       })}
       <View className="flex-row gap-2">
         <Button variant="secondary" onPress={() => void dismiss({ importId: imp._id })}>
-          Dismiss
+          {t("bookings.dismiss")}
         </Button>
         <Button
           containerClassName="flex-1"
@@ -250,12 +253,12 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
               });
               void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (e) {
-              Alert.alert("Couldn't add those bookings", e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : undefined);
+              Alert.alert(t("bookings.couldntAdd"), e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : undefined);
               setBusy(false);
             }
           }}
         >
-          {`Add ${picked} to the trip`}
+          {t("bookings.add", { count: picked })}
         </Button>
       </View>
     </View>

@@ -193,11 +193,15 @@ export function durationOf(b: Booking): number | undefined {
   return minutes > 0 ? minutes : undefined;
 }
 
-/** One line for the activity description, e.g. "Confirmation ABC123 · Seat 32A · Check out May 9, 11:00". */
-export function bookingSummary(b: Booking): string {
-  const parts = [b.provider, b.confirmationCode && `Confirmation ${b.confirmationCode}`, b.details];
-  if (b.kind === "hotel" && b.endDate) parts.push(`Check out ${b.endDate}${b.endTime ? ` ${b.endTime}` : ""}`);
-  else if (b.endTime && b.kind !== "restaurant") parts.push(`Until ${b.endDate && b.endDate !== b.startDate ? `${b.endDate} ` : ""}${b.endTime}`);
+type Translate = (key: "bookings.confirmation" | "bookings.checkOut" | "bookings.until", vars: Record<string, string>) => string;
+type Formats = { day: (iso: string) => string; time: (hhmm: string) => string };
+
+/** One line for the activity description, e.g. "Confirmation ABC123 · Seat 32A · Check out Apr 7 11:00 AM". */
+export function bookingSummary(b: Booking, t: Translate, f: Formats): string {
+  const at = (d?: string, time?: string) => [d && f.day(d), time && f.time(time)].filter(Boolean).join(" ");
+  const parts = [b.provider, b.confirmationCode && t("bookings.confirmation", { code: b.confirmationCode }), b.details];
+  if (b.kind === "hotel" && b.endDate) parts.push(t("bookings.checkOut", { when: at(b.endDate, b.endTime) }));
+  else if (b.endTime && b.kind !== "restaurant") parts.push(t("bookings.until", { when: at(b.endDate && b.endDate !== b.startDate ? b.endDate : undefined, b.endTime) }));
   return parts.filter(Boolean).join(" · ");
 }
 

@@ -159,6 +159,21 @@ pnpm build       # Next.js production build
 - **AI re-plan a day**: the organizer can ask the AI to re-plan one day ("it's going to rain", "lighter day", or their own words). When the forecast shows a 50% or higher chance of rain, the button becomes a "Rain plan". The proposal is shown first and applied only on "Use this plan". Kept stops keep their photos and steps, and a stop with photos is never removed (`ai.replanDay`, `activities.applyReplan`). It uses the same model routing as trip generation.
 - **Offline itinerary (mobile)**: the trips list, every trip that hasn't ended yet, its packing list and Up next are saved on the device (`useCachedQuery`). With no signal, the app shows the saved copy and a banner, and Convex sends queued changes once it reconnects. The cache is wiped on sign-out.
 
+## Booking import
+
+Paste a confirmation email, drop a PDF or screenshot (on web you can also paste a screenshot straight into the box), or forward the email to the trip's own address. AI reads it in the background (`convex/bookings.ts`, cheap tier first, one tier up if the answer is incomplete), finds each flight, train, car, stay, table, tour or ticket, and proposes the day it belongs on. When a booking is for something already planned (the hotel check-in, that dinner), it's added to that activity instead of creating a new stop. Nothing changes until the traveler checks the proposals and taps **Add to the trip**. Uploaded files are deleted as soon as they've been read.
+
+Forwarding needs an inbound email provider (Postmark inbound works as is; anything that POSTs the same JSON works too):
+
+```bash
+cd packages/backend
+npx convex env set INBOUND_EMAIL_DOMAIN in.yourdomain.com     # MX records point at the provider
+npx convex env set INBOUND_EMAIL_SECRET <long random string>
+# Webhook URL: https://<deployment>.convex.site/inbound/email?key=<INBOUND_EMAIL_SECRET>
+```
+
+The trip owner turns on the address in the import dialog (`trip-<token>@in.yourdomain.com`). Forwarded emails wait on the owner's trip page for review. Without these variables, paste and upload still work and the forwarding option is hidden.
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.

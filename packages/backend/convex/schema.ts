@@ -65,6 +65,8 @@ export default defineSchema({
     error: v.optional(v.string()),
     proposals: v.optional(v.array(v.object({ booking: bookingObject, placement: placementObject }))),
     aiModel: v.optional(v.string()),
+    /** App language of the person reviewing it: titles and messages are written in it. */
+    language: v.optional(v.string()),
   })
     .index("by_tripId", ["tripId"])
     .index("by_tripId_userId", ["tripId", "userId"]),

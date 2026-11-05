@@ -2,7 +2,8 @@
 
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { cn, formatDay, formatTime } from "@trip/ui";
+import { useI18n, type I18n } from "@trip/i18n/react";
+import { cn } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
@@ -49,6 +50,7 @@ export function BookingsProvider({ tripId, enabled, children }: { tripId: Id<"tr
 
 /** "Booked · K7Q2PX" on an activity that has a confirmation. Click copies the code. */
 export function BookingChip({ activityId }: { activityId: string }) {
+  const { t } = useI18n();
   const booking = useContext(Ctx).byActivity.get(activityId);
   const [copied, setCopied] = useState(false);
   if (!booking) return null;
@@ -60,17 +62,18 @@ export function BookingChip({ activityId }: { activityId: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      title={booking.confirmationCode ? "Copy confirmation code" : booking.provider}
+      title={booking.confirmationCode ? t("bookings.copyCode") : booking.provider}
       className="rounded-md bg-success/15 px-2 py-0.5 text-success transition hover:bg-success/25"
     >
-      {copied ? "Copied ✓" : `🎫 Booked${booking.confirmationCode ? ` · ${booking.confirmationCode}` : ""}`}
+      {copied ? t("bookings.copied") : `🎫 ${t("bookings.booked")}${booking.confirmationCode ? ` · ${booking.confirmationCode}` : ""}`}
     </button>
   );
 }
 
-const when = (b: { startDate?: string; startTime?: string }) => [b.startDate && formatDay(b.startDate), b.startTime && formatTime(b.startTime)].filter(Boolean).join(" · ");
+const when = (f: I18n["f"], b: { startDate?: string; startTime?: string }) => [b.startDate && f.day(b.startDate), b.startTime && f.time(b.startTime)].filter(Boolean).join(" · ");
 
 export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] }) {
+  const { t } = useI18n();
   const { data } = useContext(Ctx);
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -83,14 +86,14 @@ export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] })
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="bookings-title" className="text-lg font-bold">
-            🎫 Bookings
+            🎫 {t("bookings.title")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {bookings.length ? `${bookings.length} confirmed` : "Flights, stays, tables and tours."} Paste or upload a confirmation and AI files it into the right day.
+            {bookings.length ? t("bookings.confirmed", { count: bookings.length }) + "." : t("bookings.none")} {t("bookings.intro")}
           </p>
         </div>
         <button onClick={() => setOpen(true)} className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition hover:opacity-90 active:scale-[0.97]">
-          ＋ Import a booking
+          ＋ {t("bookings.importButton")}
         </button>
       </div>
 
@@ -111,7 +114,7 @@ export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] })
       )}
       {bookings.length > 4 && (
         <button onClick={() => setShowAll((s) => !s)} className="mt-2 text-sm font-semibold text-primary">
-          {showAll ? "Show fewer" : `Show all ${bookings.length}`}
+          {showAll ? t("bookings.showFewer") : t("bookings.showAll", { count: bookings.length })}
         </button>
       )}
 
@@ -121,6 +124,7 @@ export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] })
 }
 
 function SavedBooking({ booking: b }: { booking: Booking }) {
+  const { t, f } = useI18n();
   const remove = useMutation(api.bookings.remove);
   const [copied, setCopied] = useState(false);
   return (
@@ -130,7 +134,7 @@ function SavedBooking({ booking: b }: { booking: Booking }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{b.title}</p>
-        <p className="truncate text-xs text-muted-foreground">{[when(b), b.provider, b.details].filter(Boolean).join(" · ")}</p>
+        <p className="truncate text-xs text-muted-foreground">{[when(f, b), b.provider, b.details].filter(Boolean).join(" · ")}</p>
       </div>
       {b.confirmationCode && (
         <button
@@ -139,21 +143,21 @@ function SavedBooking({ booking: b }: { booking: Booking }) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           }}
-          title="Copy confirmation code"
+          title={t("bookings.copyCode")}
           className="rounded-lg bg-muted px-2.5 py-1 font-mono text-xs font-semibold tabular-nums transition hover:bg-border"
         >
-          {copied ? "Copied ✓" : b.confirmationCode}
+          {copied ? t("bookings.copied") : b.confirmationCode}
         </button>
       )}
       {b.bookingUrl && (
         <a href={b.bookingUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline">
-          Manage
+          {t("bookings.manage")}
         </a>
       )}
       <button
-        onClick={() => confirm(`Remove the booking "${b.title}"? The activity stays on the itinerary.`) && void remove({ bookingId: b._id })}
+        onClick={() => confirm(t("bookings.removeConfirm", { title: b.title })) && void remove({ bookingId: b._id })}
         className="text-sm text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100 focus:opacity-100"
-        aria-label={`Remove ${b.title}`}
+        aria-label={t("bookings.removeLabel", { title: b.title })}
       >
         ✕
       </button>
@@ -164,15 +168,16 @@ function SavedBooking({ booking: b }: { booking: Booking }) {
 type Choice = { include: boolean; subTripId?: Id<"subTrips">; activityId?: Id<"activities"> };
 
 function ImportCard({ imp, days }: { imp: Import; days: Day[] }) {
+  const { t } = useI18n();
   const dismiss = useMutation(api.bookings.dismiss);
-  const label = imp.source === "email" ? `✉️ ${imp.subject ?? "Forwarded email"}` : imp.fileName ? `📎 ${imp.fileName}` : "📋 Pasted confirmation";
+  const label = imp.source === "email" ? `✉️ ${imp.subject ?? t("bookings.forwarded")}` : imp.fileName ? `📎 ${imp.fileName}` : `📋 ${t("bookings.pasted")}`;
 
   if (imp.status === "processing")
     return (
       <div className="mt-4 flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4 text-sm">
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" aria-hidden />
         <span className="min-w-0 flex-1 truncate">
-          <span className="font-semibold">Reading your booking…</span> <span className="text-muted-foreground">{label}</span>
+          <span className="font-semibold">{t("bookings.reading")}</span> <span className="text-muted-foreground">{label}</span>
         </span>
       </div>
     );
@@ -181,10 +186,10 @@ function ImportCard({ imp, days }: { imp: Import; days: Day[] }) {
     return (
       <div className="mt-4 flex items-center gap-3 rounded-2xl border border-danger/30 bg-danger/5 p-4 text-sm">
         <span className="min-w-0 flex-1">
-          <span className="font-semibold text-danger">{imp.error ?? "Couldn't read that confirmation."}</span> <span className="text-muted-foreground">{label}</span>
+          <span className="font-semibold text-danger">{imp.error ?? t("bookings.errRefused")}</span> <span className="text-muted-foreground">{label}</span>
         </span>
         <button onClick={() => void dismiss({ importId: imp._id })} className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">
-          Dismiss
+          {t("bookings.dismiss")}
         </button>
       </div>
     );
@@ -194,6 +199,7 @@ function ImportCard({ imp, days }: { imp: Import; days: Day[] }) {
 
 /** Mounted once the proposals are in, so the choices start from them. */
 function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: string }) {
+  const { t, f } = useI18n();
   const apply = useMutation(api.bookings.apply);
   const dismiss = useMutation(api.bookings.dismiss);
   const proposals = imp.proposals ?? [];
@@ -205,10 +211,8 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
   return (
     <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
       <p className="text-sm">
-        <span className="font-semibold">
-          Found {proposals.length} booking{proposals.length === 1 ? "" : "s"}
-        </span>{" "}
-        <span className="text-muted-foreground">in {label.replace(/^\S+ /, "")}. Check where each one goes.</span>
+        <span className="font-semibold">{t("bookings.found", { count: proposals.length })}</span>{" "}
+        <span className="text-muted-foreground">{t("bookings.checkWhere", { source: label.replace(/^\S+ /, "") })}</span>
       </p>
       <ul className="mt-3 flex flex-col gap-2">
         {proposals.map(({ booking: b, placement }, i) => {
@@ -227,7 +231,7 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{b.title}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {[when(b), b.confirmationCode && `#${b.confirmationCode}`, b.provider].filter(Boolean).join(" · ")}
+                    {[when(f, b), b.confirmationCode && `#${b.confirmationCode}`, b.provider].filter(Boolean).join(" · ")}
                   </span>
                 </span>
               </label>
@@ -239,27 +243,27 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
                     // The suggested activity only applies on its own day.
                     set({ subTripId, activityId: subTripId === placement.subTripId ? placement.activityId : undefined });
                   }}
-                  aria-label={`Day for ${b.title}`}
+                  aria-label={t("bookings.dayFor", { title: b.title })}
                   className="rounded-lg border border-border bg-background px-2 py-1 font-semibold outline-none focus:border-primary"
                 >
                   {days.map((d) => (
                     <option key={d._id} value={d._id}>
-                      Day {d.dayNumber}
-                      {d.date ? ` · ${formatDay(d.date)}` : ""}
+                      {t("time.dayN", { day: d.dayNumber })}
+                      {d.date ? ` · ${f.day(d.date)}` : ""}
                     </option>
                   ))}
                 </select>
                 {attachedTo ? (
                   <span className="text-muted-foreground">
-                    adds to <span className="font-semibold text-foreground">{attachedTo.title}</span>{" "}
-                    <button onClick={() => set({ activityId: undefined })} className="text-primary hover:underline">
-                      (new stop instead)
+                    {t("bookings.addsTo", { title: attachedTo.title })}{" "}
+                    <button onClick={() => set({ activityId: undefined })} className="font-semibold text-primary hover:underline">
+                      {t("bookings.newInstead")}
                     </button>
                   </span>
                 ) : (
-                  <span className="text-muted-foreground">as a new stop{b.startTime ? ` at ${formatTime(b.startTime)}` : ""}</span>
+                  <span className="text-muted-foreground">{b.startTime ? t("bookings.newStopAt", { time: f.time(b.startTime) }) : t("bookings.newStop")}</span>
                 )}
-                {placement.outsideTrip && c.subTripId === placement.subTripId && <span className="text-amber-600 dark:text-amber-400">Outside the trip dates</span>}
+                {placement.outsideTrip && c.subTripId === placement.subTripId && <span className="text-amber-600 dark:text-amber-400">{t("bookings.outside")}</span>}
               </div>
             </li>
           );
@@ -267,7 +271,7 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
       </ul>
       <div className="mt-3 flex gap-2">
         <button onClick={() => void dismiss({ importId: imp._id })} className="rounded-full bg-muted px-4 py-2 text-sm font-semibold">
-          Dismiss
+          {t("bookings.dismiss")}
         </button>
         <button
           disabled={busy || picked === 0}
@@ -279,13 +283,13 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
                 items: choices.flatMap((c, index) => (c.include && c.subTripId ? [{ index, subTripId: c.subTripId, activityId: c.activityId }] : [])),
               });
             } catch (e) {
-              alert(e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : "Couldn't add those bookings");
+              alert(e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0] : t("bookings.couldntAdd"));
               setBusy(false);
             }
           }}
           className="flex-1 rounded-full bg-primary py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
         >
-          {busy ? "Adding…" : `Add ${picked} to the trip`}
+          {busy ? t("bookings.adding") : t("bookings.add", { count: picked })}
         </button>
       </div>
     </div>
@@ -293,6 +297,7 @@ function ReadyImport({ imp, days, label }: { imp: Import; days: Day[]; label: st
 }
 
 function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: Data["email"]; onClose: () => void }) {
+  const { t, locale } = useI18n();
   const start = useMutation(api.bookings.start);
   const generateUploadUrl = useMutation(api.memories.generateUploadUrl);
   const [text, setText] = useState("");
@@ -306,12 +311,12 @@ function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: 
     return () => document.removeEventListener("keydown", esc);
   }, [onClose]);
 
-  const fail = (e: unknown) => setState({ status: "error", message: e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0]! : "Something went wrong" });
+  const fail = (e: unknown) => setState({ status: "error", message: e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0]! : t("common.somethingWrong") });
 
   const sendText = async () => {
     setState({ status: "sending" });
     try {
-      await start({ tripId, text });
+      await start({ tripId, text, language: locale });
       onClose();
     } catch (e) {
       fail(e);
@@ -319,14 +324,14 @@ function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: 
   };
 
   const sendFile = async (file: File) => {
-    if (!FILE_TYPES.includes(file.type)) return setState({ status: "error", message: "Upload a PDF or an image (JPG, PNG, WebP)." });
-    if (file.size > MAX_BYTES) return setState({ status: "error", message: "That file is over 10 MB." });
+    if (!FILE_TYPES.includes(file.type)) return setState({ status: "error", message: t("bookings.wrongType") });
+    if (file.size > MAX_BYTES) return setState({ status: "error", message: t("bookings.tooBig") });
     setState({ status: "sending" });
     try {
       const url = await generateUploadUrl();
       const res = await fetch(url, { method: "POST", headers: { "Content-Type": file.type }, body: file });
       const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
-      await start({ tripId, storageId, fileName: file.name || "Screenshot" });
+      await start({ tripId, storageId, fileName: file.name || t("bookings.pickScreenshot"), language: locale });
       onClose();
     } catch (e) {
       fail(e);
@@ -348,9 +353,9 @@ function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: 
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-card p-6 shadow-2xl"
       >
         <h2 id="import-title" className="text-xl font-bold">
-          Import a booking
+          {t("bookings.importTitle")}
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">Flights, hotels, restaurants, tours. AI finds the times, addresses and confirmation numbers, and you choose where they go.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("bookings.importIntro")}</p>
 
         <textarea
           value={text}
@@ -365,7 +370,7 @@ function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: 
           }}
           rows={6}
           maxLength={60000}
-          placeholder="Paste the confirmation email here (or a screenshot)…"
+          placeholder={t("bookings.pastePlaceholderWeb")}
           className="mt-4 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
         />
         <button
@@ -373,7 +378,7 @@ function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: 
           disabled={sending || text.trim().length < 20}
           className="mt-2 w-full rounded-full bg-primary py-2.5 font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition hover:opacity-90 disabled:opacity-50 active:scale-[0.98]"
         >
-          {sending ? "Sending…" : "✨ Read this booking"}
+          {sending ? t("bookings.sending") : `✨ ${t("bookings.read")}`}
         </button>
 
         <div
@@ -395,8 +400,8 @@ function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: 
           )}
         >
           <span className="text-2xl">📎</span>
-          <p className="mt-1 font-semibold text-foreground">Drop a PDF or screenshot</p>
-          <p>or click to choose a file, up to 10 MB</p>
+          <p className="mt-1 font-semibold text-foreground">{t("bookings.dropTitle")}</p>
+          <p>{t("bookings.dropHint")}</p>
           <input
             ref={fileInput}
             type="file"
@@ -418,15 +423,16 @@ function ImportDialog({ tripId, email, onClose }: { tripId: Id<"trips">; email: 
 }
 
 function ForwardingAddress({ tripId, address }: { tripId: Id<"trips">; address?: string }) {
+  const { t } = useI18n();
   const enable = useMutation(api.bookings.enableEmail);
   const disable = useMutation(api.bookings.disableEmail);
   const [copied, setCopied] = useState(false);
   return (
     <div className="mt-5 rounded-2xl bg-muted/60 p-4 text-sm">
-      <p className="font-semibold">✉️ Or forward confirmations</p>
+      <p className="font-semibold">✉️ {t("bookings.forwardTitle")}</p>
       {address ? (
         <>
-          <p className="mt-1 text-muted-foreground">Forward booking emails to this trip&apos;s address. They show up here for you to review.</p>
+          <p className="mt-1 text-muted-foreground">{t("bookings.forwardIntro")}</p>
           <div className="mt-2 flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded-lg bg-background px-2 py-1.5 text-xs">{address}</code>
             <button
@@ -437,18 +443,18 @@ function ForwardingAddress({ tripId, address }: { tripId: Id<"trips">; address?:
               }}
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
             >
-              {copied ? "Copied ✓" : "Copy"}
+              {copied ? t("bookings.copied") : t("bookings.copy")}
             </button>
           </div>
           <button onClick={() => void disable({ tripId })} className="mt-2 text-xs font-semibold text-muted-foreground hover:text-danger">
-            Turn off this address
+            {t("bookings.turnOff")}
           </button>
         </>
       ) : (
         <>
-          <p className="mt-1 text-muted-foreground">Get a private email address for this trip and forward confirmations to it.</p>
+          <p className="mt-1 text-muted-foreground">{t("bookings.forwardOff")}</p>
           <button onClick={() => void enable({ tripId })} className="mt-2 rounded-full bg-card px-3 py-1.5 text-xs font-semibold shadow-sm">
-            Get the address
+            {t("bookings.getAddress")}
           </button>
         </>
       )}

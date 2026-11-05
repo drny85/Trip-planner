@@ -158,6 +158,15 @@ test("an answer with no bookings fails with a clear message, and others can't se
   expect((await ana.query(api.bookings.forTrip, { tripId }))!.imports).toHaveLength(0);
 });
 
+test("titles and messages follow the app language", async () => {
+  const { t, ana, tripId } = await setup();
+  generateText.mockResolvedValueOnce({ output: { bookings: [] }, finishReason: "stop", response: { modelId: "x" } });
+  await ana.mutation(api.bookings.start, { tripId, text: "Gracias por suscribirte a nuestro boletín.", language: "es" });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(generateText.mock.calls[0]![0].system).toContain("in Spanish");
+  expect((await ana.query(api.bookings.forTrip, { tripId }))!.imports[0]!.error).toBe("No se encontraron reservas en esa confirmación.");
+});
+
 test("files that aren't PDFs or images fail and are deleted", async () => {
   const { t, ana, tripId } = await setup();
   const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["x"], { type: "application/zip" })));

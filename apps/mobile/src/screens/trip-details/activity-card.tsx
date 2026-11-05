@@ -105,7 +105,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
               {booking && (
                 <View className="flex-row items-center gap-1 rounded-full bg-success px-2.5 py-1">
                   <Text className="text-[11px]">🎫</Text>
-                  <Text className="text-xs font-semibold text-white">{booking.confirmationCode ?? "Booked"}</Text>
+                  <Text className="text-xs font-semibold text-white">{booking.confirmationCode ?? t("bookings.booked")}</Text>
                 </View>
               )}
             </View>

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
+import { createFormat, defaultLocale, formatTagFor, isLocale, languageInEnglish, translator, type Locale } from "@trip/i18n";
 import { aiVia, generateStructured, type AiFile } from "./ai";
 import { getMemberTrip, getOptionalUserId, findMembership, getOwnedTrip } from "./lib/auth";
 import {
@@ -42,6 +43,10 @@ const EXTRACT_PROMPT = `You read travel confirmation emails, PDFs and screenshot
 - When a booking is clearly for an activity already in the itinerary below (same hotel, restaurant or tour), give its id as matchActivityId.
 - If there are no bookings at all, return an empty list.`;
 
+const toLocale = (language?: string): Locale => (isLocale(language) ? language : defaultLocale);
+const languageRule = (locale: Locale) =>
+  `\n- Write titles and details in ${languageInEnglish[locale]}. Keep names, confirmation codes, flight numbers, addresses and phone numbers exactly as written.`;
+
 /** Starts reading a pasted confirmation or an uploaded file. Returns the import's id. */
 export const start = mutation({
   args: {
@@ -49,9 +54,13 @@ export const start = mutation({
     text: v.optional(v.string()),
     storageId: v.optional(v.id("_storage")),
     fileName: v.optional(v.string()),
+    /** App language ("es", "ja", …): titles and messages are written in it. */
+    language: v.optional(v.string()),
   },
-  handler: async (ctx, { tripId, text, storageId, fileName }) => {
+  handler: async (ctx, { tripId, text, storageId, fileName, language }) => {
     const { userId } = await getMemberTrip(ctx, tripId);
+    const locale = toLocale(language);
+    const t = translator(locale);
     const body = text?.trim().slice(0, MAX_IMPORT_TEXT);
     if (storageId) {
       const file = await ctx.db.system.get("_storage", storageId);
@@ -65,12 +74,13 @@ export const start = mutation({
           userId,
           source: "file",
           fileName: fileName?.slice(0, 120),
+          language: locale,
           status: "failed",
-          error: "Upload a PDF or an image (JPG, PNG, WebP) under 10 MB",
+          error: t("bookings.errFileType"),
         });
       }
     } else if (!body || body.length < 20) {
-      throw new Error("Paste the confirmation email, or upload a PDF or screenshot");
+      throw new Error(t("bookings.errPasteOrUpload"));
     }
     return createImport(ctx, {
       tripId,
@@ -79,6 +89,7 @@ export const start = mutation({
       text: body || undefined,
       storageId,
       fileName: fileName?.slice(0, 120),
+      language: locale,
     });
   },
 });
@@ -90,6 +101,7 @@ async function createImport(ctx: MutationCtx, fields: Omit<Doc<"bookingImports">
 }
 
 type ImportJob = {
+  language?: string;
   text?: string;
   storageId?: Id<"_storage">;
   contentType?: string;
@@ -122,6 +134,7 @@ export const importContext = internalQuery({
         .map((a) => ({ id: a._id, title: a.title, category: a.category, startTime: a.startTime })),
     }));
     return {
+      language: row.language,
       text: row.text,
       storageId: row.storageId,
       contentType: file?.contentType,
@@ -143,16 +156,19 @@ export const extract = internalAction({
   args: { importId: v.id("bookingImports") },
   handler: async (ctx, { importId }): Promise<null> => {
     const fail = (error: string): Promise<null> => ctx.runMutation(internal.bookings.finishExtract, { importId, error });
+    let t = translator(defaultLocale);
     try {
       const job: ImportJob | null = await ctx.runQuery(internal.bookings.importContext, { importId });
       if (!job) return null;
+      const locale = toLocale(job.language);
+      t = translator(locale);
       const via = aiVia();
       if (!via) return await fail("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
 
       let file: AiFile | undefined;
       if (job.storageId) {
         const blob = await ctx.storage.get(job.storageId);
-        if (!blob) return await fail("The uploaded file is gone. Please upload it again.");
+        if (!blob) return await fail(t("bookings.errFileGone"));
         file = { data: toBase64(new Uint8Array(await blob.arrayBuffer())), mediaType: job.contentType ?? blob.type, filename: job.fileName };
       }
 
@@ -170,23 +186,23 @@ export const extract = internalAction({
 
       let tier: Tier | null = "simple";
       while (tier) {
-        const result = await generateStructured(via, tier, content, { system: EXTRACT_PROMPT, schema: extractedBookingsSchema }, file);
-        if (result.refused) return await fail("AI couldn't read that confirmation.");
+        const result = await generateStructured(via, tier, content, { system: EXTRACT_PROMPT + languageRule(locale), schema: extractedBookingsSchema }, file);
+        if (result.refused) return await fail(t("bookings.errRefused"));
         if (result.trip && !result.truncated) {
           const proposals = result.trip.bookings.slice(0, 20).map((raw) => {
             const { matchActivityId, ...booking } = normalizeBooking(raw);
             const placement = placeBooking({ ...booking, matchActivityId }, job.days, job.trip);
             return { booking, placement: placement as { subTripId?: Id<"subTrips">; activityId?: Id<"activities">; outsideTrip?: boolean } };
           });
-          if (proposals.length === 0) return await fail("No bookings found in that confirmation.");
+          if (proposals.length === 0) return await fail(t("bookings.errNoBookings"));
           return await ctx.runMutation(internal.bookings.finishExtract, { importId, proposals, aiModel: result.model });
         }
         tier = process.env.AI_MODEL ? null : nextTier(tier);
       }
-      return await fail("Couldn't read the whole confirmation. Try pasting just the booking part.");
+      return await fail(t("bookings.errIncomplete"));
     } catch (error) {
       console.error("Booking import failed", error);
-      return await fail("Something went wrong reading that confirmation. Please try again.");
+      return await fail(t("bookings.errGeneric"));
     }
   },
 });
@@ -246,7 +262,7 @@ export const enableEmail = mutation({
   handler: async (ctx, { tripId }) => {
     const trip = await getOwnedTrip(ctx, tripId);
     const domain = process.env.INBOUND_EMAIL_DOMAIN;
-    if (!domain) throw new Error("Email forwarding isn't set up on this deployment");
+    if (!domain) throw new Error(translator(defaultLocale)("bookings.errEmailOff"));
     const importToken = trip.importToken ?? newToken();
     if (!trip.importToken) await ctx.db.patch("trips", tripId, { importToken });
     return `trip-${importToken}@${domain}`;
@@ -284,6 +300,7 @@ export const receiveEmail = internalMutation({
       if (storageId) await ctx.storage.delete(storageId);
       return null;
     }
+    const owner = await ctx.db.query("users").withIndex("by_clerkId", (q) => q.eq("clerkId", trip.userId)).unique();
     const body = [subject && `Subject: ${subject}`, text].filter(Boolean).join("\n\n").slice(0, MAX_IMPORT_TEXT);
     if (!storageId && body.length < 20) return null;
     return createImport(ctx, {
@@ -295,6 +312,7 @@ export const receiveEmail = internalMutation({
       fileName: fileName?.slice(0, 120),
       subject: subject?.slice(0, 200),
       from: from?.slice(0, 200),
+      language: owner?.language,
     });
   },
 });
@@ -329,7 +347,9 @@ export const apply = mutation({
   },
   handler: async (ctx, { importId, items }) => {
     const { row, trip, userId } = await myImport(ctx, importId);
-    if (row.status !== "ready" || !row.proposals) throw new Error("This import was already handled");
+    const locale = toLocale(row.language);
+    if (row.status !== "ready" || !row.proposals) throw new Error(translator(locale)("bookings.errHandled"));
+    const text = { t: translator(locale), f: createFormat(locale, formatTagFor(locale)) };
     const seen = new Set<number>();
     const added: Id<"activities">[] = [];
     for (const item of items) {
@@ -342,7 +362,7 @@ export const apply = mutation({
       const activityId =
         target && target.tripId === trip._id
           ? await attachTo(ctx, target, proposal.booking)
-          : await insertActivity(ctx, day, proposal.booking);
+          : await insertActivity(ctx, day, proposal.booking, bookingSummary(proposal.booking, text.t, text.f));
       await ctx.db.insert("bookings", { tripId: trip._id, activityId, importId, addedBy: userId, ...proposal.booking });
       added.push(activityId);
     }
@@ -365,7 +385,7 @@ async function attachTo(ctx: MutationCtx, activity: Doc<"activities">, b: Bookin
 }
 
 /** A new top-level stop on the day, slotted in by start time. */
-async function insertActivity(ctx: MutationCtx, day: Doc<"subTrips">, b: Booking) {
+async function insertActivity(ctx: MutationCtx, day: Doc<"subTrips">, b: Booking, description: string) {
   const { category, subcategory } = CATEGORY_FOR[b.kind];
   const siblings = await ctx.db
     .query("activities")
@@ -379,7 +399,7 @@ async function insertActivity(ctx: MutationCtx, day: Doc<"subTrips">, b: Booking
     tripId: day.tripId,
     subTripId: day._id,
     title: b.title,
-    description: bookingSummary(b),
+    description,
     address: b.address ?? "",
     phone: b.phone,
     bookingUrl: b.bookingUrl,
