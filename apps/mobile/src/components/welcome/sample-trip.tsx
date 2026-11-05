@@ -78,7 +78,7 @@ export function SampleTrip({ visible, onClose, onSignIn }: { visible: boolean; o
           ))}
         </ScrollView>
 
-        <View className="absolute inset-x-0 bottom-0 gap-1 border-t border-border bg-background/95 px-5 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
+        <View className="absolute inset-x-0 bottom-0 gap-1 border-t border-border bg-background px-5 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
           <Button icon="sparkles" onPress={onSignIn}>
             {t("welcome.planYourOwn")}
           </Button>

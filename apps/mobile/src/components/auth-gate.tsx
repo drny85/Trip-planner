@@ -1,17 +1,27 @@
-import { useAuth, useUser } from "@clerk/expo";
+import { useSession, useUser, useAuth } from "@clerk/expo";
 import { useHostedAuth } from "@clerk/expo/hosted-auth";
+import { AuthView } from "@clerk/expo/native-components";
 import { useI18n } from "@trip/i18n/react";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { useState, type ReactNode } from "react";
-import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, Text, View } from "react-native";
 import { authEnabled } from "@/providers/app-providers";
 import { clearCache } from "@/lib/offline-cache";
 import { Image } from "./image";
 import { Welcome } from "./welcome";
 
-/** Renders children for signed-in users (or everyone in demo mode) and a sign-in screen otherwise. */
+/** Renders children for signed-in users (or everyone in demo mode) and the welcome tour otherwise. */
 export function AuthGate({ children }: { children: ReactNode }) {
   if (!authEnabled) return <>{children}</>;
+  return <ClerkGate>{children}</ClerkGate>;
+}
+
+function ClerkGate({ children }: { children: ReactNode }) {
+  const [wantsAuth, setAuthOpen] = useState(false);
+  const { session } = useSession();
+  // The sheet closes itself once the session is fully active (after MFA or other session tasks).
+  const authOpen = wantsAuth && session?.status !== "active";
+
   return (
     <>
       <AuthLoading>
@@ -20,21 +30,30 @@ export function AuthGate({ children }: { children: ReactNode }) {
         </View>
       </AuthLoading>
       <Unauthenticated>
-        <SignInScreen />
+        <SignInScreen onOpenAuth={() => setAuthOpen(true)} />
       </Unauthenticated>
       <Authenticated>{children}</Authenticated>
+      {/* Clerk's native sign-in (SwiftUI / Jetpack Compose). Mounted beside, not inside, the
+          signed-out screen, so it isn't torn down while session tasks are still finishing. */}
+      {Platform.OS !== "web" && (
+        <Modal visible={authOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAuthOpen(false)}>
+          <AuthView onDismiss={() => setAuthOpen(false)} />
+        </Modal>
+      )}
     </>
   );
 }
 
 /** The welcome tour, with sign-in behind "Get started" or "Plan your own trip". */
-function SignInScreen() {
+function SignInScreen({ onOpenAuth }: { onOpenAuth: () => void }) {
   const { startHostedAuth } = useHostedAuth();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { t } = useI18n();
 
+  // On iOS and Android, Clerk's native sheet; on web there is no native view, so the hosted page.
   const signIn = async () => {
+    if (Platform.OS !== "web") return onOpenAuth();
     setBusy(true);
     setError(null);
     try {

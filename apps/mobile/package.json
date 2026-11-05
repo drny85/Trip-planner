@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@clerk/expo": "^4.15.1",
+    "@clerk/expo-native-components": "^0.4.4",
     "@expo/ui": "~58.0.27",
     "@trip/backend": "workspace:*",
     "@trip/i18n": "workspace:*",
