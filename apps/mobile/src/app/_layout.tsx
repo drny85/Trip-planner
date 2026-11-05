@@ -60,7 +60,11 @@ function AppStack() {
       />
       <Stack.Screen
         name="trips/[tripId]/expense"
-        options={{ title: t("mobile.titleExpense"), presentation: "formSheet", sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+        options={{ title: t("mobile.titleExpense"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
+      <Stack.Screen
+        name="trips/[tripId]/payment"
+        options={{ title: t("split.paymentTitle"), presentation: "formSheet", sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
       <Stack.Screen
         name="trips/[tripId]/replan/[subTripId]"

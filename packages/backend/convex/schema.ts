@@ -1,7 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
-import { activityFields } from "./lib/validators";
+import { activityFields, splitMode } from "./lib/validators";
 
 export default defineSchema({
   /** One row per Clerk user. `clerkId` is the JWT `subject`. */
@@ -167,15 +167,32 @@ export default defineSchema({
   }).index("by_tripId", ["tripId"]),
 
   /** Shared packing list: anyone on the trip adds, ticks off or claims items. */
-  /** Shared costs. A settlement is a payment from `paidBy` to the one person in `splitAmong`. */
+  /**
+   * Shared costs: something `paidBy` paid for the people in `splitAmong`.
+   * How it's divided is `splitMode` (default "equal") with one `splitValues` entry
+   * per person for the other modes. The math lives in lib/settle.ts.
+   */
   expenses: defineTable({
     tripId: v.id("trips"),
     description: v.string(),
     amountCents: v.number(),
     paidBy: v.string(),
     splitAmong: v.array(v.string()),
+    splitMode: v.optional(splitMode),
+    /** Cents for "exact", whole shares for "shares", basis points for "percent". */
+    splitValues: v.optional(v.array(v.number())),
     createdBy: v.string(),
+    /** @deprecated Payments now live in `settlements`; run expenses:migrateLegacySettlements once. */
     isSettlement: v.optional(v.boolean()),
+  }).index("by_tripId", ["tripId"]),
+
+  /** Money one traveler sent another to even out the shared costs. */
+  settlements: defineTable({
+    tripId: v.id("trips"),
+    from: v.string(),
+    to: v.string(),
+    amountCents: v.number(),
+    createdBy: v.string(),
   }).index("by_tripId", ["tripId"]),
 
   /** In-app notifications, one row per recipient. */
