@@ -29,7 +29,7 @@ export function TripsList() {
         options={{
           headerLeft: authEnabled ? () => <SignOutButton /> : undefined,
           headerRight: () => (
-            <View className="flex-row items-center gap-5">
+            <View className="flex-row items-center gap-7 px-2">
               <BellButton />
               <Pressable accessibilityLabel="Plan a new trip" onPress={() => router.push("/generate")} hitSlop={12}>
                 <Icon name="plus" size={22} colorVar="--color-primary" />
