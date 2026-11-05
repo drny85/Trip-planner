@@ -4,6 +4,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { useI18n } from "@trip/i18n/react";
+import { AnimatedSplash } from "@/components/animated-splash";
 import { AuthGate } from "@/components/auth-gate";
 import { CloseButton } from "@/components/close-button";
 import { PushSetup } from "@/components/push-setup";
@@ -28,6 +29,8 @@ export default function RootLayout() {
       </AppProviders>
       </MobileI18nProvider>
       <StatusBar style="auto" />
+      {/* Takes over from the native splash, plays once, then gets out of the way. */}
+      <AnimatedSplash />
     </ThemeProvider>
   );
 }
