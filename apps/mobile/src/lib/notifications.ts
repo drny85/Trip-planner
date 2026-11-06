@@ -2,10 +2,16 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { isChatVisible } from "./chat-focus";
 import { i18nNow } from "./i18n";
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false }),
+  handleNotification: async (n) => {
+    // A chat message for the chat you're looking at is already on screen.
+    const data = n.request.content.data;
+    const quiet = data?.screen === "chat" && isChatVisible(data.tripId);
+    return { shouldShowBanner: !quiet, shouldShowList: !quiet, shouldPlaySound: false, shouldSetBadge: false };
+  },
 });
 
 /**

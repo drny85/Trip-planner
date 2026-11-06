@@ -3,7 +3,7 @@ import { tripPhotoUrls } from "@trip/backend/offline";
 import type { Trip } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
 import { localToday, tripLength } from "@trip/ui";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Link, Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, useColorScheme, View } from "react-native";
@@ -21,9 +21,11 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { useCachedQuery } from "@/hooks/use-cached-query";
 import { Image } from "expo-image";
 import { UpNext } from "./up-next";
+import { UnreadChatChip } from "@/screens/trip-details/chat-button";
 
 export function TripsList() {
   const { data: trips, isCached } = useCachedQuery(api.trips.list, {});
+  const unread = useQuery(api.chat.unreadByTrip);
   const router = useRouter();
   const { t } = useI18n();
 
@@ -68,7 +70,7 @@ export function TripsList() {
               </Animated.View>
               {trips.map((trip, index) => (
                 <Animated.View key={trip._id} entering={enterUp(index + 1)}>
-                  <TripCard trip={trip} />
+                  <TripCard trip={trip} unreadChat={unread?.[trip._id]} />
                 </Animated.View>
               ))}
             </>
@@ -103,7 +105,7 @@ function PlanCta() {
   );
 }
 
-function TripCard({ trip }: { trip: Trip & { isOwner: boolean } }) {
+function TripCard({ trip, unreadChat }: { trip: Trip & { isOwner: boolean }; unreadChat?: number }) {
   const days = tripLength(trip.startDate, trip.endDate);
   const { t, f } = useI18n();
   return (
@@ -122,6 +124,7 @@ function TripCard({ trip }: { trip: Trip & { isOwner: boolean } }) {
         <View className="absolute left-4 right-4 top-4 flex-row gap-2">
           <Chip>{t("time.days", { count: days })}</Chip>
           {!trip.isOwner ? <Chip>{`👥 ${t("trips.joined")}`}</Chip> : trip.isAIGenerated && <Chip>{`✨ ${t("trips.ai")}`}</Chip>}
+          <UnreadChatChip count={unreadChat} />
         </View>
         <View className="absolute inset-x-0 bottom-0 gap-1 p-5">
           <Text className="text-3xl font-extrabold tracking-tight text-white" numberOfLines={1}>

@@ -7,6 +7,7 @@ import { newToken } from "./lib/tokens";
 import { listMembers } from "./lib/members";
 import { resolveOpenSuggestions } from "./suggestions";
 import { deleteTripVotes } from "./groupVotes";
+import { forgetChatReader } from "./chat";
 
 /**
  * Trip members: the owner invites friends with a link, friends join with it, and
@@ -128,5 +129,6 @@ async function removeMember(ctx: MutationCtx, trip: Doc<"trips">, userId: string
     .collect();
   await Promise.all(votes.filter((vote) => vote.userId === userId).map((vote) => ctx.db.delete("votes", vote._id)));
   await deleteTripVotes(ctx, trip._id, userId);
+  await forgetChatReader(ctx, trip._id, userId);
   await resolveOpenSuggestions(ctx, trip);
 }

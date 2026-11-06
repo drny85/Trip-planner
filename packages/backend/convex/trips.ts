@@ -1,3 +1,4 @@
+import { deleteTripChat } from "./chat";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
@@ -235,6 +236,7 @@ export const remove = mutation({
       ...notifications.map((n) => ctx.db.delete("notifications", n._id)),
     ]);
     await deleteJournal(ctx, tripId);
+    await deleteTripChat(ctx, tripId);
     await deleteTripVotes(ctx, tripId);
     await deleteTripBookings(ctx, tripId);
     await deleteTripFares(ctx, tripId);

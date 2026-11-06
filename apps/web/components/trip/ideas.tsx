@@ -11,6 +11,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
+import { DiscussButton } from "./trip-chat";
 
 type Day = { _id: Id<"subTrips">; dayNumber: number; title: string };
 
@@ -113,7 +114,7 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
   const needed = Math.floor(members / 2) + 1;
 
   return (
-    <article className="flex h-full flex-col gap-3 rounded-3xl border border-border/70 bg-card p-5 shadow-sm">
+    <article id={`idea-${idea._id}`} className="flex h-full scroll-mt-28 flex-col gap-3 rounded-3xl border border-border/70 bg-card p-5 shadow-sm transition-shadow">
       <div className="flex items-center justify-between gap-2 text-xs font-semibold text-muted-foreground">
         <span>
           {idea.isMine ? t("ideas.youSuggested", { day: dayName }) : t("ideas.suggestedBy", { name: idea.authorName, day: dayName })}
@@ -167,6 +168,7 @@ function IdeaCard({ idea, dayName }: { idea: Idea; dayName: string }) {
             </motion.button>
           );
         })}
+        <DiscussButton link={{ suggestionId: idea._id }} className="px-3 py-2" />
         {idea.isMine && (
           <button onClick={() => void withdraw({ suggestionId: idea._id })} className="px-2 text-xs font-semibold text-muted-foreground hover:text-danger">
             {t("ideas.withdraw")}

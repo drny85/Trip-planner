@@ -19,6 +19,7 @@ import { ActivityPhotos } from "./memories";
 import { SubActivities } from "./sub-activities";
 import { VoteBar } from "./group-votes";
 import { useToggleDone } from "@/components/undo-toast";
+import { DiscussButton } from "./trip-chat";
 
 type Props = {
   activity: Activity;
@@ -89,6 +90,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
       </motion.button>
 
       <article
+        id={`activity-${activity._id}`}
         draggable={!editing && !readOnly}
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";
@@ -185,6 +187,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                     ★ {t("place.heading")}
                   </button>
                 )}
+                {canCheck && <DiscussButton link={{ activityId: activity._id }} />}
               </div>
               {canCheck && <VoteBar tripId={trip._id} activityId={activity._id} title={activity.title} />}
               {showPlace && (

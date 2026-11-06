@@ -18,8 +18,12 @@ export function PushSetup() {
 
   const last = Notifications.useLastNotificationResponse();
   useEffect(() => {
-    const tripId = last?.notification.request.content.data?.tripId;
-    if (typeof tripId === "string") router.push({ pathname: "/trips/[tripId]", params: { tripId } });
+    const data = last?.notification.request.content.data;
+    const tripId = data?.tripId;
+    if (typeof tripId !== "string") return;
+    // A chat push opens the chat itself.
+    if (data?.screen === "chat") router.push({ pathname: "/trips/[tripId]/chat", params: { tripId } });
+    else router.push({ pathname: "/trips/[tripId]", params: { tripId } });
   }, [last, router]);
 
   return null;

@@ -4,9 +4,9 @@ import type { Id } from "@trip/backend/dataModel";
 import type { TripDetails as TripDetailsData } from "@trip/backend/types";
 import { dayTitle } from "@trip/ui";
 import { useMutation } from "convex/react";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Share, Text, useColorScheme, View } from "react-native";
 import Animated, {
   Extrapolation,
@@ -42,6 +42,8 @@ import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 import { TodayBanner } from "./today-banner";
 import { TripLockedBanner } from "@/components/billing";
+import { activityViews, takeTripFocus } from "@/lib/chat-focus";
+import { ChatHeaderButton } from "./chat-button";
 import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
@@ -145,6 +147,32 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
     scrollRef.current?.scrollTo({ y: y - barHeight + 1, animated: true });
   };
 
+  // Coming back from a chat link: scroll to the day (or the ideas) it pointed at.
+  const ideasOffset = useRef<number | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const target = takeTripFocus(trip._id);
+      if (!target) return;
+      const timer = setTimeout(() => {
+        if ("subTripId" in target) {
+          // The stop itself when its card is on the page, else the start of its day.
+          const card = target.activityId ? activityViews.get(target.activityId) : undefined;
+          if (!card) return jumpTo(target.subTripId);
+          card.measureInWindow((_x, y) => {
+            setPastHero(true);
+            scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.get() + y - barHeight - 12), animated: true });
+          });
+        }
+        else if (ideasOffset.current != null) {
+          setPastHero(true);
+          scrollRef.current?.scrollTo({ y: ideasOffset.current - barHeight, animated: true });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on focus; jumpTo reads refs
+    }, [trip._id]),
+  );
+
   // Activities are rendered in a ScrollView (a trip has tens of items, not thousands), so
   // cards can animate in once and reflow smoothly when they are reordered.
   return (
@@ -153,6 +181,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
     <BookingsProvider tripId={trip._id}>
     <View className="flex-1 bg-background">
       <StatusBar style={pastHero ? (scheme === "dark" ? "light" : "dark") : "light"} animated />
+      <Stack.Screen options={{ headerRight: () => <ChatHeaderButton tripId={trip._id} /> }} />
       <Animated.ScrollView
         ref={scrollRef}
         onScroll={onScroll}
@@ -189,7 +218,9 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         ))}
         <MemoriesGallery />
         <StoryCard tripId={trip._id} />
-        <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
+        <View onLayout={(e) => (ideasOffset.current = e.nativeEvent.layout.y)}>
+          <IdeasSection tripId={trip._id} subTrips={trip.subTrips} />
+        </View>
         <SplitCostsSection tripId={trip._id} />
         <PackingSection tripId={trip._id} />
         <View className="mt-10 gap-2 px-4">
