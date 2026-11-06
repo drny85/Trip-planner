@@ -287,7 +287,19 @@ export default defineSchema({
     date: v.optional(v.string()),
     location: v.optional(v.string()),
     order: v.number(),
+    /** When "local's pick" swapped this day's tourist spots for local favorites. */
+    localPickAt: v.optional(v.number()),
   }).index("by_tripId_order", ["tripId", "order"]),
+
+  /**
+   * What a day looked like before "local's pick", so the swap can be undone:
+   * the activities it replaced and the ones it added. One per day while it's on.
+   */
+  localPickSnapshots: defineTable({
+    subTripId: v.id("subTrips"),
+    replaced: v.array(v.object({ ...activityFields, photoCredit: v.optional(v.string()), placeId: v.optional(v.string()), order: v.number() })),
+    addedIds: v.array(v.id("activities")),
+  }).index("by_subTripId", ["subTripId"]),
 
   /**
    * Places whose Google photo our /place-photo route may serve. Only place IDs we
