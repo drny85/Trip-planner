@@ -12,6 +12,8 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     /** App language ("en", "es", …), so notifications reach them in it. */
     language: v.optional(v.string()),
+    /** ISO 4217 code of where they travel from, e.g. "USD". Guessed from the device, can be changed. */
+    homeCurrency: v.optional(v.string()),
   }).index("by_clerkId", ["clerkId"]),
 
   trips: defineTable({
@@ -24,7 +26,13 @@ export default defineSchema({
     startDate: v.string(),
     endDate: v.string(),
     imageUrl: v.string(),
+    /** The destination's local currency (ISO 4217), e.g. "JPY". */
     currency: v.optional(v.string()),
+    /**
+     * The one currency shared-cost balances are kept in. Set when the first expense is
+     * added (the organizer's home currency), and the organizer can change it.
+     */
+    groupCurrency: v.optional(v.string()),
     isAIGenerated: v.boolean(),
     /** The prompt used for AI generation, kept so a trip can be regenerated. */
     prompt: v.optional(v.string()),
@@ -181,12 +189,16 @@ export default defineSchema({
     splitMode: v.optional(splitMode),
     /** Cents for "exact", whole shares for "shares", basis points for "percent". */
     splitValues: v.optional(v.array(v.number())),
+    /** What it was paid in (ISO 4217). Missing on old rows, which are in the trip's currency. */
+    currency: v.optional(v.string()),
+    /** 1 unit of `currency` in the trip's groupCurrency, fixed when it was logged. Missing means 1. */
+    rate: v.optional(v.number()),
     createdBy: v.string(),
     /** @deprecated Payments now live in `settlements`; run expenses:migrateLegacySettlements once. */
     isSettlement: v.optional(v.boolean()),
   }).index("by_tripId", ["tripId"]),
 
-  /** Money one traveler sent another to even out the shared costs. */
+  /** Money one traveler sent another to even out the shared costs, in the trip's groupCurrency. */
   settlements: defineTable({
     tripId: v.id("trips"),
     from: v.string(),

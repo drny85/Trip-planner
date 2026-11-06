@@ -5,11 +5,11 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { parseAmount, SPLIT_MODES, type SplitMode } from "@trip/backend/settle";
 import { amountText, draftFrom, errorCode, percentLabel, prefill, readDraft, type Draft } from "@trip/backend/splitDraft";
-import { cn } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { cn, currencyChoices, currencyFromLocales, CURRENCIES } from "@trip/ui";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
 import { Avatar } from "./crew";
 
@@ -29,7 +29,8 @@ function errorMessage(t: T, e: unknown) {
 /** Shared helpers for the section: names, money and labels from one place. */
 function useSplitText(data: Data) {
   const { t, f } = useI18n();
-  const money = (cents: number) => f.money(cents / 100, data.currency);
+  /** Group-currency cents, or cents of another currency when one is given. */
+  const money = (cents: number, currency = data.currency) => f.money(cents / 100, currency);
   const byId = new Map(data.people.map((p) => [p.userId, p]));
   const nameOf = (id: string) => {
     const p = byId.get(id);
@@ -96,6 +97,7 @@ function Balances({ tripId, data }: { tripId: Id<"trips">; data: Data }) {
         <div>
           <p className="text-sm text-muted-foreground">{t("split.groupSpending")}</p>
           <p className="text-3xl font-extrabold tabular-nums">{money(data.totalCents)}</p>
+          <GroupCurrency tripId={tripId} data={data} />
         </div>
         <div className={cn("rounded-2xl px-4 py-3", mine > 0 ? "bg-success/10" : mine < 0 ? "bg-danger/10" : "bg-muted")}>
           <p className="text-xs text-muted-foreground">{t("split.yourBalance")}</p>
@@ -138,6 +140,59 @@ function Balances({ tripId, data }: { tripId: Id<"trips">; data: Data }) {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+/** "Balances in USD · Change": the organizer can move the whole ledger to another currency. */
+function GroupCurrency({ tripId, data }: { tripId: Id<"trips">; data: Data }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1 text-xs text-muted-foreground">
+      {t("split.balancesIn", { currency: data.currency })}
+      {data.canChangeCurrency && !open && (
+        <button onClick={() => setOpen(true)} className="ml-2 font-semibold text-primary hover:underline">
+          {t("split.changeCurrency")}
+        </button>
+      )}
+      {open && <GroupCurrencyForm tripId={tripId} data={data} onDone={() => setOpen(false)} />}
+    </div>
+  );
+}
+
+function GroupCurrencyForm({ tripId, data, onDone }: { tripId: Id<"trips">; data: Data; onDone: () => void }) {
+  const change = useMutation(api.expenses.setGroupCurrency);
+  const { t } = useI18n();
+  const [next, setNext] = useState(data.homeCurrency && data.homeCurrency !== data.currency ? data.homeCurrency : (data.localCurrency ?? data.currency));
+  const rate = useRate(data.currency, next);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="mt-2 flex flex-col gap-2 rounded-2xl bg-muted/50 p-3 text-sm text-foreground">
+      <CurrencyPicker value={next} onChange={setNext} home={data.homeCurrency} local={data.localCurrency} group={data.currency} />
+      <RateField from={data.currency} to={next} rate={rate} />
+      {!rate.same && rate.rate != null && <p className="text-xs text-muted-foreground">{t("split.switchCurrencyHint", { from: data.currency, rate: rate.text, to: next })}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <button onClick={onDone} className="rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">
+          {t("common.cancel")}
+        </button>
+        <button
+          disabled={rate.same || rate.rate == null}
+          onClick={async () => {
+            setError(null);
+            try {
+              await change({ tripId, currency: next, rate: rate.rate! });
+              onDone();
+            } catch (err) {
+              setError(errorMessage(t, err));
+            }
+          }}
+          className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-40"
+        >
+          {t("split.switchCurrency", { currency: next })}
+        </button>
+      </div>
     </div>
   );
 }
@@ -244,7 +299,8 @@ function ExpenseRow({ data, expense: e, onEdit }: { data: Data; expense: Expense
           <p className="truncate text-xs text-muted-foreground">{splitLine(t, data, e, nameOf, firstName)}</p>
         </div>
         <div className="text-right">
-          <p className="font-bold tabular-nums">{money(e.amountCents)}</p>
+          <p className="font-bold tabular-nums">{money(e.amountCents, e.currency)}</p>
+          {e.currency !== data.currency && <p className="text-xs text-muted-foreground tabular-nums">{t("split.converted", { amount: money(e.groupCents) })}</p>}
           {e.myShareCents > 0 && <p className="text-xs text-muted-foreground tabular-nums">{t("split.yourShare", { amount: money(e.myShareCents) })}</p>}
         </div>
       </button>
@@ -297,6 +353,95 @@ function PaymentRow({ data, payment: p }: { data: Data; payment: Extract<Entry, 
   );
 }
 
+const rateText = (r: number) => String(Number(r.toPrecision(6)));
+const readRate = (text: string) => {
+  const n = Number(text.trim().replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/**
+ * The exchange rate from `from` into `to`, as editable text: today's rate is fetched
+ * whenever the pair changes, unless `initial` already has one for it.
+ */
+function useRate(from: string, to: string, initial?: { currency: string; rate: number }) {
+  const fetchRate = useAction(api.fx.rate);
+  const pair = `${from}>${to}`;
+  const known = initial && initial.currency === from;
+  const [state, setState] = useState<{ pair: string; text: string; status: "ok" | "missing"; date?: string }>(() => ({
+    pair: known ? pair : "",
+    text: known ? rateText(initial.rate) : "",
+    status: "ok",
+  }));
+  useEffect(() => {
+    if (from === to || state.pair === pair) return;
+    let live = true;
+    fetchRate({ from, to })
+      .then((r) => live && setState({ pair, text: r ? rateText(r.rate) : "", status: r ? "ok" : "missing", date: r?.date }))
+      .catch(() => live && setState({ pair, text: "", status: "missing" }));
+    return () => {
+      live = false;
+    };
+    // Only refetch when the currency pair changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pair]);
+  const same = from === to;
+  const loading = !same && state.pair !== pair;
+  return {
+    same,
+    text: same ? "1" : loading ? "" : state.text,
+    setText: (text: string) => setState({ pair, text, status: "ok" }),
+    status: same ? ("ok" as const) : loading ? ("loading" as const) : state.status,
+    date: loading ? undefined : state.date,
+    rate: same ? 1 : loading ? null : readRate(state.text),
+  };
+}
+
+/** Home currency first, the trip's local one second, then any other. */
+function CurrencyPicker({ value, onChange, home, local, group }: { value: string; onChange: (c: string) => void; home: string | null; local: string | null; group: string }) {
+  const { t, f } = useI18n();
+  const choices = currencyChoices(home, local, group);
+  const tag = (c: string) => (c === home ? t("split.homeTag") : c === local ? t("split.localTag") : null);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {choices.map((c) => (
+        <button type="button" key={c} role="radio" aria-checked={value === c} onClick={() => onChange(c)} className={cn("rounded-full px-3 py-1.5 text-sm font-semibold transition-colors", value === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+          {f.currencySymbol(c) !== c ? `${f.currencySymbol(c)} ` : ""}
+          {c}
+          {tag(c) && <span className="ml-1 font-normal opacity-75">· {tag(c)}</span>}
+        </button>
+      ))}
+      <select
+        aria-label={t("split.otherCurrency")}
+        value={choices.includes(value) ? "" : value}
+        onChange={(e) => e.target.value && onChange(e.target.value)}
+        className={cn("rounded-full border border-border bg-background px-3 py-1.5 text-sm", !choices.includes(value) && "border-primary font-semibold")}
+      >
+        <option value="">{t("split.otherCurrency")}</option>
+        {CURRENCIES.filter((c) => !choices.includes(c)).map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** "1 JPY in USD: [0.0065]" with where the number came from. */
+function RateField({ from, to, rate }: { from: string; to: string; rate: ReturnType<typeof useRate> }) {
+  const { t } = useI18n();
+  if (rate.same) return null;
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="font-semibold">{t("split.rateLabel", { from, to })}</span>
+      <input value={rate.text} onChange={(e) => rate.setText(e.target.value)} inputMode="decimal" className="w-28 rounded-xl border border-border bg-background px-3 py-1.5 tabular-nums outline-none focus:border-primary" />
+      <span className={cn("text-xs", rate.status === "missing" ? "text-danger" : "text-muted-foreground")}>
+        {rate.status === "loading" ? t("split.rateLoading") : rate.status === "missing" ? t("split.rateMissing") : rate.date ? t("split.rateHint", { date: rate.date }) : ""}
+      </span>
+    </label>
+  );
+}
+
 /** Add or edit an expense: what, how much, who paid, and how it's split. */
 function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; data: Data; expense?: ExpenseEntry; onDone: () => void }) {
   const add = useMutation(api.expenses.add);
@@ -306,6 +451,9 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
   const [description, setDescription] = useState(expense?.description ?? "");
   const [amount, setAmount] = useState(expense ? amountText(expense.amountCents) : "");
   const [paidBy, setPaidBy] = useState(expense?.paidBy ?? data.me);
+  const home = data.homeCurrency ?? (typeof navigator === "undefined" ? null : currencyFromLocales(navigator.languages ?? []));
+  const [currency, setCurrency] = useState(expense?.currency ?? home ?? data.localCurrency ?? data.currency);
+  const rate = useRate(currency, data.currency, expense);
   const [draft, setDraft] = useState<Draft>(expense ? draftFrom(expense) : { mode: "equal", people: members.map((m) => m.userId), inputs: {} });
   const [error, setError] = useState<string | null>(null);
   const cents = parseAmount(amount);
@@ -324,9 +472,9 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
   const status = (() => {
     if (error) return <span className="text-danger">{error}</span>;
     if (cents == null || draft.people.length === 0) return " ";
-    if (draft.mode === "exact" && reading.remaining) return <span className={reading.remaining < 0 ? "text-danger" : ""}>{reading.remaining > 0 ? t("split.left", { amount: money(reading.remaining) }) : t("split.over", { amount: money(-reading.remaining) })}</span>;
+    if (draft.mode === "exact" && reading.remaining) return <span className={reading.remaining < 0 ? "text-danger" : ""}>{reading.remaining > 0 ? t("split.left", { amount: money(reading.remaining, currency) }) : t("split.over", { amount: money(-reading.remaining, currency) })}</span>;
     if (draft.mode === "percent" && reading.remaining) return <span className={reading.remaining < 0 ? "text-danger" : ""}>{reading.remaining > 0 ? t("split.percentLeft", { percent: percentLabel(reading.remaining) }) : t("split.percentOver", { percent: percentLabel(-reading.remaining) })}</span>;
-    if (draft.mode === "equal") return t("split.each", { amount: money(Math.max(...Object.values(reading.preview))) });
+    if (draft.mode === "equal") return t("split.each", { amount: money(Math.max(...Object.values(reading.preview)), currency) });
     return reading.error ? t(`split.errors.${reading.error}`) : " ";
   })();
 
@@ -336,7 +484,8 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
         e.preventDefault();
         if (!reading.split || cents == null) return;
         setError(null);
-        const fields = { description, amountCents: cents, paidBy, split: reading.split };
+        if (rate.rate == null) return setError(t("split.errors.needRate"));
+        const fields = { description, amountCents: cents, paidBy, split: reading.split, currency, rate: rate.rate };
         try {
           if (expense) await update({ expenseId: expense._id, ...fields });
           else await add({ tripId, ...fields });
@@ -353,7 +502,7 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
         <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("split.whatPlaceholder")} maxLength={80} className="rounded-xl border border-border bg-background px-3 py-2 font-normal outline-none focus:border-primary" />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold">
-        {t("split.amount", { currency: data.currency })}
+        {t("split.amount", { currency })}
         <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" className="rounded-xl border border-border bg-background px-3 py-2 font-normal tabular-nums outline-none focus:border-primary" />
       </label>
       <label className="flex flex-col gap-1 text-sm font-semibold">
@@ -366,6 +515,11 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
           ))}
         </select>
       </label>
+      <fieldset role="radiogroup" className="flex flex-col gap-2 text-sm sm:col-span-2">
+        <legend className="font-semibold">{t("split.currency")}</legend>
+        <CurrencyPicker value={currency} onChange={setCurrency} home={home} local={data.localCurrency} group={data.currency} />
+        <RateField from={currency} to={data.currency} rate={rate} />
+      </fieldset>
       <fieldset className="flex flex-col gap-1 text-sm font-semibold">
         <legend>{t("split.splitBetween")}</legend>
         <div className="mt-1 flex flex-wrap gap-2">
@@ -407,7 +561,7 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
                     {draft.mode === "percent" && <span className="text-muted-foreground">%</span>}
                   </span>
                 )}
-                <span className="w-24 text-right tabular-nums text-muted-foreground">{reading.preview[id] != null ? money(reading.preview[id]!) : "–"}</span>
+                <span className="w-24 text-right tabular-nums text-muted-foreground">{reading.preview[id] != null ? money(reading.preview[id]!, currency) : "–"}</span>
               </li>
             ))}
           </ul>
@@ -415,8 +569,11 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
       </fieldset>
 
       <div className="flex items-center justify-between gap-3 sm:col-span-2">
-        <p className="text-sm text-muted-foreground">{status}</p>
-        <button type="submit" disabled={!reading.split} className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40 active:scale-[0.97]">
+        <p className="text-sm text-muted-foreground">
+          {status}
+          {!rate.same && cents != null && rate.rate != null && <span className="ml-2">{t("split.converted", { amount: money(Math.round(cents * rate.rate)) })}</span>}
+        </p>
+        <button type="submit" disabled={!reading.split || rate.rate == null} className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40 active:scale-[0.97]">
           {expense ? t("split.saveChanges") : t("split.addExpense")}
         </button>
       </div>

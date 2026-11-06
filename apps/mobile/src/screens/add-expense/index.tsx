@@ -2,7 +2,8 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { parseAmount, SPLIT_MODES, type SplitMode } from "@trip/backend/settle";
 import { amountText, draftFrom, percentLabel, prefill, readDraft, type Draft } from "@trip/backend/splitDraft";
-import { cn } from "@trip/ui";
+import { cn, currencyChoices, currencyFromLocales, CURRENCIES } from "@trip/ui";
+import { getLocales } from "expo-localization";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { Stack, useRouter } from "expo-router";
@@ -10,6 +11,7 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Button } from "@/components/button";
 import { Chips, Field } from "@/components/form";
+import { useRate } from "@/lib/use-rate";
 import { splitErrorMessage, useSplitText, type SplitData } from "@/screens/trip-details/split-costs";
 
 type ExpenseEntry = Extract<SplitData["entries"][number], { kind: "expense" }>;
@@ -32,6 +34,12 @@ function ExpenseForm({ tripId, data, expense }: { tripId: Id<"trips">; data: Spl
   const [description, setDescription] = useState(expense?.description ?? "");
   const [amount, setAmount] = useState(expense ? amountText(expense.amountCents) : "");
   const [paidBy, setPaidBy] = useState(expense?.paidBy ?? data.me);
+  const home = data.homeCurrency ?? getLocales()[0]?.currencyCode ?? currencyFromLocales(getLocales().map((l) => l.languageTag));
+  const [currency, setCurrency] = useState(expense?.currency ?? home ?? data.localCurrency ?? data.currency);
+  const [moreCurrencies, setMoreCurrencies] = useState(false);
+  const rate = useRate(currency, data.currency, expense);
+  const choices = currencyChoices(home, data.localCurrency, data.currency);
+  const tag = (c: string) => (c === home ? t("split.homeTag") : c === data.localCurrency ? t("split.localTag") : null);
   const [draft, setDraft] = useState<Draft>(expense ? draftFrom(expense) : { mode: "equal", people: members.map((m) => m.userId), inputs: {} });
   const [saving, setSaving] = useState(false);
   const cents = parseAmount(amount);
@@ -49,17 +57,18 @@ function ExpenseForm({ tripId, data, expense }: { tripId: Id<"trips">; data: Spl
   const status = (() => {
     if (cents == null || draft.people.length === 0) return null;
     const r = reading.remaining;
-    if (draft.mode === "exact" && r) return { danger: r < 0, text: r > 0 ? t("split.left", { amount: money(r) }) : t("split.over", { amount: money(-r) }) };
+    if (draft.mode === "exact" && r) return { danger: r < 0, text: r > 0 ? t("split.left", { amount: money(r, currency) }) : t("split.over", { amount: money(-r, currency) }) };
     if (draft.mode === "percent" && r) return { danger: r < 0, text: r > 0 ? t("split.percentLeft", { percent: percentLabel(r) }) : t("split.percentOver", { percent: percentLabel(-r) }) };
-    if (draft.mode === "equal") return { danger: false, text: t("split.each", { amount: money(Math.max(...Object.values(reading.preview))) }) };
+    if (draft.mode === "equal") return { danger: false, text: t("split.each", { amount: money(Math.max(...Object.values(reading.preview)), currency) }) };
     return reading.error ? { danger: true, text: t(`split.errors.${reading.error}`) } : null;
   })();
 
   const submit = async () => {
     if (cents == null || cents <= 0) return Alert.alert(t("mobileSheets.enterAmount"));
     if (!reading.split) return Alert.alert(reading.error === "noPeople" ? t("mobileSheets.pickSplit") : t(`split.errors.${reading.error ?? "badValue"}`));
+    if (rate.rate == null) return Alert.alert(t("split.errors.needRate"));
     setSaving(true);
-    const fields = { description, amountCents: cents, paidBy, split: reading.split };
+    const fields = { description, amountCents: cents, paidBy, split: reading.split, currency, rate: rate.rate };
     try {
       if (expense) await update({ expenseId: expense._id, ...fields });
       else await add({ tripId, ...fields });
@@ -90,7 +99,35 @@ function ExpenseForm({ tripId, data, expense }: { tripId: Id<"trips">; data: Spl
     <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12" keyboardShouldPersistTaps="handled">
       {expense && <Stack.Screen options={{ title: t("split.editExpense") }} />}
       <Field label={t("split.whatWasIt")} value={description} onChangeText={setDescription} placeholder={t("split.whatPlaceholder")} maxLength={80} autoFocus={!expense} />
-      <Field label={t("split.amount", { currency: data.currency })} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" />
+      <Field label={t("split.amount", { currency })} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" />
+      <View className="gap-2">
+        <Text className="text-sm font-semibold text-muted-foreground">{t("split.currency")}</Text>
+        <Chips
+          options={[...choices.map((c) => ({ value: c, label: tag(c) ? `${c} · ${tag(c)}` : c })), ...(choices.includes(currency) ? [] : [{ value: currency, label: currency }]), { value: "__more", label: t("split.otherCurrency") }]}
+          selected={currency}
+          onSelect={(c) => (c === "__more" ? setMoreCurrencies((m) => !m) : setCurrency(c))}
+        />
+        {moreCurrencies && (
+          <Chips
+            options={CURRENCIES.filter((c) => !choices.includes(c)).map((c) => ({ value: c, label: c }))}
+            selected={currency}
+            onSelect={(c) => {
+              setCurrency(c);
+              setMoreCurrencies(false);
+            }}
+          />
+        )}
+        {!rate.same && (
+          <View className="flex-row flex-wrap items-center gap-2">
+            <Text className="text-sm font-semibold text-foreground">{t("split.rateLabel", { from: currency, to: data.currency })}</Text>
+            <TextInput value={rate.text} onChangeText={rate.setText} keyboardType="decimal-pad" className="w-28 rounded-lg border border-border bg-card px-2 py-1.5 text-base text-foreground" />
+            <Text className={cn("text-xs", rate.status === "missing" ? "text-danger" : "text-muted-foreground")}>
+              {rate.status === "loading" ? t("split.rateLoading") : rate.status === "missing" ? t("split.rateMissing") : rate.date ? t("split.rateHint", { date: rate.date }) : ""}
+            </Text>
+          </View>
+        )}
+        {!rate.same && cents != null && rate.rate != null && <Text className="text-sm text-muted-foreground">{t("split.converted", { amount: money(Math.round(cents * rate.rate)) })}</Text>}
+      </View>
       <View className="gap-2">
         <Text className="text-sm font-semibold text-muted-foreground">{t("split.paidBy")}</Text>
         <Chips options={members.map((m) => ({ value: m.userId, label: firstName(m.userId) }))} selected={paidBy} onSelect={setPaidBy} />
@@ -135,7 +172,7 @@ function ExpenseForm({ tripId, data, expense }: { tripId: Id<"trips">; data: Spl
                   {draft.mode === "percent" && <Text className="text-muted-foreground">%</Text>}
                 </View>
               )}
-              <Text className="w-24 text-right text-muted-foreground">{reading.preview[id] != null ? money(reading.preview[id]!) : "–"}</Text>
+              <Text className="w-24 text-right text-muted-foreground">{reading.preview[id] != null ? money(reading.preview[id]!, currency) : "–"}</Text>
             </View>
           ))}
         </View>

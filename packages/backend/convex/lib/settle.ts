@@ -183,3 +183,14 @@ export function percentToBasisPoints(input: string): number | null {
   const cents = parseAmount(input);
   return cents == null ? null : cents;
 }
+
+/**
+ * An expense paid in another currency, as it counts in the group's currency.
+ * `rate` is what 1 unit of the expense's currency is worth in the group's. Exact
+ * amounts were typed in the expense's currency, so they become weights, which keeps
+ * everyone's converted part in the same proportion and still adds up to the cent.
+ */
+export function toGroupCurrency(amountCents: number, split: Split, rate: number): { amountCents: number; split: Split } {
+  if (rate === 1) return { amountCents, split };
+  return { amountCents: Math.round(amountCents * rate), split: split.mode === "exact" ? { ...split, mode: "shares" } : split };
+}

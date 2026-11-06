@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import { balances, checkSplit, ledger, maxPayment, parseAmount, proportional, settleUp, shares } from "./lib/settle";
+import { fetchRate } from "./lib/fx";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -136,6 +137,54 @@ describe("expenses", () => {
     const after = (await ana.query(api.expenses.forTrip, { tripId }))!;
     expect(after.myBalanceCents).toBe(500);
     expect(after.entries.map((e) => e.kind).sort()).toEqual(["expense", "payment"]);
+  });
+});
+
+describe("currencies", () => {
+  test("expenses in another currency convert into the group's at the rate given", async () => {
+    const t = convexTest(schema, modules);
+    const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+    const tripId = await ana.mutation(api.seed.demoTrip, {}); // a Tokyo trip, local currency JPY
+    await ana.mutation(api.users.setHomeCurrency, { currency: "USD", onlyIfUnset: true });
+    await ana.mutation(api.users.setHomeCurrency, { currency: "EUR", onlyIfUnset: true }); // ignored: already set
+    const token = await ana.mutation(api.members.createInvite, { tripId });
+    const ben = t.withIdentity({ subject: "ben", name: "Ben" });
+    await ben.mutation(api.members.join, { token });
+
+    const before = (await ben.query(api.expenses.forTrip, { tripId }))!;
+    expect(before).toMatchObject({ currency: "USD", localCurrency: "JPY", homeCurrency: null, canChangeCurrency: false });
+
+    // ¥10,000 dinner at 1 JPY = 0.0065 USD, and a $40 taxi.
+    expect(await codeOf(ana.mutation(api.expenses.add, { tripId, description: "Dinner", amountCents: 1_000_000, currency: "JPY", paidBy: "ana", split: eq("ana", "ben") }))).toBe("needRate");
+    await ana.mutation(api.expenses.add, { tripId, description: "Dinner", amountCents: 1_000_000, currency: "JPY", rate: 0.0065, paidBy: "ana", split: { mode: "exact", people: ["ana", "ben"], values: [600_000, 400_000] } });
+    await ben.mutation(api.expenses.add, { tripId, description: "Taxi", amountCents: 4000, paidBy: "ben", split: eq("ana", "ben") });
+
+    const seen = (await ana.query(api.expenses.forTrip, { tripId }))!;
+    expect(seen.totalCents).toBe(6500 + 4000);
+    const dinner = seen.entries.find((e) => e.kind === "expense" && e.description === "Dinner")!;
+    expect(dinner).toMatchObject({ currency: "JPY", amountCents: 1_000_000, groupCents: 6500, shares: [{ userId: "ana", cents: 3900, value: 600_000 }, { userId: "ben", cents: 2600, value: 400_000 }] });
+    expect(seen.myBalanceCents).toBe(2600 - 2000);
+
+    // The organizer switches balances to euros at 1 USD = 0.9 EUR.
+    await expect(ben.mutation(api.expenses.setGroupCurrency, { tripId, currency: "EUR", rate: 0.9 })).rejects.toThrow();
+    await ana.mutation(api.expenses.setGroupCurrency, { tripId, currency: "EUR", rate: 0.9 });
+    const eur = (await ana.query(api.expenses.forTrip, { tripId }))!;
+    expect(eur.currency).toBe("EUR");
+    expect(eur.totalCents).toBe(Math.round(1_000_000 * 0.0065 * 0.9) + 3600);
+    expect(eur.myBalanceCents).toBe(Math.round(1_000_000 * 0.0065 * 0.9 * 0.4) - 1800);
+  });
+
+  test("today's rate comes from the first source that has it", async () => {
+    const calls: string[] = [];
+    const fake = (async (url: string) => {
+      calls.push(url);
+      if (url.includes("frankfurter")) return new Response("{}", { status: 404 });
+      return Response.json({ result: "success", time_last_update_utc: "Thu, 05 Nov 2026 00:00:01 +0000", rates: { DOP: 63.1 } });
+    }) as typeof fetch;
+    expect(await fetchRate("USD", "DOP", fake)).toEqual({ rate: 63.1, source: "open.er-api.com", date: "2026-11-05" });
+    expect(calls).toHaveLength(2);
+    expect(await fetchRate("USD", "USD", fake)).toMatchObject({ rate: 1 });
+    expect(await fetchRate("usd", "EUR", fake)).toBeNull();
   });
 });
 

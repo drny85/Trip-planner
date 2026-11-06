@@ -3,6 +3,7 @@
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { api } from "@trip/backend/api";
 import { useI18n } from "@trip/i18n/react";
+import { currencyFromLocales } from "@trip/ui";
 import { UndoToastProvider } from "./undo-toast";
 import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -57,15 +58,21 @@ function SyncUser() {
   return null;
 }
 
-/** Saves the chosen language on the account, so notifications and AI trips use it too. */
+/** Saves the chosen language (and a first guess at the home currency) on the account. */
 function SyncLanguage() {
   const { locale } = useI18n();
   const { isLoading, isAuthenticated } = useConvexAuth();
   const setLanguage = useMutation(api.users.setLanguage);
+  const setHomeCurrency = useMutation(api.users.setHomeCurrency);
   const ready = !isLoading && (isAuthenticated || !authEnabled);
   useEffect(() => {
     if (ready) void setLanguage({ language: locale }).catch(() => {});
   }, [ready, locale, setLanguage]);
+  // The home currency is guessed once from the browser's region; a choice made later wins.
+  useEffect(() => {
+    const currency = ready ? currencyFromLocales(navigator.languages ?? [navigator.language]) : null;
+    if (currency) void setHomeCurrency({ currency, onlyIfUnset: true }).catch(() => {});
+  }, [ready, setHomeCurrency]);
   return null;
 }
 

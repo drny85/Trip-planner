@@ -2,8 +2,8 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { errorCode } from "@trip/backend/splitDraft";
 import { useI18n } from "@trip/i18n/react";
-import { cn } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { cn, currencyChoices } from "@trip/ui";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -21,7 +21,8 @@ const PAGE = 8;
 export function useSplitText(data: SplitData | null | undefined) {
   const { t, f } = useI18n();
   const byId = new Map((data?.people ?? []).map((p) => [p.userId, p]));
-  const money = (cents: number) => f.money(cents / 100, data?.currency ?? "USD");
+  /** Group-currency cents, or cents of another currency when one is given. */
+  const money = (cents: number, currency = data?.currency ?? "USD") => f.money(cents / 100, currency);
   const nameOf = (id: string) => {
     const p = byId.get(id);
     return p?.isMe ? t("split.you") : (p?.name ?? t("split.formerMember"));
@@ -42,6 +43,8 @@ export function splitErrorMessage(t: T, e: unknown) {
 export function SplitCostsSection({ tripId }: { tripId: Id<"trips"> }) {
   const data = useQuery(api.expenses.forTrip, { tripId });
   const undo = useMutation(api.expenses.removePayment);
+  const changeCurrency = useMutation(api.expenses.setGroupCurrency);
+  const fetchRate = useAction(api.fx.rate);
   const router = useRouter();
   const [showAll, setShowAll] = useState(false);
   const { t, money, nameOf, firstName } = useSplitText(data);
@@ -50,6 +53,26 @@ export function SplitCostsSection({ tripId }: { tripId: Id<"trips"> }) {
   const people = data.people.filter((p) => p.isMember || p.netCents !== 0);
   const entries = showAll ? data.entries : data.entries.slice(0, PAGE);
   const members = data.people.filter((p) => p.isMember);
+
+  /** The organizer picks a new group currency; today's rate converts everything after a confirm. */
+  const pickGroupCurrency = () => {
+    const options = currencyChoices(data.homeCurrency, data.localCurrency, data.currency).filter((c) => c !== data.currency);
+    if (options.length === 0) return;
+    Alert.alert(t("split.balancesIn", { currency: data.currency }), undefined, [
+      ...options.map((next) => ({
+        text: next,
+        onPress: async () => {
+          const r = await fetchRate({ from: data.currency, to: next }).catch(() => null);
+          if (!r) return Alert.alert(t("split.rateMissing"));
+          Alert.alert(t("split.switchCurrency", { currency: next }), t("split.switchCurrencyHint", { from: data.currency, rate: String(Number(r.rate.toPrecision(6))), to: next }), [
+            { text: t("common.cancel"), style: "cancel" },
+            { text: t("split.confirm"), onPress: () => void changeCurrency({ tripId, currency: next, rate: r.rate }).catch((err: unknown) => Alert.alert(splitErrorMessage(t, err))) },
+          ]);
+        },
+      })),
+      { text: t("common.cancel"), style: "cancel" as const },
+    ]);
+  };
 
   return (
     <View className="mt-10 gap-3 px-4">
@@ -60,6 +83,12 @@ export function SplitCostsSection({ tripId }: { tripId: Id<"trips"> }) {
           <Text className="text-xs text-muted-foreground">
             {data.totalCents > 0 ? t("mobileMoney.sharedSoFar", { amount: money(data.totalCents) }) : t("mobileMoney.logHint")}
           </Text>
+          <Pressable disabled={!data.canChangeCurrency} onPress={pickGroupCurrency} hitSlop={6} accessibilityRole={data.canChangeCurrency ? "button" : undefined}>
+            <Text className="text-xs text-muted-foreground">
+              {t("split.balancesIn", { currency: data.currency })}
+              {data.canChangeCurrency && <Text className="font-semibold text-primary"> · {t("split.changeCurrency")}</Text>}
+            </Text>
+          </Pressable>
         </View>
         <Button size="sm" icon="plus" onPress={() => router.push({ pathname: "/trips/[tripId]/expense", params: { tripId } })}>
           {t("mobileMoney.expense")}
@@ -136,7 +165,8 @@ export function SplitCostsSection({ tripId }: { tripId: Id<"trips"> }) {
                 </Text>
               </View>
               <View className="items-end">
-                <Text className="font-bold text-foreground">{money(e.amountCents)}</Text>
+                <Text className="font-bold text-foreground">{money(e.amountCents, e.currency)}</Text>
+                {e.currency !== data.currency && <Text className="text-xs text-muted-foreground">{t("split.converted", { amount: money(e.groupCents) })}</Text>}
                 {e.myShareCents > 0 && <Text className="text-xs text-muted-foreground">{t("split.yourShare", { amount: money(e.myShareCents) })}</Text>}
               </View>
             </Pressable>
