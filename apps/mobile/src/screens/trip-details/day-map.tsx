@@ -2,8 +2,10 @@ import type { Activity } from "@trip/backend/types";
 import { getCategory, hasCoords } from "@trip/ui";
 import Constants from "expo-constants";
 import { AppleMaps, GoogleMaps } from "expo-maps";
-import { Platform, useColorScheme, View } from "react-native";
+import { useI18n } from "@trip/i18n/react";
+import { Platform, Text, useColorScheme, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { useIsOffline } from "@/hooks/use-cached-query";
 import { openDirections } from "@/lib/open";
 
 /**
@@ -29,6 +31,8 @@ function cameraFor(stops: { latitude: number; longitude: number }[]) {
 
 export function DayMap({ activities }: { activities: Activity[] }) {
   const scheme = useColorScheme();
+  const offline = useIsOffline();
+  const { t } = useI18n();
   const stops = mappableStops(activities);
   if (stops.length === 0 || !nativeMapsAvailable) return null;
 
@@ -75,6 +79,12 @@ export function DayMap({ activities }: { activities: Activity[] }) {
       )}
       {/* Keeps the hairline border above the native map on Android. */}
       <View pointerEvents="none" className="absolute inset-0 rounded-3xl border border-border" />
+      {/* Map tiles stream in, but the pins and route come from the saved trip, so they still show. */}
+      {offline && (
+        <View pointerEvents="none" className="absolute inset-x-3 bottom-3 rounded-2xl bg-foreground/85 px-3 py-2">
+          <Text className="text-xs font-semibold text-background">{t("offline.mapOffline")}</Text>
+        </View>
+      )}
     </Animated.View>
   );
 }

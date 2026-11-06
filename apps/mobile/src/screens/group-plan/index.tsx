@@ -11,6 +11,7 @@ import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { EASE_OUT } from "@/lib/motion";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 type Plan = FunctionReturnType<typeof api.groupVotes.buildPlan>;
 
@@ -27,7 +28,9 @@ export function GroupPlan({ tripId }: { tripId: Id<"trips"> }) {
   const [busy, setBusy] = useState<"building" | "applying" | null>("building");
   const [error, setError] = useState<string | null>(null);
 
+  const blockedOffline = useOfflineGuard();
   const ask = async () => {
+    if (blockedOffline()) return;
     setBusy("building");
     setError(null);
     try {
