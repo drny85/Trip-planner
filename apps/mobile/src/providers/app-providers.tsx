@@ -2,6 +2,8 @@ import { ClerkProvider, useAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { api } from "@trip/backend/api";
 import { useI18n } from "@trip/i18n/react";
+import { currencyFromLocales, isCurrencyCode } from "@trip/ui";
+import { getLocales } from "expo-localization";
 import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useEffect, type ReactNode } from "react";
@@ -54,13 +56,22 @@ function SyncLanguageWhenSignedIn() {
   return <SyncLanguage ready={!isLoading && isAuthenticated} />;
 }
 
-/** Saves the app language on the account, so notifications and AI trips use it too. */
+/** Saves the app language (and a first guess at the home currency) on the account. */
 function SyncLanguage({ ready }: { ready: boolean }) {
   const { locale } = useI18n();
   const setLanguage = useMutation(api.users.setLanguage);
+  const setHomeCurrency = useMutation(api.users.setHomeCurrency);
   useEffect(() => {
     if (ready) void setLanguage({ language: locale }).catch(() => {});
   }, [ready, locale, setLanguage]);
+  // The home currency is guessed once from the phone's region settings; a choice made later wins.
+  useEffect(() => {
+    if (!ready) return;
+    const locales = getLocales();
+    const fromOs = locales[0]?.currencyCode;
+    const currency = fromOs && isCurrencyCode(fromOs) ? fromOs : currencyFromLocales(locales.map((l) => l.languageTag));
+    if (currency) void setHomeCurrency({ currency, onlyIfUnset: true }).catch(() => {});
+  }, [ready, setHomeCurrency]);
   return null;
 }
 

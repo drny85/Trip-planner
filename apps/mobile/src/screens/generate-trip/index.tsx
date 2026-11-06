@@ -1,26 +1,42 @@
 import { localeNames } from "@trip/i18n";
 import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
+import { appendAnswer, type ImproveQuestion, withTimeout } from "@trip/backend/promptAnswer";
 import { useAction } from "convex/react";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
 import { enterUp } from "@/lib/motion";
+import { TripInterview } from "./interview";
+import { Planning } from "./planning";
 
-const STATUS = ["status1", "status2", "status3", "status4", "status5"] as const;
 const IDEAS = ["idea1", "idea2", "idea3", "idea4"] as const;
 
+/** Plan with AI: the guided interview by default, with free text as a shortcut. */
 export function GenerateTrip() {
+  const [mode, setMode] = useState<"interview" | "text">("interview");
+  return mode === "interview" ? <TripInterview onTypeInstead={() => setMode("text")} /> : <FreeText onUseInterview={() => setMode("interview")} />;
+}
+
+function FreeText({ onUseInterview }: { onUseInterview: () => void }) {
   const router = useRouter();
   const generate = useAction(api.ai.generateTrip);
+  const improve = useAction(api.ai.improvePrompt);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "Improve with AI": the person's own text (for Undo), and the missing-detail questions.
+  const [original, setOriginal] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<ImproveQuestion[]>([]);
+  const [improving, setImproving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const { t, locale } = useI18n();
+  const ready = prompt.trim().length >= 3;
+  const improved = original !== null;
 
   const submit = async () => {
     setLoading(true);
@@ -35,6 +51,36 @@ export function GenerateTrip() {
     }
   };
 
+  const runImprove = async () => {
+    const mine = prompt;
+    setImproving(true);
+    setNotice(null);
+    setError(null);
+    // Slow or failed: keep the person's own text.
+    const result = await withTimeout(improve({ prompt: mine, language: locale }));
+    setImproving(false);
+    if (!result?.ok) {
+      setNotice(result?.reason === "limit" ? t("generate.improveLimit") : t("generate.improveFailed"));
+      return;
+    }
+    setOriginal(mine);
+    setPrompt(result.improved);
+    setQuestions(result.questions);
+  };
+
+  const undo = () => {
+    if (original !== null) setPrompt(original);
+    setOriginal(null);
+    setQuestions([]);
+  };
+
+  const answer = (index: number, addition: string) => {
+    setPrompt((p) => appendAnswer(p, addition));
+    setQuestions((qs) => qs.filter((_, i) => i !== index));
+  };
+
+  const busy = loading || improving;
+
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-5 p-5" keyboardShouldPersistTaps="handled">
       {loading ? (
@@ -48,75 +94,102 @@ export function GenerateTrip() {
 
       <TextInput
         value={prompt}
-        onChangeText={setPrompt}
+        onChangeText={(text) => {
+          setPrompt(text);
+          setNotice(null);
+          // Clearing the box ends the improved state.
+          if (!text.trim()) {
+            setOriginal(null);
+            setQuestions([]);
+          }
+        }}
         multiline
         autoFocus
-        editable={!loading}
+        editable={!busy}
+        maxLength={2000}
         placeholder={t("generate.placeholder")}
         placeholderTextColorClassName="accent-muted-foreground"
         textAlignVertical="top"
-        className="min-h-36 rounded-3xl border border-border bg-card p-5 text-lg text-foreground"
+        className={`min-h-36 rounded-3xl border bg-card p-5 text-lg text-foreground ${improved ? "border-primary/50" : "border-border"} ${improving ? "opacity-60" : ""}`}
       />
 
-      <View className="flex-row flex-wrap gap-2">
-        {IDEAS.map((idea, index) => (
-          <Animated.View key={idea} entering={enterUp(index + 1)}>
-            <PressableScale
-              onPress={() => setPrompt(t(`generate.${idea}`))}
-              disabled={loading}
-              className="rounded-full border border-border bg-card px-3.5 py-2"
-            >
-              <Text className="text-sm text-foreground">{t(`generate.${idea}`)}</Text>
-            </PressableScale>
-          </Animated.View>
-        ))}
-      </View>
-
-      <Button icon="sparkles" loading={loading} disabled={prompt.trim().length < 3} onPress={submit}>
-        {loading ? t("generate.planning") : t("generate.submit")}
-      </Button>
-      {!loading && <Text className="-mt-2 text-center text-xs text-muted-foreground">{t("generate.writtenIn", { language: localeNames[locale] })}</Text>}
-      {error && <Text className="text-center text-danger">{error}</Text>}
-    </ScrollView>
-  );
-}
-
-/** Shown while Claude plans: a breathing orb and rotating status lines. */
-function Planning() {
-  const [step, setStep] = useState(0);
-  const { t } = useI18n();
-  useEffect(() => {
-    const id = setInterval(() => setStep((s) => (s + 1) % STATUS.length), 2600);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <Animated.View entering={FadeIn.duration(250)} className="items-center gap-5 py-6">
-      <View className="h-28 w-28 items-center justify-center">
-        <Animated.View
-          className="absolute h-28 w-28 rounded-full bg-primary/20"
-          style={{
-            animationName: { from: { transform: [{ scale: 0.85 }], opacity: 0.9 }, to: { transform: [{ scale: 1.15 }], opacity: 0.3 } },
-            animationDuration: 1400,
-            animationIterationCount: "infinite",
-            animationDirection: "alternate",
-            animationTimingFunction: "ease-in-out",
-          }}
-        />
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-primary">
-          <Icon name="sparkles" size={28} colorVar="--color-primary-foreground" />
+      {improved ? (
+        <Animated.View entering={FadeIn.duration(250)} className="-mt-2 flex-row flex-wrap items-center gap-2">
+          <Text className="text-sm text-primary">✨ {t("generate.improvedNote")}</Text>
+          <PressableScale
+            onPress={undo}
+            disabled={busy}
+            accessibilityRole="button"
+            className="flex-row items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5"
+          >
+            <Icon name="undo" size={14} colorVar="--color-foreground" />
+            <Text className="text-sm text-foreground">{t("generate.undo")}</Text>
+          </PressableScale>
+        </Animated.View>
+      ) : (
+        <View className="flex-row flex-wrap gap-2">
+          {IDEAS.map((idea, index) => (
+            <Animated.View key={idea} entering={enterUp(index + 1)}>
+              <PressableScale
+                onPress={() => setPrompt(t(`generate.${idea}`))}
+                disabled={busy}
+                className="rounded-full border border-border bg-card px-3.5 py-2"
+              >
+                <Text className="text-sm text-foreground">{t(`generate.${idea}`)}</Text>
+              </PressableScale>
+            </Animated.View>
+          ))}
         </View>
-      </View>
-      <Animated.Text
-        key={step}
-        entering={FadeIn.duration(300)}
-        exiting={FadeOut.duration(200)}
-        className="text-lg font-semibold text-foreground"
-      >
-        {t(`generate.${STATUS[step]!}`)}
-      </Animated.Text>
-      <Text className="text-sm text-muted-foreground">{t("generate.usuallyTakes")}</Text>
-    </Animated.View>
+      )}
+
+      {questions.length > 0 && !loading && (
+        <Animated.View entering={enterUp(0)} layout={LinearTransition} className="gap-3 rounded-3xl border border-border bg-card p-4">
+          <Text className="text-sm font-semibold text-foreground">{t("generate.questionsTitle")}</Text>
+          {questions.map((q, index) => (
+            <Animated.View key={q.question} exiting={FadeOut.duration(150)} layout={LinearTransition} className="gap-2">
+              <Text className="text-sm text-muted-foreground">{q.question}</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {q.options.map((o) => (
+                  <PressableScale
+                    key={o.label}
+                    onPress={() => answer(index, o.addition)}
+                    accessibilityRole="button"
+                    accessibilityHint={o.addition}
+                    className="rounded-full border border-border bg-background px-3 py-1.5"
+                  >
+                    <Text className="text-sm text-foreground">{o.label}</Text>
+                  </PressableScale>
+                ))}
+              </View>
+            </Animated.View>
+          ))}
+        </Animated.View>
+      )}
+
+      {improved || loading ? (
+        <Button icon="sparkles" loading={loading} disabled={!ready} onPress={submit}>
+          {loading ? t("generate.planning") : t("generate.submit")}
+        </Button>
+      ) : (
+        <View className="gap-3">
+          {ready && !improving && <Text className="text-center text-sm text-muted-foreground">{t("generate.choose")}</Text>}
+          <Button icon="sparkles" loading={improving} disabled={!ready} onPress={runImprove}>
+            {improving ? t("generate.improving") : t("generate.improve")}
+          </Button>
+          <Button variant="secondary" disabled={!ready || improving} onPress={submit}>
+            {t("generate.asIs")}
+          </Button>
+        </View>
+      )}
+      {!loading && <Text className="-mt-2 text-center text-xs text-muted-foreground">{t("generate.writtenIn", { language: localeNames[locale] })}</Text>}
+      {notice && <Text className="rounded-2xl bg-muted p-3 text-center text-sm text-muted-foreground">{notice}</Text>}
+      {error && <Text className="text-center text-danger">{error}</Text>}
+      {!busy && (
+        <PressableScale onPress={onUseInterview} accessibilityRole="button" className="items-center py-2">
+          <Text className="text-sm font-semibold text-primary">{`💬 ${t("interview.useInterview")}`}</Text>
+        </PressableScale>
+      )}
+    </ScrollView>
   );
 }
 

@@ -51,6 +51,28 @@ export const setLanguage = mutation({
   },
 });
 
+/**
+ * Saves the caller's home currency (where they travel from). The apps call it with
+ * `onlyIfUnset` and the device's currency, so a choice the user made is never overwritten.
+ */
+export const setHomeCurrency = mutation({
+  args: { currency: v.string(), onlyIfUnset: v.optional(v.boolean()) },
+  handler: async (ctx, { currency, onlyIfUnset }) => {
+    if (!/^[A-Z]{3}$/.test(currency)) throw new Error("Unsupported currency");
+    const userId = await getOptionalUserId(ctx);
+    if (!userId) return null;
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", userId))
+      .unique();
+    if (existing) {
+      if (existing.homeCurrency !== currency && !(onlyIfUnset && existing.homeCurrency)) await ctx.db.patch("users", existing._id, { homeCurrency: currency });
+      return existing._id;
+    }
+    return ctx.db.insert("users", { clerkId: userId, homeCurrency: currency });
+  },
+});
+
 export const me = query({
   args: {},
   handler: async (ctx) => {

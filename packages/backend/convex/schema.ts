@@ -1,7 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
-import { activityFields } from "./lib/validators";
+import { activityFields, splitMode } from "./lib/validators";
 
 export default defineSchema({
   /** One row per Clerk user. `clerkId` is the JWT `subject`. */
@@ -12,6 +12,8 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     /** App language ("en", "es", …), so notifications reach them in it. */
     language: v.optional(v.string()),
+    /** ISO 4217 code of where they travel from, e.g. "USD". Guessed from the device, can be changed. */
+    homeCurrency: v.optional(v.string()),
   }).index("by_clerkId", ["clerkId"]),
 
   trips: defineTable({
@@ -24,7 +26,13 @@ export default defineSchema({
     startDate: v.string(),
     endDate: v.string(),
     imageUrl: v.string(),
+    /** The destination's local currency (ISO 4217), e.g. "JPY". */
     currency: v.optional(v.string()),
+    /**
+     * The one currency shared-cost balances are kept in. Set when the first expense is
+     * added (the organizer's home currency), and the organizer can change it.
+     */
+    groupCurrency: v.optional(v.string()),
     isAIGenerated: v.boolean(),
     /** The prompt used for AI generation, kept so a trip can be regenerated. */
     prompt: v.optional(v.string()),
@@ -169,15 +177,36 @@ export default defineSchema({
   }).index("by_tripId", ["tripId"]),
 
   /** Shared packing list: anyone on the trip adds, ticks off or claims items. */
-  /** Shared costs. A settlement is a payment from `paidBy` to the one person in `splitAmong`. */
+  /**
+   * Shared costs: something `paidBy` paid for the people in `splitAmong`.
+   * How it's divided is `splitMode` (default "equal") with one `splitValues` entry
+   * per person for the other modes. The math lives in lib/settle.ts.
+   */
   expenses: defineTable({
     tripId: v.id("trips"),
     description: v.string(),
     amountCents: v.number(),
     paidBy: v.string(),
     splitAmong: v.array(v.string()),
+    splitMode: v.optional(splitMode),
+    /** Cents for "exact", whole shares for "shares", basis points for "percent". */
+    splitValues: v.optional(v.array(v.number())),
+    /** What it was paid in (ISO 4217). Missing on old rows, which are in the trip's currency. */
+    currency: v.optional(v.string()),
+    /** 1 unit of `currency` in the trip's groupCurrency, fixed when it was logged. Missing means 1. */
+    rate: v.optional(v.number()),
     createdBy: v.string(),
+    /** @deprecated Payments now live in `settlements`; run expenses:migrateLegacySettlements once. */
     isSettlement: v.optional(v.boolean()),
+  }).index("by_tripId", ["tripId"]),
+
+  /** Money one traveler sent another to even out the shared costs, in the trip's groupCurrency. */
+  settlements: defineTable({
+    tripId: v.id("trips"),
+    from: v.string(),
+    to: v.string(),
+    amountCents: v.number(),
+    createdBy: v.string(),
   }).index("by_tripId", ["tripId"]),
 
   /** In-app notifications, one row per recipient. */
@@ -202,6 +231,9 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_isRead", ["userId", "isRead"])
     .index("by_tripId", ["tripId"]),
+
+  /** One row per "Improve with AI" request, for the hourly limit. Rows older than an hour are cleared. */
+  promptImprovements: defineTable({ userId: v.string(), at: v.number() }).index("by_userId_at", ["userId", "at"]),
 
   /** Expo push tokens, one per phone. */
   pushTokens: defineTable({ userId: v.string(), token: v.string() }).index("by_userId", ["userId"]).index("by_token", ["token"]),
