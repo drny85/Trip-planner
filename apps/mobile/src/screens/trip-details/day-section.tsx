@@ -21,6 +21,7 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
   const weather = useDayWeather(subTrip.date, subTrip.activities);
   const router = useRouter();
   const rainy = (weather?.rainChance ?? 0) >= 50;
+  const localOn = Boolean(subTrip.localPickAt);
   const { t, f } = useI18n();
   const [mapOpen, setMapOpen] = useState(false);
   const canMap = nativeMapsAvailable && mappableStops(subTrip.activities).length > 0;
@@ -73,15 +74,33 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
       {canMap && mapOpen && <DayMap activities={subTrip.activities} />}
 
       {canEdit && subTrip.activities.length > 0 && (
-        <PressableScale
-          onPress={() => router.push({ pathname: "/trips/[tripId]/replan/[subTripId]", params: { tripId, subTripId: subTrip._id } })}
-          accessibilityRole="button"
-          className={cn("mx-5 mb-4 flex-row items-center justify-center gap-2 rounded-2xl py-2.5", rainy ? "bg-sky-500" : "bg-muted")}
-        >
-          <Text className={cn("text-sm font-semibold", rainy ? "text-white" : "text-foreground")}>
-            {rainy ? `☔ ${t("mobileDay.rainPlan", { percent: weather!.rainChance })}` : `✨ ${t("mobileDay.replan")}`}
-          </Text>
-        </PressableScale>
+        <View className="mx-5 mb-4 flex-row gap-2">
+          <PressableScale
+            onPress={() => router.push({ pathname: "/trips/[tripId]/replan/[subTripId]", params: { tripId, subTripId: subTrip._id } })}
+            accessibilityRole="button"
+            className={cn("flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-2.5", rainy ? "bg-sky-500" : "bg-muted")}
+          >
+            <Text className={cn("text-sm font-semibold", rainy ? "text-white" : "text-foreground")} numberOfLines={1}>
+              {rainy ? `☔ ${t("mobileDay.rainPlan", { percent: weather!.rainChance })}` : `✨ ${t("mobileDay.replan")}`}
+            </Text>
+          </PressableScale>
+          <PressableScale
+            onPress={() => router.push({ pathname: "/trips/[tripId]/local/[subTripId]", params: { tripId, subTripId: subTrip._id } })}
+            accessibilityRole="button"
+            accessibilityHint={t("local.buttonTitle")}
+            accessibilityState={{ selected: localOn }}
+            className={cn("flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-2.5", localOn ? "bg-violet-600" : "bg-muted")}
+          >
+            <Text className={cn("text-sm font-semibold", localOn ? "text-white" : "text-foreground")} numberOfLines={1}>
+              {`💎 ${localOn ? t("local.gem") : t("local.button")}`}
+            </Text>
+          </PressableScale>
+        </View>
+      )}
+      {!canEdit && localOn && (
+        <View className="mx-5 mb-4 self-start rounded-full bg-violet-600/10 px-3 py-1.5">
+          <Text className="text-xs font-semibold text-violet-700 dark:text-violet-300">{`💎 ${t("local.on")}`}</Text>
+        </View>
       )}
 
       {subTrip.activities.length === 0 ? (

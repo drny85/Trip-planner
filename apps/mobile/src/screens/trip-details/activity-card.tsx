@@ -19,7 +19,9 @@ import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
 import { ActivityNotes } from "./journal";
 import { ActivityPhotos } from "./memories";
 import { SubSteps } from "./sub-steps";
+import { LocalTips } from "./local-tips";
 import { useBookingFor } from "./bookings";
+import { VoteBar } from "./group-votes";
 
 /** `canEdit` is false for trip members: they check things off but don't edit. */
 type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean; canEdit: boolean };
@@ -101,7 +103,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
               </Text>
             )}
             <LinearGradient colors={["rgba(0,0,0,0.45)", "rgba(0,0,0,0)"]} className="absolute inset-x-0 top-0 h-16" />
-            <View className="absolute left-3 top-3 flex-row gap-2">
+            <View className="absolute left-3 right-3 top-3 flex-row flex-wrap gap-2">
               <View className="flex-row items-center gap-1 rounded-full bg-black/65 px-2.5 py-1">
                 <Text className="text-xs">{badge.emoji}</Text>
                 <Text className="text-xs font-semibold text-white">{badge.text}</Text>
@@ -112,6 +114,12 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                   <Text className="text-xs font-semibold text-white">{f.duration(activity.durationMinutes)}</Text>
                 </View>
               ) : null}
+              {activity.isLocalPick && (
+                <View className="flex-row items-center gap-1 rounded-full bg-violet-600 px-2.5 py-1">
+                  <Text className="text-[11px]">💎</Text>
+                  <Text className="text-xs font-semibold text-white">{t("local.gem")}</Text>
+                </View>
+              )}
               {booking && (
                 <View className="flex-row items-center gap-1 rounded-full bg-success px-2.5 py-1">
                   <Text className="text-[11px]">🎫</Text>
@@ -136,6 +144,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
               {activity.description}
             </Text>
             <CopyableAddress address={activity.address} onPress={canEdit ? openEditor : undefined} />
+            <LocalTips activity={activity} />
 
             <View className="flex-row flex-wrap gap-2 pt-2">
               {activity.phone && (
@@ -156,6 +165,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                 </Button>
               ) : null}
             </View>
+            <VoteBar tripId={tripId} activityId={activity._id} title={activity.title} />
             <ActivityPhotos activityId={activity._id} />
             <ActivityNotes tripId={tripId} activityId={activity._id} isCompleted={done} />
           </View>

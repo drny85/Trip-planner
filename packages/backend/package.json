@@ -16,9 +16,11 @@
     "./optimistic": "./src/optimistic.ts",
     "./schemas": "./src/tripSchema.ts",
     "./replan": "./convex/lib/replan.ts",
+    "./packing": "./convex/lib/packingCategories.ts",
     "./promptAnswer": "./convex/lib/promptAnswer.ts",
     "./interview": "./convex/lib/interview.ts",
-    "./sample": "./convex/lib/fakeData.ts"
+    "./sample": "./convex/lib/fakeData.ts",
+    "./localPick": "./convex/lib/localPick.ts"
   },
   "scripts": {
     "dev": "convex dev",
@@ -30,7 +32,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
     "@trip/i18n": "workspace:*",
-    "ai": "7.0.162",
+    "ai": "7.0.163",
     "convex": "^1.49.0",
     "zod": "^4.6.7"
   },

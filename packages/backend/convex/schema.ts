@@ -1,7 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { flightAlerted, flightSnapshot } from "./lib/alerts";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
-import { activityFields, splitMode } from "./lib/validators";
+import { activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
 
 export default defineSchema({
   /** One row per Clerk user. `clerkId` is the JWT `subject`. */
@@ -44,6 +45,8 @@ export default defineSchema({
     inviteToken: v.optional(v.string()),
     /** Random token in the trip's "forward bookings here" email address. Absent means it's off. */
     importToken: v.optional(v.string()),
+    /** The shared trip this one was copied from with "Use this trip". */
+    copiedFromTripId: v.optional(v.id("trips")),
   })
     .index("by_userId", ["userId"])
     .index("by_userId_startDate", ["userId", "startDate"])
@@ -89,6 +92,71 @@ export default defineSchema({
   })
     .index("by_tripId", ["tripId"])
     .index("by_activityId", ["activityId"]),
+
+  /**
+   * A flight or hotel booking whose price we check once a day (see alerts.ts).
+   * Everyone on the trip hears when it drops below what was paid, or below the
+   * last price we told them about.
+   */
+  priceWatches: defineTable({
+    tripId: v.id("trips"),
+    bookingId: v.id("bookings"),
+    kind: v.union(v.literal("flight"), v.literal("hotel")),
+    createdBy: v.string(),
+    /** Flights: airport codes and the flight number we look for in the results. */
+    from: v.optional(v.string()),
+    to: v.optional(v.string()),
+    flightNumber: v.optional(v.string()),
+    /** Hotels: Google's id for the property, once we've found it. */
+    propertyToken: v.optional(v.string()),
+    adults: v.number(),
+    currency: v.string(),
+    /** All prices are the whole booking, in cents of `currency`. */
+    paidCents: v.optional(v.number()),
+    firstCents: v.optional(v.number()),
+    lastCents: v.optional(v.number()),
+    lowestCents: v.optional(v.number()),
+    alertedCents: v.optional(v.number()),
+    /** The last price was our exact flight or hotel, not the cheapest on the route. */
+    matched: v.optional(v.boolean()),
+    history: v.array(v.object({ at: v.number(), cents: v.number() })),
+    checks: v.number(),
+    lastCheckedAt: v.optional(v.number()),
+    /** Why the last check found nothing ("noResults") or failed ("failed"). */
+    error: v.optional(v.string()),
+    /** "ended" once the date has passed. */
+    status: v.union(v.literal("active"), v.literal("ended")),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_bookingId", ["bookingId"])
+    .index("by_status_lastCheckedAt", ["status", "lastCheckedAt"]),
+
+  /**
+   * Live status for a flight booking with a flight number, checked more often as
+   * departure nears. Everyone on the trip hears about delays, gate changes and
+   * cancellations.
+   */
+  flightTracks: defineTable({
+    tripId: v.id("trips"),
+    bookingId: v.id("bookings"),
+    flightNumber: v.string(),
+    /** Local departure date and time from the booking. */
+    date: v.string(),
+    time: v.optional(v.string()),
+    from: v.optional(v.string()),
+    /** Turned off by someone on the trip: no checks, no alerts. */
+    muted: v.boolean(),
+    /** Absent once the flight has left, was canceled, or is muted. */
+    nextCheckAt: v.optional(v.number()),
+    lastCheckedAt: v.optional(v.number()),
+    checks: v.number(),
+    snapshot: v.optional(flightSnapshot),
+    alerted: flightAlerted,
+    error: v.optional(v.string()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_bookingId", ["bookingId"])
+    .index("by_nextCheckAt", ["nextCheckAt"]),
 
   /**
    * Everyone going on a trip. The owner (`trips.userId`) has a row too, so votes
@@ -211,7 +279,19 @@ export default defineSchema({
   notifications: defineTable({
     userId: v.string(),
     tripId: v.id("trips"),
-    kind: v.union(v.literal("idea"), v.literal("accepted"), v.literal("rejected"), v.literal("joined"), v.literal("expense"), v.literal("settled")),
+    kind: v.union(
+      v.literal("idea"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("joined"),
+      v.literal("expense"),
+      v.literal("settled"),
+      v.literal("groupPlan"),
+      v.literal("priceDrop"),
+      v.literal("flightDelay"),
+      v.literal("flightGate"),
+      v.literal("flightCanceled"),
+    ),
     /** Rendered in the recipient's language when sent; the apps re-render `params` in the reader's current one. */
     text: v.string(),
     params: v.optional(
@@ -221,7 +301,9 @@ export default defineSchema({
         item: v.optional(v.string()),
         count: v.optional(v.number()),
         amountCents: v.optional(v.number()),
+        wasCents: v.optional(v.number()),
         currency: v.optional(v.string()),
+        time: v.optional(v.string()),
       }),
     ),
     isRead: v.boolean(),
@@ -243,6 +325,24 @@ export default defineSchema({
     addedBy: v.string(),
     /** Who's bringing it, for shared things like a first-aid kit. */
     claimedBy: v.optional(v.string()),
+    /** Set on items the AI suggested (ai.generatePackingList). */
+    isAi: v.optional(v.boolean()),
+    category: v.optional(packingCategory),
+    /** How many per person, e.g. 5 pairs of socks. */
+    quantity: v.optional(v.number()),
+    /** Why the trip needs it: "Hike on day 3", "Rain on 2 days". In the language it was generated in. */
+    reason: v.optional(v.string()),
+    /** One per group (first-aid kit), so the apps nudge someone to claim it. */
+    isGroupItem: v.optional(v.boolean()),
+  }).index("by_tripId", ["tripId"]),
+
+  /** Each AI packing list generation, for the daily limit and the weather it used. */
+  packingRuns: defineTable({
+    tripId: v.id("trips"),
+    userId: v.string(),
+    model: v.string(),
+    added: v.number(),
+    weather: v.optional(tripWeather),
   }).index("by_tripId", ["tripId"]),
 
   votes: defineTable({
@@ -255,6 +355,22 @@ export default defineSchema({
     .index("by_suggestionId_userId", ["suggestionId", "userId"])
     .index("by_tripId", ["tripId"]),
 
+  /**
+   * Group voting on stops already in the itinerary (lib/groupVotes.ts): one row
+   * per person per stop, with a 👍/👎 and an optional top-3 pick (1, 2 or 3).
+   * A top pick always counts as 👍.
+   */
+  activityVotes: defineTable({
+    tripId: v.id("trips"),
+    activityId: v.id("activities"),
+    userId: v.string(),
+    value: v.optional(v.union(v.literal("up"), v.literal("down"))),
+    pick: v.optional(v.number()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_tripId_userId", ["tripId", "userId"])
+    .index("by_activityId_userId", ["activityId", "userId"]),
+
   /** A day ("Day 1") or a leg ("Kyoto Leg") of a trip. */
   subTrips: defineTable({
     tripId: v.id("trips"),
@@ -263,7 +379,19 @@ export default defineSchema({
     date: v.optional(v.string()),
     location: v.optional(v.string()),
     order: v.number(),
+    /** When "local's pick" swapped this day's tourist spots for local favorites. */
+    localPickAt: v.optional(v.number()),
   }).index("by_tripId_order", ["tripId", "order"]),
+
+  /**
+   * What a day looked like before "local's pick", so the swap can be undone:
+   * the activities it replaced and the ones it added. One per day while it's on.
+   */
+  localPickSnapshots: defineTable({
+    subTripId: v.id("subTrips"),
+    replaced: v.array(v.object({ ...activityFields, photoCredit: v.optional(v.string()), placeId: v.optional(v.string()), order: v.number() })),
+    addedIds: v.array(v.id("activities")),
+  }).index("by_subTripId", ["subTripId"]),
 
   /**
    * Places whose Google photo our /place-photo route may serve. Only place IDs we

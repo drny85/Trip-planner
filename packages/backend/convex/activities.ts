@@ -5,24 +5,13 @@ import { getMemberActivity, getOwnedActivity, getOwnedTrip } from "./lib/auth";
 import { isSubcategoryOf } from "./lib/categories";
 import { deleteNotesFor, hasNotes } from "./journal";
 import { deleteMemory } from "./memories";
+import { deleteVotesFor } from "./groupVotes";
 import { activityFields } from "./lib/validators";
+import { subtree } from "./lib/subtree";
 
 /** Drops a subcategory that doesn't belong under the activity's category. */
 const checkedSubcategory = (category: Doc<"activities">["category"], subcategory?: string) =>
   subcategory && isSubcategoryOf(category ?? "other", subcategory) ? subcategory : undefined;
-
-/** The activity and everything nested under it, at any depth. */
-async function subtree(ctx: MutationCtx, root: Doc<"activities">): Promise<Doc<"activities">[]> {
-  const all = [root];
-  for (let i = 0; i < all.length; i++) {
-    const children = await ctx.db
-      .query("activities")
-      .withIndex("by_parentId", (q) => q.eq("parentId", all[i]!._id))
-      .collect();
-    all.push(...children);
-  }
-  return all;
-}
 
 /** Siblings in display order: same day, same parent (top level when parentId is undefined). */
 const siblings = (ctx: MutationCtx, subTripId: Id<"subTrips">, parentId: Id<"activities"> | undefined) =>
@@ -195,6 +184,7 @@ export const remove = mutation({
       await Promise.all(photos.map((m) => deleteMemory(ctx, m._id, m.storageId)));
     }
     await deleteNotesFor(ctx, tree.map((a) => a._id));
+    await deleteVotesFor(ctx, activity.tripId, tree.map((a) => a._id));
     await Promise.all(tree.map((a) => ctx.db.delete("activities", a._id)));
     await renumber(ctx, await siblings(ctx, activity.subTripId, activity.parentId));
   },
@@ -273,7 +263,10 @@ export const applyReplan = mutation({
       const photos = await Promise.all(tree.map((x) => ctx.db.query("memories").withIndex("by_activityId", (q) => q.eq("activityId", x._id)).first()));
       // Anything with photos or journal notes stays, moved to the end of the day.
       if (photos.some(Boolean) || (await hasNotes(ctx, tree.map((x) => x._id)))) await ctx.db.patch("activities", a._id, { order: order++ });
-      else await Promise.all(tree.map((x) => ctx.db.delete("activities", x._id)));
+      else {
+        await deleteVotesFor(ctx, day.tripId, tree.map((x) => x._id));
+        await Promise.all(tree.map((x) => ctx.db.delete("activities", x._id)));
+      }
     }
   },
 });

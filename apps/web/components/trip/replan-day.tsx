@@ -11,11 +11,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { EASE_OUT } from "@/lib/motion";
 import { DayWeatherChip, useDayWeather } from "./day-weather";
+import { LocalPickButton } from "./local-pick";
 
 type Proposal = FunctionReturnType<typeof api.ai.replanDay>;
-type Stop = { _id: string; title: string; latitude?: number; longitude?: number; children?: Stop[] };
+type Stop = { _id: string; title: string; latitude?: number; longitude?: number; localTips?: unknown[]; children?: Stop[] };
 export type ReplanDayInput = Day;
-type Day = { _id: Id<"subTrips">; dayNumber: number; date?: string; activities: Stop[] };
+type Day = { _id: Id<"subTrips">; dayNumber: number; date?: string; localPickAt?: number; activities: Stop[] };
 
 const REASONS = [
   { emoji: "🌧️", key: "reasonRain" },
@@ -33,6 +34,7 @@ export function DayExtras({ day, canEdit }: { day: Day; canEdit: boolean }) {
   return (
     <div className="ml-auto flex shrink-0 items-center gap-2">
       <DayWeatherChip weather={weather} />
+      <LocalPickButton day={day} canEdit={canEdit} />
       {canEdit && day.activities.length > 0 && (
         <button
           onClick={() => setOpen(true)}

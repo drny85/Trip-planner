@@ -11,7 +11,9 @@ import { classifyRequest, MAX_TOKENS, modelsFor, nextTier, supportsServerFallbac
 import type { z } from "zod";
 import { cleanPreferences, preferenceRules } from "./lib/interview";
 import { IMPROVE_SYSTEM_PROMPT, type ImproveResult, promptBriefSchema, toImproveResult } from "./lib/promptBrief";
-import { type GeneratedTrip, generatedTripSchema, replanSchema, toNewActivity, toTripTree } from "./lib/tripSchema";
+import { type GeneratedTrip, generatedTripSchema, localPickSchema, replanSchema, tipsSchema, toInsights, toNewActivity, toTripTree } from "./lib/tripSchema";
+import { cleanItems, MAX_RUNS_PER_DAY, PACKING_PROMPT, packingContent, packingSchema, summarizeWeather, type TripWeather, weatherRequest } from "./lib/packingAi";
+import { tripWeather } from "./lib/validators";
 
 type Result<T> = { trip: T | null; truncated: boolean; refused: boolean; model: string };
 type Generated = Result<GeneratedTrip>;
@@ -49,7 +51,17 @@ export async function generateViaGateway<S extends z.ZodType>(models: string[], 
       : { prompt: content }),
     output: Output.object({ schema: spec.schema }),
     maxOutputTokens: MAX_TOKENS[tier],
-    providerOptions: fallbacks.length ? { gateway: { models: fallbacks } } : undefined,
+    providerOptions: {
+      // Claude answers in its native structured-output format (output_config.format)
+      // instead of a forced "json" tool. The AI SDK only does that on its own for
+      // schemas with at most 10 optional fields; ours have up to 21, so it fell back
+      // to a forced tool call, which Claude rejects while thinking (toolChoice
+      // 'required' -> 'auto', and the model could skip the tool). The API allows 24
+      // optional fields: structuredSchemas.test.ts keeps every schema under that.
+      // Ignored by the other providers in the fallback list.
+      anthropic: { structuredOutputMode: "outputFormat" },
+      ...(fallbacks.length ? { gateway: { models: fallbacks } } : {}),
+    },
   }).catch((error: unknown) => {
     // A reply that doesn't match the schema (often a cut-off one) is retried a tier up.
     if (NoObjectGeneratedError.isInstance(error)) return null;
@@ -109,13 +121,23 @@ export const generateStructured = <S extends z.ZodType>(via: Via, tier: Tier, co
   return via === "gateway" ? generateViaGateway(models, tier, content, spec, file) : generateViaAnthropic(models[0]!, tier, content, spec, file);
 };
 
+/** Shared by every prompt that writes activities: local tips and crowd forecasts. */
+const LOCAL_KNOWLEDGE = `- Give each top-level activity 1 to 3 short tips a local would give about that exact place: the best time to go to beat the crowds, what to order or try, free days, discounts or passes, a trick locals know, or what to skip. Only state opening days, free days and prices you are confident about; otherwise give a tip that doesn't depend on them.
+- Give each top-level activity except transport and stays a crowd forecast for its planned start time on that weekday, with the day's busiest stretch and the calmest good time to arrive. Prefer start times that avoid the peak when the day allows it.
+- Set isLocalPick only on places mostly locals know and love, not on major tourist sights.`;
+
+/** Asked for with "hidden gems" on: favour local favourites over the big sights. */
+const LOCAL_FOCUS = `
+- The traveler wants hidden gems. Favour places locals love over famous tourist sights: keep at most one must-see a day, and pick neighbourhood restaurants, markets, cafés, parks and small museums where locals actually go.`;
+
 const SYSTEM_PROMPT = `You are an expert travel planner. Turn the traveller's request into a complete, realistic itinerary.
 
 - Use real, currently operating places with accurate street addresses.
 - Group activities by day (or by multi-day leg when the traveller changes city), in the order they'd be done, with sensible start times and travel time between them.
 - Respect the budget, pace and interests in the request. Mix sights, food and downtime.
 - Only include a phone number, booking URL or website when you are confident it is correct; leave them out otherwise.
-- If the request has no dates, start the trip 30 days after today's date.`;
+- If the request has no dates, start the trip 30 days after today's date.
+${LOCAL_KNOWLEDGE}`;
 
 /**
  * Tells the model which language to write in. Place names stay as travellers
@@ -125,7 +147,10 @@ export function languageInstruction(locale: Locale) {
   return `\n- Write every human-readable field (trip title, description, day titles, activity titles, descriptions, tips and summaries) in ${languageInEnglish[locale]}, whatever language the request is in. Keep proper names of places recognisable (use the name commonly used by ${languageInEnglish[locale]} speakers, or the local name), and keep street addresses in their local form so maps can find them.`;
 }
 
-const tripSpec = (locale: Locale) => ({ system: SYSTEM_PROMPT + languageInstruction(locale), schema: generatedTripSchema });
+const tripSpec = (locale: Locale, localFocus = false) => ({
+  system: SYSTEM_PROMPT + (localFocus ? LOCAL_FOCUS : "") + languageInstruction(locale),
+  schema: generatedTripSchema,
+});
 const toLocaleArg = (language?: string): Locale => (isLocale(language) ? language : defaultLocale);
 
 /**
@@ -141,6 +166,8 @@ export const generateTrip = action({
     prompt: v.string(),
     /** App language ("es", "ja", …). The itinerary is written in it. Defaults to English. */
     language: v.optional(v.string()),
+    /** "Hidden gems": favour places locals love over the big tourist sights. */
+    localFocus: v.optional(v.boolean()),
     /** Answers from the guided interview (lib/interview.ts), followed as exact rules. */
     preferences: v.optional(
       v.object({
@@ -155,7 +182,7 @@ export const generateTrip = action({
       }),
     ),
   },
-  handler: async (ctx, { prompt, language, preferences }): Promise<Id<"trips">> => {
+  handler: async (ctx, { prompt, language, preferences, localFocus }): Promise<Id<"trips">> => {
     const userId = await getUserId(ctx);
     const locale = toLocaleArg(language);
     const t = translator(locale);
@@ -166,7 +193,7 @@ export const generateTrip = action({
     if (!via) {
       throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
     }
-    const TRIP_SPEC = tripSpec(locale);
+    const TRIP_SPEC = tripSpec(locale, localFocus);
 
     const today = new Date().toISOString().slice(0, 10);
     const prefs = preferences?.destination.trim() ? cleanPreferences(preferences) : null;
@@ -263,7 +290,8 @@ const REPLAN_PROMPT = `You are an expert travel planner adjusting one day of an 
 - Keep the day's pace: about the same number of stops, in a sensible order with travel time between them. Keep meals at normal times.
 - Only include a phone number, booking URL or website when you are confident it is correct.
 - Activities with "done": true already happened: keep them (pass their keepId) and don't change them.
-- When you're told the current time, it's the traveler's live day: schedule every remaining stop at or after that time, leaving travel time between stops, and favour places close to each other.`;
+- When you're told the current time, it's the traveler's live day: schedule every remaining stop at or after that time, leaving travel time between stops, and favour places close to each other.
+- Give each new stop 1 to 3 short local tips and a crowd forecast for its planned time, as a local would.`;
 
 type ReplanDay = {
   tripTitle: string;
@@ -349,6 +377,210 @@ export const replanDay = action({
             ),
           ),
         };
+      }
+      tier = process.env.AI_MODEL ? null : nextTier(tier);
+    }
+    throw new Error(t("errors.replanIncomplete"));
+  },
+});
+
+/* ------------------------------- Packing list ------------------------------- */
+
+/** Where a destination is, from Open-Meteo's free geocoder, for trips with no located stops yet. */
+async function geocode(destination: string): Promise<{ latitude: number; longitude: number } | null> {
+  const name = destination.split(",")[0]!.trim();
+  if (!name) return null;
+  const params = new URLSearchParams({ name, count: "1", format: "json" });
+  const json = (await fetchJson(`https://geocoding-api.open-meteo.com/v1/search?${params}`)) as { results?: { latitude: number; longitude: number }[] } | null;
+  const hit = json?.results?.[0];
+  return hit ? { latitude: hit.latitude, longitude: hit.longitude } : null;
+}
+
+/** GET as JSON with a timeout; null on any failure, so missing weather never blocks the list. */
+async function fetchJson(url: string, timeoutMs = 6000): Promise<unknown> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The trip's weather: the forecast when it's close, the same dates last year otherwise. */
+async function tripWeatherFor(coords: { latitude: number; longitude: number } | null, destination: string, startDate: string, endDate: string): Promise<TripWeather | null> {
+  const where = coords ?? (await geocode(destination));
+  if (!where) return null;
+  const request = weatherRequest(where.latitude, where.longitude, startDate, endDate, new Date().toISOString().slice(0, 10));
+  if (!request) return null;
+  return summarizeWeather(await fetchJson(request.url), request.source);
+}
+
+/**
+ * Writes a packing list for a trip from its destination, its weather and the
+ * activities on the plan (hiking shoes for the hike, a plug adapter for Japan),
+ * and adds the new items to the group's shared list. Any member can run it.
+ */
+export const generatePackingList = action({
+  args: { tripId: v.id("trips"), language: v.optional(v.string()) },
+  returns: v.object({ added: v.number(), model: v.string(), weather: v.union(tripWeather, v.null()) }),
+  handler: async (ctx, { tripId, language }): Promise<{ added: number; model: string; weather: TripWeather | null }> => {
+    const userId = await getUserId(ctx);
+    const locale = toLocaleArg(language);
+    const t = translator(locale);
+    const trip = await ctx.runQuery(internal.packing.aiContext, { tripId, userId });
+    if (!trip) throw new Error("Trip not found");
+    if (trip.runsToday >= MAX_RUNS_PER_DAY) throw new Error(t("errors.packingLimit"));
+    const via = aiVia();
+    if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
+
+    const weather = await tripWeatherFor(trip.coords, trip.destination, trip.startDate, trip.endDate);
+    const content = packingContent(trip, weather);
+    const spec = {
+      system: `${PACKING_PROMPT}\n- Write every item name and reason in ${languageInEnglish[locale]}. Keep brand-free, everyday names.`,
+      schema: packingSchema,
+    };
+
+    // A short list is a cheap job; only a broken reply goes up a tier.
+    let tier: Tier | null = "simple";
+    while (tier) {
+      const result = await generateStructured(via, tier, content, spec);
+      if (result.refused) throw new Error(t("errors.packingRefused"));
+      if (result.trip && !result.truncated) {
+        const items = cleanItems(result.trip.items, trip.existing);
+        const added: number = await ctx.runMutation(internal.packing.saveAiItems, { tripId, userId, model: result.model, weather: weather ?? undefined, items });
+        return { added, model: result.model, weather };
+      }
+      tier = process.env.AI_MODEL ? null : nextTier(tier);
+    }
+    throw new Error(t("errors.packingIncomplete"));
+  },
+});
+
+/** "Saturday" for "2027-04-03": crowds depend on the day of the week. */
+const weekdayOf = (date?: string) =>
+  date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }) : null;
+
+type LocalDay = {
+  tripTitle: string;
+  destination: string;
+  dayNumber: number;
+  date?: string;
+  location?: string;
+  activities: { id: string; title: string; category: string; startTime?: string; durationMinutes?: number; address: string; description: string; locked: boolean }[];
+};
+
+const dayHeader = (day: LocalDay) => {
+  const weekday = weekdayOf(day.date);
+  return `Trip: ${day.tripTitle} in ${day.destination}.\nDay ${day.dayNumber}${day.date ? ` (${day.date}${weekday ? `, a ${weekday}` : ""})` : ""}${day.location ? ` in ${day.location}` : ""}.\n`;
+};
+
+const LOCAL_PICK_PROMPT = `You are a local who knows this place well, reworking one day of a visitor's itinerary into a "local's pick" day.
+
+- Swap tourist-heavy stops (famous sights with long queues, tourist-trap restaurants, chain shops) for real, currently operating places locals love nearby, of the same kind and at a similar time and price. For example, a neighbourhood shrine instead of the famous one, or the counter where locals queue instead of the restaurant on every list.
+- Keep at most one famous sight if it's truly worth it. Always keep stops marked "locked" (pass their keepId): they are done, booked, or have photos or notes.
+- For each new stop, set "replaces" to the title of the stop it swaps out, set isLocalPick to true, and say in the description why locals love it.
+- Keep the day's pace, meal times and area, in a sensible order with travel time between stops.
+- Use accurate street addresses. Only include a phone number, booking URL or website when you are confident it is correct.
+${LOCAL_KNOWLEDGE}
+- Give kept stops tips and a crowd forecast too.`;
+
+const TIPS_PROMPT = `You are a local who knows this place well. For each planned stop, add what a local would tell a visitor.
+- Return one entry per activity, with its id exactly as given.
+${LOCAL_KNOWLEDGE}`;
+
+export type LocalPickProposal = {
+  summary: string;
+  model: string;
+  activities: (
+    | { keepId: string; title: string; startTime?: string; durationMinutes?: number; localTips?: ReturnType<typeof toInsights>["localTips"]; crowd?: ReturnType<typeof toInsights>["crowd"] }
+    | (ReturnType<typeof toNewActivity> & { isNew: true; replaces?: string })
+  )[];
+};
+
+const localPickResult = v.object({ summary: v.string(), model: v.string(), activities: v.array(v.any()) });
+
+/**
+ * "Local's pick" for one day: proposes swapping its tourist-heavy stops for
+ * places locals love, with tips and crowd forecasts. Nothing changes until the
+ * organizer applies it (localPicks.apply), and it can be undone (localPicks.restore).
+ */
+export const localPickDay = action({
+  args: { subTripId: v.id("subTrips"), language: v.optional(v.string()) },
+  returns: localPickResult,
+  handler: async (ctx, { subTripId, language }): Promise<LocalPickProposal> => {
+    const userId = await getUserId(ctx);
+    const locale = toLocaleArg(language);
+    const t = translator(locale);
+    const day: LocalDay | null = await ctx.runQuery(internal.localPicks.dayForLocal, { subTripId, userId });
+    if (!day) throw new Error(t("errors.organizerOnly"));
+    const via = aiVia();
+    if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
+
+    const content = `${dayHeader(day)}\nCurrent plan (JSON):\n${JSON.stringify(day.activities)}`;
+    const spec = { system: LOCAL_PICK_PROMPT + languageInstruction(locale), schema: localPickSchema };
+    const byId = new Map(day.activities.map((a) => [a.id, a]));
+
+    let tier: Tier | null = "standard";
+    while (tier) {
+      const result = await generateStructured(via, tier, content, spec);
+      if (result.refused) throw new Error(t("errors.replanRefused"));
+      const plan = result.trip;
+      if (plan && !result.truncated && plan.activities.length > 0) {
+        const seen = new Set<string>();
+        const planned: LocalPickProposal["activities"] = plan.activities.flatMap(({ keepId, replaces, ...a }): LocalPickProposal["activities"] => {
+          if (keepId && byId.has(keepId)) {
+            if (seen.has(keepId)) return [];
+            seen.add(keepId);
+            const { localTips, crowd } = toInsights(a);
+            return [{ keepId, title: byId.get(keepId)!.title, startTime: a.startTime, durationMinutes: Math.max(0, Math.round(a.durationMinutes)), localTips, crowd }];
+          }
+          // A new stop is a local pick by definition.
+          return [{ ...toNewActivity({ ...a, isLocalPick: true }, day.destination), isNew: true as const, replaces: replaces?.trim() || undefined }];
+        });
+        // Locked stops the model forgot stay, as they are, after the plan.
+        const forgotten = day.activities
+          .filter((a) => a.locked && !seen.has(a.id))
+          .map((a) => ({ keepId: a.id, title: a.title, startTime: a.startTime, durationMinutes: a.durationMinutes }));
+        return { summary: plan.summary, model: result.model, activities: [...planned, ...forgotten] };
+      }
+      tier = process.env.AI_MODEL ? null : nextTier(tier);
+    }
+    throw new Error(t("errors.replanIncomplete"));
+  },
+});
+
+/**
+ * Adds local tips and a crowd forecast to a day's stops without changing the
+ * plan, for trips made before tips existed (or a day the organizer edited).
+ * Returns how many stops got tips.
+ */
+export const addLocalTips = action({
+  args: { subTripId: v.id("subTrips"), language: v.optional(v.string()) },
+  returns: v.number(),
+  handler: async (ctx, { subTripId, language }): Promise<number> => {
+    const userId = await getUserId(ctx);
+    const locale = toLocaleArg(language);
+    const t = translator(locale);
+    const day: LocalDay | null = await ctx.runQuery(internal.localPicks.dayForLocal, { subTripId, userId });
+    if (!day) throw new Error(t("errors.organizerOnly"));
+    if (day.activities.length === 0) return 0;
+    const via = aiVia();
+    if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
+
+    const stops = day.activities.map(({ locked: _l, ...a }) => a);
+    const content = `${dayHeader(day)}\nPlanned stops (JSON):\n${JSON.stringify(stops)}`;
+    const spec = { system: TIPS_PROMPT + languageInstruction(locale), schema: tipsSchema };
+    let tier: Tier | null = "simple";
+    while (tier) {
+      const result = await generateStructured(via, tier, content, spec);
+      if (result.refused) throw new Error(t("errors.replanRefused"));
+      if (result.trip && !result.truncated && result.trip.activities.length > 0) {
+        const known = new Set(stops.map((s) => s.id));
+        const tips = result.trip.activities
+          .filter((a) => known.has(a.id))
+          .map((a) => ({ activityId: a.id as Id<"activities">, ...toInsights(a) }))
+          .filter((a) => a.localTips || a.crowd);
+        return ctx.runMutation(internal.localPicks.saveTips, { subTripId, tips });
       }
       tier = process.env.AI_MODEL ? null : nextTier(tier);
     }

@@ -3,7 +3,10 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { deleteTripBookings } from "./bookings";
-import { findMembership, getOptionalUserId, getOwnedTrip } from "./lib/auth";
+import { translator } from "@trip/i18n";
+import { findMembership, getOptionalUserId, getOwnedTrip, getUserId } from "./lib/auth";
+import { copyTripTree, isIsoDate } from "./lib/copyTrip";
+import { languageOf } from "./lib/notify";
 import { insertTripTree } from "./lib/insertTripTree";
 import { newToken } from "./lib/tokens";
 import { pickUpNext, type UpNext } from "./lib/upNext";
@@ -11,6 +14,7 @@ import { buildTree } from "./lib/tree";
 import { tripTreeInput } from "./lib/validators";
 import type { PublicTripDetails, TripDetails } from "./lib/types";
 import { deleteJournal } from "./journal";
+import { deleteTripVotes } from "./groupVotes";
 
 /** Trips the user owns or has joined, soonest first. */
 async function myTrips(ctx: QueryCtx, userId: string) {
@@ -86,9 +90,33 @@ export const getShared = query({
       .withIndex("by_shareToken", (q) => q.eq("shareToken", token))
       .unique();
     if (!trip) return null;
-    const { userId: _userId, prompt: _prompt, shareToken: _token, myRole: _role, ...details } =
+    const { userId: _userId, prompt: _prompt, shareToken: _token, myRole: _role, copiedFromTripId: _from, ...details } =
       await loadDetails(ctx, trip);
     return details;
+  },
+});
+
+/**
+ * "Use this trip": copies a shared itinerary into the caller's own trips,
+ * moved to start on `startDate`. The copy is theirs to edit; nothing is checked
+ * off and none of the original travelers, photos, notes or bookings come along.
+ */
+export const copyShared = mutation({
+  args: { token: v.string(), startDate: v.string() },
+  handler: async (ctx, { token, startDate }) => {
+    const userId = await getUserId(ctx);
+    const t = translator(await languageOf(ctx, userId));
+    if (!isIsoDate(startDate)) throw new Error(t("errors.pickStartDate"));
+    const source =
+      token.length >= 16
+        ? await ctx.db
+            .query("trips")
+            .withIndex("by_shareToken", (q) => q.eq("shareToken", token))
+            .unique()
+        : null;
+    if (!source) throw new Error(t("errors.shareLinkOff"));
+    // Photos and Google place matches come along, so nothing is looked up again.
+    return copyTripTree(ctx, source, { userId, startDate });
   },
 });
 
@@ -125,8 +153,9 @@ async function loadDetails(ctx: QueryCtx, trip: Doc<"trips">): Promise<TripDetai
       .collect(),
   ]);
 
-  // The invite token never leaves the backend through this shape (see members.forTrip).
-  const { inviteToken: _invite, ...tripFields } = trip;
+  // The invite and booking-import tokens never leave the backend through this shape
+  // (see members.forTrip and bookings.ts); anyone with the share link sees it.
+  const { inviteToken: _invite, importToken: _import, ...tripFields } = trip;
   return {
     ...tripFields,
     myRole: "owner",
@@ -169,12 +198,13 @@ export const remove = mutation({
       .query("subTrips")
       .withIndex("by_tripId_order", (q) => q.eq("tripId", tripId))
       .collect();
-    const [members, suggestions, votes, memories, packing, expenses, settlements, notifications] = await Promise.all([
+    const [members, suggestions, votes, memories, packing, packingRuns, expenses, settlements, notifications] = await Promise.all([
       ctx.db.query("tripMembers").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("suggestions").withIndex("by_tripId_status", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("votes").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("memories").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("packingItems").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
+      ctx.db.query("packingRuns").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("expenses").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("settlements").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
       ctx.db.query("notifications").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
@@ -182,17 +212,22 @@ export const remove = mutation({
     await Promise.all([
       ...activities.map((a) => ctx.db.delete("activities", a._id)),
       ...subTrips.map((s) => ctx.db.delete("subTrips", s._id)),
+      ...(await Promise.all(subTrips.map((s) => ctx.db.query("localPickSnapshots").withIndex("by_subTripId", (q) => q.eq("subTripId", s._id)).collect())))
+        .flat()
+        .map((snap) => ctx.db.delete("localPickSnapshots", snap._id)),
       ...members.map((m) => ctx.db.delete("tripMembers", m._id)),
       ...suggestions.map((s) => ctx.db.delete("suggestions", s._id)),
       ...votes.map((x) => ctx.db.delete("votes", x._id)),
       ...memories.map((m) => ctx.db.delete("memories", m._id)),
       ...memories.map((m) => ctx.storage.delete(m.storageId)),
       ...packing.map((p) => ctx.db.delete("packingItems", p._id)),
+      ...packingRuns.map((r) => ctx.db.delete("packingRuns", r._id)),
       ...expenses.map((e) => ctx.db.delete("expenses", e._id)),
       ...settlements.map((x) => ctx.db.delete("settlements", x._id)),
       ...notifications.map((n) => ctx.db.delete("notifications", n._id)),
     ]);
     await deleteJournal(ctx, tripId);
+    await deleteTripVotes(ctx, tripId);
     await deleteTripBookings(ctx, tripId);
     await ctx.db.delete("trips", tripId);
   },

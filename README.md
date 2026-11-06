@@ -174,6 +174,23 @@ npx convex env set INBOUND_EMAIL_SECRET <long random string>
 
 The trip owner turns on the address in the import dialog (`trip-<token>@in.yourdomain.com`). Forwarded emails wait on the owner's trip page for review. Without these variables, paste and upload still work and the forwarding option is hidden.
 
+## Price and flight alerts
+
+Every flight and hotel booking can be watched for price drops, and every flight booking with a flight number in its title ("Flight UA 837 · SFO → NRT") gets live status by itself. Everyone on the trip gets a push and an in-app notification, in their own language, when a watched price drops at least 5% (and at least 10 currency units) below what they paid or below the last alert, or when a flight is delayed 15 minutes or more, changes gate, or is canceled. Code: `convex/alerts.ts`, `convex/lib/alerts.ts`, crons in `convex/crons.ts`.
+
+- **Prices** come from [SerpApi](https://serpapi.com) (Google Flights and Google Hotels). The free plan is 250 searches a month, so the daily cron checks at most `PRICE_CHECKS_PER_DAY` watches (default 6), plus one check when a watch starts.
+- **Flight status** comes from [AeroDataBox](https://rapidapi.com/aedbx-aedbx/api/aerodatabox) on RapidAPI (free Basic plan). Checks start 2 days before departure, then every 6 hours, hourly from 6 hours out and every 15 minutes from 2 hours out, and stop once the flight leaves.
+
+```bash
+cd packages/backend
+npx convex env set SERPAPI_API_KEY <key>            # serpapi.com > Dashboard > API key
+npx convex env set AERODATABOX_API_KEY <key>        # RapidAPI key, after subscribing to AeroDataBox's Basic plan
+npx convex env set ALERTS_DEMO true                 # optional: made-up prices and statuses, no keys needed
+npx convex run alerts:backfillFlightTracks          # once, to track flights added before alerts existed
+```
+
+Without keys nothing is called and the bookings list says alerts are off.
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.
