@@ -22,6 +22,8 @@ import type { NextStopProps } from "./types";
  */
 const NextStopWidget = (props: NextStopProps, environment: WidgetEnvironment) => {
   "widget";
+  // The React Compiler's cache helper doesn't exist in the widget runtime.
+  "use no memo";
   const BRAND = "#0e7c66";
   const BRAND_DARK = "#0a5a4a";
   const fullColor = environment.widgetRenderingMode == null || environment.widgetRenderingMode === "fullColor";

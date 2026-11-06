@@ -22,6 +22,7 @@ import type { NextStopActivityProps } from "./types";
  */
 const NextStopActivity = (props: NextStopActivityProps, environment: LiveActivityEnvironment) => {
   "widget";
+  "use no memo";
   const BRAND = "#0e7c66";
   const ACCENT = environment.isLuminanceReduced ? "#FFFFFF" : "#5eead4";
   const symbol = (props.symbol || "mappin.circle.fill") as never;
@@ -30,8 +31,11 @@ const NextStopActivity = (props: NextStopActivityProps, environment: LiveActivit
   const until = new Date(props.untilMs || Date.now());
 
   // The countdown clamps at 0:00 instead of counting back up past the time.
-  const Countdown = ({ size, color, width }: { size: number; color: string; width: number }) =>
-    counting ? (
+  // "use no memo" in every component in here: the React Compiler's cache helper
+  // (_c) doesn't exist in the widget runtime, so a memoized component throws.
+  const Countdown = ({ size, color, width }: { size: number; color: string; width: number }) => {
+    "use no memo";
+    return counting ? (
       <Text
         timerInterval={{ lower: since, upper: until }}
         countsDown
@@ -46,14 +50,17 @@ const NextStopActivity = (props: NextStopActivityProps, environment: LiveActivit
     ) : (
       <Text modifiers={[font({ weight: "semibold", size }), foregroundStyle(color)]}>{props.time}</Text>
     );
+  };
 
-  const DayProgress = ({ color }: { color: string }) =>
-    props.total > 0 ? (
+  const DayProgress = ({ color }: { color: string }) => {
+    "use no memo";
+    return props.total > 0 ? (
       <ProgressView
         value={props.done / props.total}
         modifiers={[progressViewStyle("linear"), tint(color), labelsHidden(), frame({ maxWidth: Infinity })]}
       />
     ) : null;
+  };
 
   return {
     banner: (
