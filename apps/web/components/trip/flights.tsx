@@ -257,7 +257,7 @@ function WatchView({ data, watch, tripId }: { data: Data; watch: Watch; tripId: 
 
       {watch.offers.length > 0 && (
         <div className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("fares.bestOptions")}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t(watch.offers.every((o) => o.depDate !== watch.outboundDate) ? "fares.closestDates" : "fares.bestOptions")}</p>
           <ul className="mt-1 flex flex-col">
             {watch.offers.map((o, i) => (
               <li key={i} className="flex items-center gap-3 border-b border-border/60 py-2 text-sm last:border-0">
@@ -270,7 +270,7 @@ function WatchView({ data, watch, tripId }: { data: Data; watch: Watch; tripId: 
                     {o.arrDate && o.arrDate > o.depDate && <sup className="ml-0.5 text-[10px] text-muted-foreground">+{daysUntil(o.arrDate, o.depDate)}</sup>}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {[o.airline, o.stops === 0 ? t("fares.nonstop") : t("fares.stops", { count: o.stops }), o.durationMinutes ? f.duration(o.durationMinutes) : null].filter(Boolean).join(" · ")}
+                    {[o.depDate !== watch.outboundDate ? f.dateRange(o.depDate, o.retDate ?? o.depDate) : null, o.airline, o.stops === 0 ? t("fares.nonstop") : t("fares.stops", { count: o.stops }), o.durationMinutes ? f.duration(o.durationMinutes) : null].filter(Boolean).join(" · ")}
                   </p>
                 </div>
                 <span className="shrink-0 font-semibold tabular-nums">{money(o.cents)}</span>

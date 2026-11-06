@@ -156,10 +156,91 @@ describe("fare watch with Travelpayouts (shared cache)", () => {
     await ana.mutation(api.fares.bookStarted, { tripId });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(calls.filter((h) => h === "serpapi.com")).toHaveLength(1);
-    expect((await ana.query(api.fares.forTrip, { tripId }))!.watch).toMatchObject({ source: "google", lastCents: 130000 });
+    // Today's real price shows, but the trend stays with the daily checks.
+    const live = (await ana.query(api.fares.forTrip, { tripId }))!.watch!;
+    expect(live).toMatchObject({ source: "travelpayouts", lastCents: 130000, firstCents: 120000, lowestCents: 120000 });
+    expect(live.history).toHaveLength(1);
     await bo.mutation(api.fares.bookStarted, { tripId });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(calls.filter((h) => h === "serpapi.com")).toHaveLength(1);
+  });
+});
+
+describe("Travelpayouts with no fares on the exact dates", () => {
+  let calls: string[] = [];
+  beforeEach(() => {
+    calls = [];
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2027-02-01T12:00:00Z"));
+    vi.stubEnv("TRAVELPAYOUTS_TOKEN", "tp-token");
+    vi.stubEnv("SERPAPI_API_KEY", "");
+    vi.stubEnv("ALERTS_DEMO", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = new URL(String(input));
+        const day = url.searchParams.get("departure_at");
+        if (url.host !== "api.travelpayouts.com" || !day) return Response.json({});
+        calls.push(day);
+        if (day.length > 7) return Response.json({ success: true, data: [] });
+        // The month search: someone looked at Apr 3-7 and Apr 1-5, nobody at the trip's Apr 2-6.
+        return Response.json({
+          success: true,
+          data: [
+            { price: 700, airline: "UA", flight_number: 1, departure_at: "2027-04-01T09:00:00-07:00", return_at: "2027-04-05T09:00:00+09:00" },
+            { price: 650, airline: "NH", flight_number: 7, departure_at: "2027-04-03T11:40:00-07:00", return_at: "2027-04-07T17:05:00+09:00" },
+            { price: 300, airline: "ZZ", flight_number: 9, departure_at: "2027-04-20T11:40:00-07:00", return_at: "2027-04-22T17:05:00+09:00" },
+          ],
+        });
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  test("the month search fills the grid and shows the closest dates, replacing old Google prices", async () => {
+    const t = convexTest(schema, modules);
+    const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+    const tripId = await ana.mutation(api.seed.demoTrip, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    await ana.mutation(api.fares.watch, { tripId, from: "SFO", to: "HND", roundTrip: true, adults: 1 });
+    // The watch had Google prices before Travelpayouts was turned on.
+    await t.run(async (ctx) => {
+      const w = (await ctx.db.query("fareWatches").first())!;
+      await ctx.db.patch("fareWatches", w._id, { source: "google", firstCents: 58400, lastCents: 58400, lowestCents: 58400, history: [{ at: 1, cents: 58400 }], insights: { level: "high", history: [] } });
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(calls.filter((d) => d.length === 7)).toEqual(["2027-04"]);
+
+    const watch = (await ana.query(api.fares.forTrip, { tripId }))!.watch!;
+    expect(watch).toMatchObject({ source: "travelpayouts", lastCents: 65000, firstCents: 65000, lowestCents: 65000 });
+    expect(watch.history).toHaveLength(1);
+    expect(watch.insights).toBeUndefined();
+    expect(watch.offers.map((o) => [o.depDate, o.retDate])).toEqual([
+      ["2027-04-03", "2027-04-07"],
+      ["2027-04-01", "2027-04-05"],
+    ]);
+    expect(watch.flex!.cells.map((c) => c.cents)).toEqual([undefined, undefined, 70000, undefined, 65000, undefined, undefined]);
+  });
+
+  test("nothing at all clears the old Google prices", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ success: true, data: [] })));
+    const t = convexTest(schema, modules);
+    const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+    const tripId = await ana.mutation(api.seed.demoTrip, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    await ana.mutation(api.fares.watch, { tripId, from: "SFO", to: "HND", roundTrip: true, adults: 1 });
+    await t.run(async (ctx) => {
+      const w = (await ctx.db.query("fareWatches").first())!;
+      await ctx.db.patch("fareWatches", w._id, { source: "google", lastCents: 58400, history: [{ at: 1, cents: 58400 }] });
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const watch = (await ana.query(api.fares.forTrip, { tripId }))!.watch!;
+    expect(watch).toMatchObject({ source: "travelpayouts", error: "noResults", offers: [], history: [] });
+    expect(watch.lastCents).toBeUndefined();
   });
 });
 

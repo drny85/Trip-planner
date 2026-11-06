@@ -1353,6 +1353,7 @@ export const ja: Shape<typeof en> = {
       other: "乗り継ぎ{count}回",
     },
     book: "{site}で予約",
+    closestDates: "料金のある近い日程",
     recentFares: "過去2日間の検索に基づく料金",
     bookedIt: "予約しましたか？",
     bookedItBody: "予約確認を追加すると、遅延や搭乗口の変更をお知らせします。",

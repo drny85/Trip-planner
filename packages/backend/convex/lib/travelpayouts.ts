@@ -47,38 +47,65 @@ export function tpParams(w: { from: string; to: string; outboundDate: string; re
   return p;
 }
 
+/** One ticket as an offer for everyone (per-passenger price x adults), with its return day. */
+function toOffer(t: TpTicket, adults: number): FareOffer | null {
+  const dep = localParts(t.departure_at);
+  if (!dep || typeof t.price !== "number" || t.price <= 0) return null;
+  const airline = (t.airline ?? "").toUpperCase().slice(0, 3);
+  const ret = localParts(t.return_at)?.[0];
+  return {
+    airline: airline || "—",
+    logo: /^[A-Z0-9]{2}$/.test(airline) ? `https://pics.avs.io/60/60/${airline}.png` : undefined,
+    flightNumbers: airline && t.flight_number ? `${airline} ${t.flight_number}` : "",
+    depDate: dep[0],
+    depTime: dep[1],
+    ...(ret ? { retDate: ret } : {}),
+    stops: Math.max(0, Math.round(t.transfers ?? 0)),
+    durationMinutes: Math.max(0, Math.round(t.duration_to ?? t.duration ?? 0)),
+    cents: Math.round(t.price * 100) * adults,
+  };
+}
+
+/** Every ticket in a response, cheapest first. */
+export function tpOffers(res: TpResponse, adults: number): FareOffer[] {
+  return (res.data ?? [])
+    .map((t) => toOffer(t, adults))
+    .filter((o): o is FareOffer => o !== null)
+    .sort((a, b) => a.cents - b.cents);
+}
+
+/** The offers for exactly these dates, cheapest first. */
+export function onDates(offers: FareOffer[], outboundDate: string, returnDate?: string) {
+  return offers.filter((o) => o.depDate === outboundDate && (!returnDate || !o.retDate || o.retDate === returnDate));
+}
+
 /**
- * The cheapest fare for everyone (per-passenger price x adults) and the 3
- * cheapest tickets for these exact dates. Null when nobody searched them lately.
+ * The cheapest fare for everyone and the 3 cheapest tickets for these exact
+ * dates. Null when nobody searched them lately.
  */
 export function parseTp(res: TpResponse, w: { outboundDate: string; returnDate?: string; adults: number }): { cents: number; offers: FareOffer[] } | null {
-  const tickets = (res.data ?? []).filter(
-    (t) =>
-      typeof t.price === "number" &&
-      t.price > 0 &&
-      t.departure_at?.startsWith(w.outboundDate) &&
-      (!w.returnDate || !t.return_at || t.return_at.startsWith(w.returnDate)),
-  );
-  if (!tickets.length) return null;
-  tickets.sort((a, b) => a.price! - b.price!);
-  const offers: FareOffer[] = [];
-  for (const t of tickets) {
-    const dep = localParts(t.departure_at);
-    if (!dep) continue;
-    const airline = (t.airline ?? "").toUpperCase().slice(0, 3);
-    offers.push({
-      airline: airline || "—",
-      logo: /^[A-Z0-9]{2}$/.test(airline) ? `https://pics.avs.io/60/60/${airline}.png` : undefined,
-      flightNumbers: airline && t.flight_number ? `${airline} ${t.flight_number}` : "",
-      depDate: dep[0],
-      depTime: dep[1],
-      stops: Math.max(0, Math.round(t.transfers ?? 0)),
-      durationMinutes: Math.max(0, Math.round(t.duration_to ?? t.duration ?? 0)),
-      cents: Math.round(t.price! * 100) * w.adults,
-    });
-    if (offers.length === 3) break;
-  }
-  return { cents: Math.round(tickets[0]!.price! * 100) * w.adults, offers };
+  const offers = onDates(tpOffers(res, w.adults), w.outboundDate, w.returnDate).slice(0, 3);
+  return offers.length ? { cents: offers[0]!.cents, offers } : null;
+}
+
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / 86_400_000);
+
+/**
+ * When nobody searched the exact dates: the fares closest to them from a whole
+ * month's search (leaving within `maxDays`, a trip about as long), nearest
+ * first, then cheapest. Up to 3.
+ */
+export function nearestOffers(offers: FareOffer[], outboundDate: string, returnDate: string | undefined, maxDays = 3): FareOffer[] {
+  const length = returnDate ? dayDiff(returnDate, outboundDate) : 0;
+  const scored = offers
+    .map((o) => {
+      const shift = Math.abs(dayDiff(o.depDate, outboundDate));
+      const stretch = returnDate && o.retDate ? Math.abs(dayDiff(o.retDate, o.depDate) - length) : 0;
+      return { o, shift, stretch, score: shift + stretch };
+    })
+    .filter((x) => x.shift <= maxDays && x.stretch <= 2);
+  scored.sort((a, b) => a.score - b.score || a.o.cents - b.o.cents);
+  return scored.slice(0, 3).map((x) => x.o);
 }
 
 /**

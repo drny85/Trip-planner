@@ -1354,6 +1354,7 @@ export const de: Shape<typeof en> = {
       other: "{count} Stopps",
     },
     book: "Bei {site} buchen",
+    closestDates: "Nächste Termine mit Preisen",
     recentFares: "Preise aus Suchen der letzten 2 Tage",
     bookedIt: "Gebucht?",
     bookedItBody: "Füge deine Bestätigung hinzu, dann verfolgen wir den Flug und melden Verspätungen und Gate-Wechsel.",

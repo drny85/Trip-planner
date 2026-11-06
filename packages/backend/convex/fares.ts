@@ -24,7 +24,7 @@ import {
   shiftDate,
 } from "./lib/fares";
 import { listMembers } from "./lib/members";
-import { affiliateUrl, aviasalesUrl, insightsFromGrid, parseTp, TP_API, tpParams, type TpResponse } from "./lib/travelpayouts";
+import { affiliateUrl, aviasalesUrl, insightsFromGrid, nearestOffers, onDates, parseTp, TP_API, tpOffers, tpParams, type TpResponse } from "./lib/travelpayouts";
 import { notify } from "./lib/notify";
 
 /**
@@ -443,10 +443,26 @@ export const pruneFareCache = internalMutation({
   },
 });
 
+type CacheEntry = { key: string; cents?: number; offers: FareOffer[] };
+
+/** One Travelpayouts search, prices per passenger. */
+async function tpSearch(w: { from: string; to: string; currency: string }, outboundDate: string, returnDate: string | undefined) {
+  const res = await fetch(`${TP_API}?${tpParams({ ...w, outboundDate, returnDate }, process.env.TRAVELPAYOUTS_MARKET ?? "us")}`, {
+    headers: { "X-Access-Token": tpToken()!, "Accept-Encoding": "gzip, deflate" },
+  });
+  if (!res.ok) throw new Error(`Travelpayouts ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return (await res.json()) as TpResponse;
+}
+
 /**
  * Today's fare and the ±3 day grid for one watch. Each of the 7 searches is
  * read from the shared cache when someone looked it up in the last 20 hours,
  * and fetched (free) otherwise. Prices are cached per passenger and scaled here.
+ *
+ * Exact-date searches are often empty (Travelpayouts only has what Aviasales
+ * users searched lately), so when any day is missing we also search the whole
+ * month, fill the grid from it and, if the trip's own dates have nothing, show
+ * the fares closest to them.
  */
 async function checkViaTravelpayouts(ctx: ActionCtx, watch: Doc<"fareWatches">, now: number) {
   const today = isoDay(now);
@@ -455,27 +471,40 @@ async function checkViaTravelpayouts(ctx: ActionCtx, watch: Doc<"fareWatches">, 
     const returnDate = watch.returnDate ? shiftDate(watch.returnDate, shiftDays) : undefined;
     return { shiftDays, outboundDate, returnDate, key: cacheKey(watch.from, watch.to, outboundDate, returnDate, watch.currency), past: outboundDate <= today };
   });
+  const outMonth = watch.outboundDate.slice(0, 7);
+  const retMonth = watch.returnDate?.slice(0, 7);
+  const monthKey = cacheKey(watch.from, watch.to, outMonth, retMonth, watch.currency);
   try {
-    const fresh: { key: string; cents?: number; offers: FareOffer[] }[] = await ctx.runQuery(internal.fares.cachedFares, { keys: cells.filter((c) => !c.past).map((c) => c.key), since: now - CACHE_FOR });
-    const byKey = new Map<string, { key: string; cents?: number; offers: FareOffer[] }>(fresh.map((e) => [e.key, e]));
-    const fetched: { key: string; cents?: number; offers: FareOffer[] }[] = [];
+    const keys = [...cells.filter((c) => !c.past).map((c) => c.key), monthKey];
+    const fresh: CacheEntry[] = await ctx.runQuery(internal.fares.cachedFares, { keys, since: now - CACHE_FOR });
+    const byKey = new Map<string, CacheEntry>(fresh.map((e) => [e.key, e]));
+    const fetched: CacheEntry[] = [];
     for (const c of cells) {
       if (c.past || byKey.has(c.key)) continue;
-      const res = await fetch(`${TP_API}?${tpParams({ ...watch, outboundDate: c.outboundDate, returnDate: c.returnDate }, process.env.TRAVELPAYOUTS_MARKET ?? "us")}`, {
-        headers: { "X-Access-Token": tpToken()!, "Accept-Encoding": "gzip, deflate" },
-      });
-      if (!res.ok) throw new Error(`Travelpayouts ${res.status}: ${(await res.text()).slice(0, 200)}`);
-      const found = parseTp((await res.json()) as TpResponse, { outboundDate: c.outboundDate, returnDate: c.returnDate, adults: 1 });
+      const found = parseTp(await tpSearch(watch, c.outboundDate, c.returnDate), { outboundDate: c.outboundDate, returnDate: c.returnDate, adults: 1 });
       const entry = { key: c.key, cents: found?.cents, offers: found?.offers ?? [] };
       fetched.push(entry);
       byKey.set(c.key, entry);
     }
+    let month: FareOffer[] = [];
+    if (cells.some((c) => !c.past && byKey.get(c.key)?.cents === undefined)) {
+      let entry = byKey.get(monthKey);
+      if (!entry) {
+        const offers = tpOffers(await tpSearch(watch, outMonth, retMonth), 1).slice(0, 60);
+        entry = { key: monthKey, cents: offers[0]?.cents, offers };
+        fetched.push(entry);
+      }
+      month = entry.offers;
+    }
     if (fetched.length) await ctx.runMutation(internal.fares.storeFares, { entries: fetched, now });
 
     const scale = (cents?: number) => (cents === undefined ? undefined : cents * watch.adults);
-    const flex = cells.map((c) => ({ shiftDays: c.shiftDays, outboundDate: c.outboundDate, returnDate: c.returnDate, cents: c.past ? undefined : scale(byKey.get(c.key)?.cents) }));
-    const mine = byKey.get(cells[3]!.key);
-    const cents = scale(mine?.cents);
+    const cheapestOn = (c: (typeof cells)[number]) => byKey.get(c.key)?.cents ?? onDates(month, c.outboundDate, c.returnDate)[0]?.cents;
+    const flex = cells.map((c) => ({ shiftDays: c.shiftDays, outboundDate: c.outboundDate, returnDate: c.returnDate, cents: c.past ? undefined : scale(cheapestOn(c)) }));
+    const mine = cells[3]!;
+    const exact = byKey.get(mine.key)?.cents !== undefined ? byKey.get(mine.key)!.offers : onDates(month, mine.outboundDate, mine.returnDate).slice(0, 3);
+    const offers = (exact.length ? exact : nearestOffers(month, mine.outboundDate, mine.returnDate)).map((o) => ({ ...o, cents: o.cents * watch.adults }));
+    const cents = offers.length ? Math.min(...offers.map((o) => o.cents)) : undefined;
     await ctx.runMutation(internal.fares.recordFare, {
       watchId: watch._id,
       now,
@@ -483,11 +512,7 @@ async function checkViaTravelpayouts(ctx: ActionCtx, watch: Doc<"fareWatches">, 
       flex,
       ...(cents === undefined
         ? { error: "noResults" }
-        : {
-            cents,
-            offers: mine!.offers.map((o) => ({ ...o, cents: o.cents * watch.adults })),
-            insights: insightsFromGrid(cents, flex.filter((c) => c.shiftDays !== 0).map((c) => c.cents)),
-          }),
+        : { cents, offers, insights: insightsFromGrid(cents, flex.filter((c) => c.shiftDays !== 0).map((c) => c.cents)) }),
     });
   } catch (error) {
     console.warn("Travelpayouts fare check failed", error);
@@ -553,22 +578,45 @@ export const recordFare = internalMutation({
     if (!watch || watch.status !== "active") return;
     if (ended) return await ctx.db.patch("fareWatches", watchId, { status: "ended", lastCheckedAt: now });
     const grid = flex ? { flex: { checkedAt: now, outboundDate: watch.outboundDate, cells: flex }, flexStatus: undefined } : {};
-    if (cents === undefined) return await ctx.db.patch("fareWatches", watchId, { lastCheckedAt: now, checks: watch.checks + 1, error, ...grid, ...(flex ? {} : error === "failed" && watch.flexStatus === "checking" ? { flexStatus: "failed" as const } : {}) });
+    // A new price source: the old one's prices, options and trend don't carry over
+    // (a quiet live check while booking is a one-off look, not a switch).
+    const switched = !quiet && source !== undefined && source !== (watch.source ?? "google");
+    const reset = switched
+      ? { firstCents: undefined, lastCents: undefined, lowestCents: undefined, history: [], offers: [], insights: undefined, googleUrl: undefined, alertedCents: undefined }
+      : {};
+    const base = { ...watch, ...reset };
+    if (cents === undefined)
+      return await ctx.db.patch("fareWatches", watchId, {
+        lastCheckedAt: now,
+        checks: watch.checks + 1,
+        error,
+        ...reset,
+        ...(switched ? { source } : {}),
+        ...grid,
+        ...(flex ? {} : error === "failed" && watch.flexStatus === "checking" ? { flexStatus: "failed" as const } : {}),
+      });
 
-    const alert = quiet ? null : fareAlert(watch, cents);
+    if (quiet) {
+      // The live look while they book shows today's real price and options, but
+      // leaves the trend, first and lowest price to the daily checks.
+      return await ctx.db.patch("fareWatches", watchId, { lastCents: cents, offers: offers ?? watch.offers, insights: insights ?? watch.insights, googleUrl: googleUrl ?? watch.googleUrl, error: undefined });
+    }
+
+    const alert = switched ? null : fareAlert(watch, cents);
     // Back above the target: the next time it gets there is news again.
     const forget = watch.targetCents !== undefined && cents > watch.targetCents;
     await ctx.db.patch("fareWatches", watchId, {
+      ...reset,
       lastCheckedAt: now,
       checks: watch.checks + 1,
       error: undefined,
-      firstCents: watch.firstCents ?? cents,
+      firstCents: base.firstCents ?? cents,
       lastCents: cents,
-      lowestCents: Math.min(cents, watch.lowestCents ?? cents),
-      history: [...watch.history, { at: now, cents }].slice(-60),
-      offers: offers ?? watch.offers,
-      insights: insights ?? watch.insights,
-      googleUrl: googleUrl ?? watch.googleUrl,
+      lowestCents: Math.min(cents, base.lowestCents ?? cents),
+      history: [...base.history, { at: now, cents }].slice(-60),
+      offers: offers ?? base.offers,
+      insights: switched ? insights : (insights ?? watch.insights),
+      googleUrl: googleUrl ?? base.googleUrl,
       source: source ?? watch.source,
       ...grid,
       ...(alert ? { alertedCents: cents } : forget ? { alertedCents: undefined } : {}),

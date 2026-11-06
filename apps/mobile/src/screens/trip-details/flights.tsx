@@ -164,7 +164,7 @@ function WatchCard({ data, watch, tripId, onEdit }: { data: Data; watch: Watch; 
 
       {watch.offers.length > 0 && (
         <View>
-          <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("fares.bestOptions")}</Text>
+          <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t(watch.offers.every((o) => o.depDate !== watch.outboundDate) ? "fares.closestDates" : "fares.bestOptions")}</Text>
           {watch.offers.map((o, i) => (
             <View key={i} className={cn("flex-row items-center gap-3 py-2.5", i < watch.offers.length - 1 && "border-b border-border/60")}>
               {o.logo ? <Image source={{ uri: o.logo }} style={{ width: 24, height: 24 }} contentFit="contain" /> : <Text className="w-6 text-center">✈️</Text>}
@@ -175,7 +175,7 @@ function WatchCard({ data, watch, tripId, onEdit }: { data: Data; watch: Watch; 
                   {o.arrDate && o.arrDate > o.depDate ? ` +${daysUntil(o.arrDate, o.depDate)}` : ""}
                 </Text>
                 <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                  {[o.airline, o.stops === 0 ? t("fares.nonstop") : t("fares.stops", { count: o.stops }), o.durationMinutes ? f.duration(o.durationMinutes) : null].filter(Boolean).join(" · ")}
+                  {[o.depDate !== watch.outboundDate ? f.dateRange(o.depDate, o.retDate ?? o.depDate) : null, o.airline, o.stops === 0 ? t("fares.nonstop") : t("fares.stops", { count: o.stops }), o.durationMinutes ? f.duration(o.durationMinutes) : null].filter(Boolean).join(" · ")}
                 </Text>
               </View>
               <Text className="font-semibold text-foreground">{money(o.cents)}</Text>

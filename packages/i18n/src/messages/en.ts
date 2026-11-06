@@ -1352,6 +1352,7 @@ export const en = {
       other: "{count} stops",
     },
     book: "Book on {site}",
+    closestDates: "Closest dates with fares",
     recentFares: "Prices from searches in the last 2 days",
     bookedIt: "Booked it?",
     bookedItBody: "Add your confirmation and we'll track the flight for delays and gate changes.",
