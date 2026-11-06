@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { htmlToText, IMPORT_FILE_TYPES, MAX_IMPORT_BYTES } from "./lib/bookings";
 import { googlePhotoUri, googlePlacesKey } from "./lib/googlePlaces";
+import { billingEventUserId, verifySvix } from "./lib/webhook";
 
 const http = httpRouter();
 
@@ -128,6 +129,33 @@ http.route({
     const photo = await googlePhotoUri(placeId, key, width);
     if (!photo) return new Response("Not found", { status: 404, headers: { "Cache-Control": "public, max-age=3600" } });
     return new Response(null, { status: 302, headers: { Location: photo, "Cache-Control": "public, max-age=86400" } });
+  }),
+});
+
+/**
+ * Clerk Billing webhook: point a Clerk webhook endpoint for the subscription and
+ * subscriptionItem events at <CONVEX_SITE_URL>/clerk/billing. The event only says
+ * whose subscription changed; billing.sync re-reads it from Clerk.
+ */
+http.route({
+  path: "/clerk/billing",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const secret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+    if (!secret) return new Response("Billing webhook is not set up", { status: 503 });
+    const body = await req.text();
+    if (!(await verifySvix(req.headers, body, secret))) return new Response("Bad signature", { status: 401 });
+    let event: { type?: string } = {};
+    try {
+      event = JSON.parse(body) as { type?: string };
+    } catch {
+      return new Response("Bad JSON", { status: 400 });
+    }
+    const userId = billingEventUserId(event);
+    if (userId && /^subscription/.test(event.type ?? "")) {
+      await ctx.scheduler.runAfter(0, internal.billing.sync, { userId });
+    }
+    return new Response(null, { status: 204 });
   }),
 });
 

@@ -2,13 +2,15 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticSetCompleted } from "@trip/backend/optimistic";
 import { useI18n } from "@trip/i18n/react";
-import { useMutation } from "convex/react";
+import { TRAVELER_PRICE } from "@trip/ui";
+import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import Animated, { Easing, FadeInDown, FadeOutDown, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EASE_OUT } from "@/lib/motion";
+import { useSubscribe } from "./billing";
 
 /**
  * "Marked done · Undo" toast. Checking something off happens right away; for a
@@ -89,15 +91,46 @@ export function useToggleDone() {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const restore = useMutation(api.activities.restoreCompleted);
   const show = useContext(UndoContext);
+  const { subscribe } = useSubscribe();
+  const locked = useQuery(api.billing.lockedTrips, {});
   const { t } = useI18n();
+  // Explained here, before the server is asked: a refused mutation still logs a red error in dev.
+  const explainLock = useCallback(
+    (isOwner: boolean) => {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      if (!isOwner) return Alert.alert(t("errors.organizerMustSubscribe"));
+      Alert.alert(t("errors.subscribeToStart"), t("billing.lockedBody"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("billing.subscribe", { price: TRAVELER_PRICE }), onPress: () => void subscribe() },
+      ]);
+    },
+    [subscribe, t],
+  );
   return useCallback(
-    async (activity: { _id: Id<"activities">; title: string }, isCompleted: boolean) => {
-      const changed = await setCompleted({ activityId: activity._id, isCompleted });
+    async (activity: { _id: Id<"activities">; tripId: Id<"trips">; title: string }, isCompleted: boolean) => {
+      const lock = locked?.find((l) => l.tripId === activity.tripId);
+      if (lock) return explainLock(lock.isOwner);
+      let changed: Id<"activities">[];
+      try {
+        changed = await setCompleted({ activityId: activity._id, isCompleted });
+      } catch (e) {
+        // The optimistic check rolls back on its own; say why instead of a red error screen.
+        const message = serverMessage(e) ?? t("common.somethingWrong");
+        if (message === t("errors.subscribeToStart")) explainLock(true);
+        else Alert.alert(message);
+        return;
+      }
       if (isCompleted && changed.length > 0) {
         const steps = changed.length - 1;
         show(steps > 0 ? t("undo.doneWithSteps", { title: activity.title, count: steps }) : t("undo.done", { title: activity.title }), () => void restore({ activityIds: changed, isCompleted: false }));
       }
     },
-    [setCompleted, restore, show, t],
+    [locked, explainLock, setCompleted, restore, show, t],
   );
+}
+
+/** The readable part of a Convex error ("Uncaught Error: …"). */
+function serverMessage(e: unknown) {
+  if (!(e instanceof Error)) return undefined;
+  return e.message.match(/Uncaught Error: (.*?)(\n|$)/)?.[1] ?? undefined;
 }

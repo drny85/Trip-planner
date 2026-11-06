@@ -1,8 +1,9 @@
 import { localeNames } from "@trip/i18n";
+import { PlanLimitNotice } from "@/components/billing";
 import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import { appendAnswer, type ImproveQuestion, withTimeout } from "@trip/backend/promptAnswer";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Switch, Text, TextInput, View } from "react-native";
@@ -20,6 +21,17 @@ const IDEAS = ["idea1", "idea2", "idea3", "idea4"] as const;
 /** Plan with AI: the guided interview by default, with free text as a shortcut. */
 export function GenerateTrip() {
   const [mode, setMode] = useState<"interview" | "text">("interview");
+  const plan = useQuery(api.billing.status, {});
+  // Decided once on arrival, so saving the free trip doesn't swap the planning screen for the notice.
+  // The server checks again; this just saves answering for a trip that can't be planned.
+  const [gate, setGate] = useState<{ blocked: "subscribe" | "tooManyUpcoming" | null; max: number } | undefined>();
+  if (plan && gate === undefined) setGate({ blocked: plan.blocked, max: plan.maxUpcoming });
+  if (gate?.blocked)
+    return (
+      <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="p-5">
+        <PlanLimitNotice blocked={gate.blocked} max={gate.max} />
+      </ScrollView>
+    );
   return mode === "interview" ? <TripInterview onTypeInstead={() => setMode("text")} /> : <FreeText onUseInterview={() => setMode("interview")} />;
 }
 

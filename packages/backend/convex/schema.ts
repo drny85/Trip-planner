@@ -17,6 +17,17 @@ export default defineSchema({
     homeCurrency: v.optional(v.string()),
   }).index("by_clerkId", ["clerkId"]),
 
+  /** Clerk Billing state per user (see lib/billing.ts), kept in sync by billing.refresh and the Clerk webhook. */
+  billing: defineTable({
+    userId: v.string(),
+    /** Trips planned so far, including deleted ones. */
+    tripsCreated: v.number(),
+    subscribed: v.boolean(),
+    /** When the paid period ends (ms). Set when they cancel, so access lasts until then. */
+    periodEnd: v.optional(v.number()),
+    checkedAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"]),
+
   trips: defineTable({
     /** Clerk user id (identity.subject), or the demo user before auth is wired. */
     userId: v.string(),

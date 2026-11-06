@@ -189,6 +189,9 @@ export const generateTrip = action({
     const request = prompt.trim();
     if (request.length < 3) throw new Error(t("errors.describeTrip"));
     if (request.length > 2000) throw new Error(t("errors.tooLong"));
+    // Check the plan before spending on AI; saveGenerated checks again.
+    const allowance = await ctx.runQuery(internal.billing.allowanceFor, { userId });
+    if (allowance.blocked) throw new Error(t(allowance.blocked === "subscribe" ? "errors.subscribeForMore" : "errors.tooManyUpcoming", { max: allowance.maxUpcoming }));
     const via = aiVia();
     if (!via) {
       throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
@@ -299,6 +302,8 @@ type ReplanDay = {
   dayNumber: number;
   date?: string;
   location?: string;
+  /** The organizer hasn't subscribed, so the trip can't be started yet. */
+  locked: boolean;
   activities: { id: string; title: string; category: string; startTime?: string; durationMinutes?: number; address: string; description: string; done: boolean }[];
 };
 export type ReplanProposal = {
@@ -350,6 +355,7 @@ export const replanDay = action({
     const t = translator(locale);
     const day: ReplanDay | null = await ctx.runQuery(internal.activities.dayForReplan, { subTripId, userId });
     if (!day) throw new Error(t("errors.organizerOnly"));
+    if (day.locked) throw new Error(t("errors.subscribeToStart"));
     const via = aiVia();
     if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
 
@@ -461,6 +467,7 @@ const weekdayOf = (date?: string) =>
   date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }) : null;
 
 type LocalDay = {
+  tripLocked: boolean;
   tripTitle: string;
   destination: string;
   dayNumber: number;
@@ -513,6 +520,7 @@ export const localPickDay = action({
     const t = translator(locale);
     const day: LocalDay | null = await ctx.runQuery(internal.localPicks.dayForLocal, { subTripId, userId });
     if (!day) throw new Error(t("errors.organizerOnly"));
+    if (day.tripLocked) throw new Error(t("errors.subscribeToStart"));
     const via = aiVia();
     if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
 
@@ -563,6 +571,7 @@ export const addLocalTips = action({
     const t = translator(locale);
     const day: LocalDay | null = await ctx.runQuery(internal.localPicks.dayForLocal, { subTripId, userId });
     if (!day) throw new Error(t("errors.organizerOnly"));
+    if (day.tripLocked) throw new Error(t("errors.subscribeToStart"));
     if (day.activities.length === 0) return 0;
     const via = aiVia();
     if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");

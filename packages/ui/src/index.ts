@@ -72,6 +72,9 @@ export function googlePhotoCredit(activity: { photoUrl?: string; photoCredit?: s
   if (!activity.photoUrl?.includes("/place-photo/")) return null;
   return activity.photoCredit ?? "";
 }
+
+/** The Traveler subscription's price as shown in the apps (the real price lives in Clerk Billing). */
+export const TRAVELER_PRICE = "$5.99";
 export { betterTime, CROWD_DAY, CROWD_META, crowdBar, crowdPosition, inPeak, TIP_EMOJI, type Crowd, type CrowdLevel, type TipKind } from "./local";
 export { flightTone, isUpcoming, priceSummary, sparkline, type FlightTone } from "./alerts";
 export { currencyChoices, currencyForRegion, currencyFromLocales, CURRENCIES, isCurrencyCode } from "./currency";

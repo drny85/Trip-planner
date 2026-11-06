@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, mutation, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { getOwnedTrip } from "./lib/auth";
+import { requireStarted, tripUnlocked } from "./lib/billing";
 import { isSubcategoryOf } from "./lib/categories";
 import { activityFields, crowdForecast, localTip } from "./lib/validators";
 import { hasNotes } from "./journal";
@@ -55,6 +56,8 @@ export const dayForLocal = internalQuery({
     if (!day || !trip || trip.userId !== userId) return null;
     const [top, votedIn] = await Promise.all([topLevel(ctx, subTripId), votedInIds(ctx, subTripId)]);
     return {
+      /** The trip hasn't been started (its organizer isn't subscribed): no AI swaps yet. */
+      tripLocked: !(await tripUnlocked(ctx, trip)),
       tripTitle: trip.title,
       destination: trip.destination,
       dayNumber: day.dayNumber,
@@ -120,7 +123,8 @@ export const apply = mutation({
   handler: async (ctx, { subTripId, activities }) => {
     const day = await ctx.db.get("subTrips", subTripId);
     if (!day) throw new Error("Day not found");
-    await getOwnedTrip(ctx, day.tripId);
+    const trip = await getOwnedTrip(ctx, day.tripId);
+    await requireStarted(ctx, trip, trip.userId);
     const [current, votedIn, existing] = await Promise.all([topLevel(ctx, subTripId), votedInIds(ctx, subTripId), snapshotFor(ctx, subTripId)]);
     const byId = new Map(current.map((a) => [a._id as string, a]));
     const kept = new Set<string>();

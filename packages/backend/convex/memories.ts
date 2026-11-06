@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireStarted } from "./lib/billing";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { findMembership, getMemberActivity, getMemberTrip, getOptionalUserId, getUserId } from "./lib/auth";
@@ -23,7 +24,8 @@ export const generateUploadUrl = mutation({
 export const add = mutation({
   args: { activityId: v.id("activities"), storageId: v.id("_storage"), caption: v.optional(v.string()) },
   handler: async (ctx, { activityId, storageId, caption }) => {
-    const { activity, userId } = await getMemberActivity(ctx, activityId);
+    const { activity, trip, userId } = await getMemberActivity(ctx, activityId);
+    await requireStarted(ctx, trip, userId);
     const file = await ctx.db.system.get("_storage", storageId);
     if (!file) throw new Error("Upload not found");
     const bad = !file.contentType?.startsWith("image/") || file.size > MAX_BYTES;
