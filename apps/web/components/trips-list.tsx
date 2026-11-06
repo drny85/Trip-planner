@@ -8,7 +8,7 @@ import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { rise } from "@/lib/motion";
+import { EASE_OUT, useTilt } from "@/lib/motion";
 import { SmartImage } from "./smart-image";
 import { UpNext } from "./up-next";
 
@@ -18,7 +18,7 @@ export function TripsList() {
 
   return (
     <div className="flex flex-col gap-8">
-      <motion.div {...rise(0)} className="flex flex-wrap items-end justify-between gap-4">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE_OUT }} className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">{t("trips.eyebrow")}</p>
           <h1 className="mt-1 text-4xl font-extrabold tracking-tight">{t("trips.title")}</h1>
@@ -36,7 +36,9 @@ export function TripsList() {
         </ul>
       ) : trips.length === 0 ? (
         <motion.div
-          {...rise(1)}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.05 }}
           className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-border bg-card/60 p-12 text-center"
         >
           <motion.span
@@ -61,8 +63,14 @@ export function TripsList() {
       ) : (
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {trips.map((trip, i) => (
-            <motion.li key={trip._id} {...rise(i + 1)} layout>
-              <Link
+            <motion.li
+              key={trip._id}
+              layout
+              initial={{ opacity: 0, y: 40, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.6, ease: EASE_OUT, delay: Math.min(i, 8) * 0.07 + 0.1 }}
+            >
+              <TiltLink
                 href={`/trips/${trip._id}`}
                 className="group relative block h-80 overflow-hidden rounded-3xl shadow-sm ring-1 ring-border transition-shadow duration-300 hover:shadow-2xl"
               >
@@ -94,10 +102,10 @@ export function TripsList() {
                     <span className="translate-x-[-6px] opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100">→</span>
                   </p>
                 </div>
-              </Link>
+              </TiltLink>
             </motion.li>
           ))}
-          <motion.li {...rise(trips.length + 1)}>
+          <motion.li initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE_OUT, delay: Math.min(trips.length, 8) * 0.07 + 0.1 }}>
             <Link
               href="/trips/new"
               className="group grid h-80 place-items-center rounded-3xl border-2 border-dashed border-border text-muted-foreground transition hover:border-primary hover:text-primary"
@@ -111,6 +119,18 @@ export function TripsList() {
         </ul>
       )}
     </div>
+  );
+}
+
+const MotionLink = motion.create(Link);
+
+/** A trip card link that tilts toward the pointer. */
+function TiltLink({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
+  const tilt = useTilt<HTMLAnchorElement>(8);
+  return (
+    <MotionLink href={href} className={className} {...tilt}>
+      {children}
+    </MotionLink>
   );
 }
 

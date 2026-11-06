@@ -21,7 +21,7 @@ import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
@@ -31,6 +31,7 @@ import { useToggleDone } from "@/components/undo-toast";
 import { useCachedQuery } from "@/hooks/use-cached-query";
 import { EASE_OUT } from "@/lib/motion";
 import { callPhone, openDirections, openInAppBrowser } from "@/lib/open";
+import { useTravelDayActivity } from "@/lib/use-travel-day-activity";
 import { useLiveWeather, useMyLocation, useNowMinutes } from "./hooks";
 
 type Day = TripDetails["subTrips"][number];
@@ -42,7 +43,7 @@ const FAR_KM = 30;
  * the next hours, and a one-tap re-plan when you're running late or rain is coming.
  * `previewDay` shows any day as if it were today.
  */
-export function TodayScreen({ tripId, previewDay }: { tripId: Id<"trips">; previewDay?: number }) {
+export function TodayScreen({ tripId, previewDay, directionsTo }: { tripId: Id<"trips">; previewDay?: number; directionsTo?: string }) {
   const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
   const { t } = useI18n();
   if (trip === undefined) return <ActivityIndicator className="mt-16" />;
@@ -52,10 +53,10 @@ export function TodayScreen({ tripId, previewDay }: { tripId: Id<"trips">; previ
   const live = findTodayDay(trip, today);
   const day = (previewDay != null ? trip.subTrips.find((d) => d.dayNumber === previewDay) : undefined) ?? live;
   if (!day) return <NotToday trip={trip} today={today} />;
-  return <Today key={day._id} trip={trip} day={day} isPreview={day !== live} isCached={isCached} />;
+  return <Today key={day._id} trip={trip} day={day} isPreview={day !== live} isCached={isCached} directionsTo={directionsTo} />;
 }
 
-function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day; isPreview: boolean; isCached: boolean }) {
+function Today({ trip, day, isPreview, isCached, directionsTo }: { trip: TripDetails; day: Day; isPreview: boolean; isCached: boolean; directionsTo?: string }) {
   const router = useRouter();
   const now = useNowMinutes();
   const { t, f } = useI18n();
@@ -72,6 +73,14 @@ function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day
   const meNear = me && hasCoords(next) && distanceKm(me, next) <= FAR_KM ? me : null;
   const from = meNear ?? (hasCoords(lastDone) ? lastDone : null);
   const travel = from && hasCoords(next) ? estimateTravel(from, next) : null;
+
+  // "Directions" on the widget opens the app here with ?go=<stop>: hand off to Maps once.
+  useEffect(() => {
+    const stop = directionsTo && day.activities.find((a) => a._id === directionsTo);
+    if (!stop) return;
+    router.setParams({ go: undefined });
+    void openDirections(stop);
+  }, [directionsTo, day.activities, router]);
 
   const replan = (reason?: string) => {
     void Haptics.selectionAsync();
@@ -132,7 +141,31 @@ function Today({ trip, day, isPreview, isCached }: { trip: TripDetails; day: Day
           {t("today.replanRest")}
         </Button>
       )}
+      {!isPreview && next && <LiveActivityToggle trip={trip} day={day} />}
     </ScrollView>
+  );
+}
+
+/** Puts the next stop on the Lock Screen and in the Dynamic Island (iPhone only). */
+function LiveActivityToggle({ trip, day }: { trip: TripDetails; day: Day }) {
+  const { t } = useI18n();
+  const activity = useTravelDayActivity(trip, day);
+  if (!activity.supported) return null;
+  return (
+    <View className="gap-1.5">
+      <Button
+        variant="secondary"
+        icon="lockScreen"
+        onPress={() => {
+          void Haptics.selectionAsync();
+          if (activity.running) void activity.stop();
+          else activity.start();
+        }}
+      >
+        {activity.running ? t("widget.hideFromLockScreen") : t("widget.showOnLockScreen")}
+      </Button>
+      <Text className="text-center text-xs text-muted-foreground">{activity.error ? t("widget.liveOff") : t("widget.lockScreenHint")}</Text>
+    </View>
   );
 }
 

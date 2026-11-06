@@ -6,9 +6,11 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { useI18n } from "@trip/i18n/react";
+import { AnimatedSplash } from "@/components/animated-splash";
 import { AuthGate } from "@/components/auth-gate";
 import { CloseButton } from "@/components/close-button";
 import { PushSetup } from "@/components/push-setup";
+import { TravelDaySync } from "@/components/travel-day-sync";
 import { UndoToastProvider } from "@/components/undo-toast";
 import { MobileI18nProvider } from "@/lib/i18n";
 import { AppProviders } from "@/providers/app-providers";
@@ -24,12 +26,16 @@ export default function RootLayout() {
         <AuthGate>
           <UndoToastProvider>
           <PushSetup />
+          {/* iOS "Next stop" widget and travel-day Live Activity. */}
+          <TravelDaySync />
           <AppStack />
           </UndoToastProvider>
         </AuthGate>
       </AppProviders>
       </MobileI18nProvider>
       <StatusBar style="auto" />
+      {/* Takes over from the native splash, plays once, then gets out of the way. */}
+      <AnimatedSplash />
     </ThemeProvider>
   );
 }
@@ -62,7 +68,11 @@ function AppStack() {
       />
       <Stack.Screen
         name="trips/[tripId]/expense"
-        options={{ title: t("mobile.titleExpense"), presentation: "formSheet", sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+        options={{ title: t("mobile.titleExpense"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
+      <Stack.Screen
+        name="trips/[tripId]/payment"
+        options={{ title: t("split.paymentTitle"), presentation: "formSheet", sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
       <Stack.Screen
         name="trips/[tripId]/replan/[subTripId]"
