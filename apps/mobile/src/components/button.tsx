@@ -1,8 +1,9 @@
 import { cn } from "@trip/ui";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Text, type PressableProps } from "react-native";
+import { Text, type PressableProps } from "react-native";
 import { Icon, type IconName } from "./icon";
 import { PressableScale } from "./pressable-scale";
+import { ThinkingDots } from "./thinking-dots";
 
 /** `light` and `glass` sit on photos or dark hero cards and look the same in both themes. */
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "light" | "glass";
@@ -22,6 +23,14 @@ const label: Record<Variant, string> = {
   danger: "text-danger",
   light: "text-ink",
   glass: "text-on-image",
+};
+const dotColor: Record<Variant, string> = {
+  primary: "bg-primary-foreground",
+  secondary: "bg-foreground",
+  ghost: "bg-primary",
+  danger: "bg-danger",
+  light: "bg-ink",
+  glass: "bg-on-image",
 };
 const iconColor: Record<Variant, `--color-${string}`> = {
   primary: "--color-primary-foreground",
@@ -61,13 +70,14 @@ export function Button({
         "flex-row items-center justify-center gap-2 rounded-full",
         size === "md" ? "px-5 py-3" : "px-3 py-1.5",
         container[variant],
-        (disabled || loading) && "opacity-50",
+        disabled && !loading && "opacity-50",
+        loading && "opacity-80",
         className,
       )}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator size="small" />
+        <ThinkingDots className={dotColor[variant]} size={size === "md" ? "md" : "sm"} />
       ) : (
         icon && <Icon name={icon} size={size === "md" ? 18 : 14} colorVar={iconColor[variant]} />
       )}

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
 import { PlanLimitNotice } from "./billing";
-import { Planning } from "./planning";
+import { ImprovingOverlay, Planning, ThinkingDots } from "./planning";
 import { TripInterview } from "./trip-interview";
 
 const IDEAS = [
@@ -136,9 +136,10 @@ function FreeTextForm({ onUseInterview }: { onUseInterview: () => void }) {
               placeholder={t("generate.placeholder")}
               className={`w-full resize-none rounded-3xl border bg-card p-5 text-lg shadow-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 ${
                 improved ? "border-primary/50" : "border-border"
-              } ${improving ? "animate-pulse opacity-60" : ""}`}
+              } ${improving ? "text-muted-foreground" : ""}`}
             />
             <span className="absolute bottom-4 right-5 text-xs text-muted-foreground">{prompt.length}/2000</span>
+            <ImprovingOverlay show={improving} />
           </motion.div>
 
           <AnimatePresence mode="popLayout">
@@ -255,7 +256,7 @@ function FreeTextForm({ onUseInterview }: { onUseInterview: () => void }) {
                   disabled={!ready || improving}
                   className="rounded-full bg-gradient-to-r from-primary to-emerald-500 px-6 py-3.5 text-lg font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-opacity disabled:opacity-40"
                 >
-                  ✨ {improving ? t("generate.improving") : t("generate.improve")}
+                  {improving ? <ThinkingDots className="bg-primary-foreground" /> : "✨"} {improving ? t("generate.improving") : t("generate.improve")}
                 </motion.button>
               </div>
             </motion.div>

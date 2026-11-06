@@ -6,7 +6,7 @@ import { TripView } from "@/components/trip/trip-view";
 
 export default function TripPage({ params }: PageProps<"/trips/[tripId]">) {
   return (
-    <RequireAuth>
+    <RequireAuth reason="trip">
       <Suspense fallback={<p className="p-8 text-center text-muted-foreground"><T k="common.loadingTrip" /></p>}>
         <TripFromParams params={params} />
       </Suspense>

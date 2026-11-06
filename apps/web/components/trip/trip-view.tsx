@@ -28,6 +28,7 @@ import { PackingList } from "./packing-list";
 import { DayExtras } from "./replan-day";
 import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
+import { PdfButton } from "./pdf-button";
 import { ShareButton } from "./share-button";
 import { UseTripButton } from "./use-trip";
 import { TodayBanner } from "@/components/today/today-banner";
@@ -106,6 +107,12 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
   const activeDay = useActiveDay(trip.subTrips.map((s) => s._id));
   const { t, f } = useI18n();
 
+  // Older trips look up their destination's time zone once, for the calendar export.
+  const ensureTimeZone = useMutation(api.timeZones.ensure);
+  useEffect(() => {
+    if (canCheck && !trip.timeZone) void ensureTimeZone({ tripId: trip._id }).catch(() => undefined);
+  }, [canCheck, trip._id, trip.timeZone, ensureTimeZone]);
+
   const drop = (toSubTripId: Id<"subTrips">, toIndex: number) => {
     if (dragging) void move({ activityId: dragging.activityId, toSubTripId, toIndex });
     setDragging(null);
@@ -124,6 +131,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
           <div className="flex flex-wrap justify-end gap-2">
             {mode === "public" && storyToken && <UseTripButton token={storyToken} trip={trip} variant="hero" />}
             <CalendarButton trip={trip} />
+            <PdfButton trip={trip} />
             {!readOnly && <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />}
           </div>
         }

@@ -44,6 +44,7 @@ export async function copyTripTree(
     endDate: shiftDate(source.endDate, offset),
     imageUrl: source.imageUrl,
     currency: source.currency,
+    timeZone: source.timeZone,
     isAIGenerated: source.isAIGenerated,
     copiedFromTripId: source._id,
   });

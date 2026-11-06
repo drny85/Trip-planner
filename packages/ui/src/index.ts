@@ -14,7 +14,7 @@ export function tripLength(start: string, end: string) {
   const ms = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
   return Math.max(1, Math.round(ms / 86_400_000) + 1);
 }
-export { toICS } from "./calendar";
+export { calendarEvents, toICS, zonedTimeToUtc, type TripCalendarEvent } from "./calendar";
 
 /** "2027-04-02" moved by `days` ("2027-04-02", 3 -> "2027-04-05"). */
 export function addDays(iso: string, days: number) {
@@ -78,6 +78,17 @@ export const TRAVELER_PRICE = "$5.99";
 export { betterTime, CROWD_DAY, CROWD_META, crowdBar, crowdPosition, inPeak, TIP_EMOJI, type Crowd, type CrowdLevel, type TipKind } from "./local";
 export { flightTone, isUpcoming, priceSummary, sparkline, type FlightTone } from "./alerts";
 export { currencyChoices, currencyForRegion, currencyFromLocales, CURRENCIES, isCurrencyCode } from "./currency";
+export {
+  FLIGHT_PATH,
+  flightPoint,
+  formatElapsed,
+  PLANNING_FACT_EVERY,
+  PLANNING_STOPS,
+  PLANNING_SLOW_AFTER,
+  PLANNING_STAGES,
+  planningProgress,
+  planningStage,
+} from "./planning";
 export {
   ARRIVAL_BUFFER_MIN,
   daysUntil,

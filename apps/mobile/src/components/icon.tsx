@@ -27,9 +27,11 @@ const icons = {
   document: { ios: "doc.text.fill", android: "description", web: "description" },
   photo: { ios: "photo.on.rectangle", android: "image", web: "image" },
   mail: { ios: "envelope.fill", android: "mail", web: "mail" },
+  map: { ios: "map.fill", android: "map", web: "map" },
   bell: { ios: "bell.fill", android: "notifications", web: "notifications" },
   lockScreen: { ios: "iphone.badge.play", android: "smartphone", web: "smartphone" },
   undo: { ios: "arrow.uturn.backward", android: "undo", web: "undo" },
+  /** Points right on iOS and up on Android/web (the planning screen turns it with PLANE_HEADING). */
   airplane: { ios: "airplane", android: "flight", web: "flight" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 
