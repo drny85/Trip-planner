@@ -457,6 +457,7 @@ const weekdayOf = (date?: string) =>
   date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" }) : null;
 
 type LocalDay = {
+  tripLocked: boolean;
   tripTitle: string;
   destination: string;
   dayNumber: number;
@@ -509,6 +510,7 @@ export const localPickDay = action({
     const t = translator(locale);
     const day: LocalDay | null = await ctx.runQuery(internal.localPicks.dayForLocal, { subTripId, userId });
     if (!day) throw new Error(t("errors.organizerOnly"));
+    if (day.tripLocked) throw new Error(t("errors.subscribeToStart"));
     const via = aiVia();
     if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");
 
@@ -559,6 +561,7 @@ export const addLocalTips = action({
     const t = translator(locale);
     const day: LocalDay | null = await ctx.runQuery(internal.localPicks.dayForLocal, { subTripId, userId });
     if (!day) throw new Error(t("errors.organizerOnly"));
+    if (day.tripLocked) throw new Error(t("errors.subscribeToStart"));
     if (day.activities.length === 0) return 0;
     const via = aiVia();
     if (!via) throw new Error("AI is not set up: add AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY to the Convex deployment");

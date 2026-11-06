@@ -711,7 +711,7 @@ export const ja: Shape<typeof en> = {
     lockedMember: "この旅行を始めるには、主催者のサブスクリプション登録が必要です。",
     subscribe: "登録する · 月額{price}",
     cancelAnytime: "いつでも解約できます。",
-    freeTitle: "最初の旅行は無料で計画できます",
+    freeTitle: "無料の旅行は計画済みです",
     freeBody: "登録すると旅行を始められ、予定中の旅行を同時に{max}件まで計画できます。",
     fullTitle: "予定中の旅行が{max}件あります",
     fullBody: "どれかが終わると、次の旅行を計画できます。",

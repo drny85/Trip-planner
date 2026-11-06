@@ -712,7 +712,7 @@ export const es: Shape<typeof en> = {
     lockedMember: "El organizador tiene que suscribirse para que este viaje pueda empezar.",
     subscribe: "Suscribirse · {price}/mes",
     cancelAnytime: "Cancela cuando quieras.",
-    freeTitle: "Planear tu primer viaje es gratis",
+    freeTitle: "Tu viaje gratis ya está planeado",
     freeBody: "Suscríbete para empezarlo y planear más viajes, con hasta {max} próximos a la vez.",
     fullTitle: "Tienes {max} viajes próximos",
     fullBody: "Cuando termine uno, podrás planear otro.",

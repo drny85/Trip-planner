@@ -710,7 +710,7 @@ export const en = {
     lockedMember: "The organizer needs to subscribe before this trip can start.",
     subscribe: "Subscribe · {price}/month",
     cancelAnytime: "Cancel anytime.",
-    freeTitle: "Your first trip is free to plan",
+    freeTitle: "Your free trip is planned",
     freeBody: "Subscribe to start it and to plan more trips, with up to {max} upcoming at a time.",
     fullTitle: "You have {max} upcoming trips",
     fullBody: "Once one of them ends, you can plan another.",

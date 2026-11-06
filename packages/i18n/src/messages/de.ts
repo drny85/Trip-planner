@@ -712,7 +712,7 @@ export const de: Shape<typeof en> = {
     lockedMember: "Der Organisator muss abonnieren, damit diese Reise starten kann.",
     subscribe: "Abonnieren · {price}/Monat",
     cancelAnytime: "Jederzeit kündbar.",
-    freeTitle: "Deine erste Reise planst du kostenlos",
+    freeTitle: "Deine kostenlose Reise ist geplant",
     freeBody: "Abonniere, um sie zu starten und weitere Reisen zu planen, mit bis zu {max} anstehenden gleichzeitig.",
     fullTitle: "Du hast {max} anstehende Reisen",
     fullBody: "Sobald eine davon vorbei ist, kannst du die nächste planen.",

@@ -46,6 +46,10 @@ test("the first trip is free to plan, but starting it needs a subscription", asy
   await expect(ana.mutation(api.activities.setCompleted, { activityId: activity._id, isCompleted: true })).rejects.toThrow(
     "Subscribe to start this trip",
   );
+  // …or swap in local's picks…
+  const day = (await ana.query(api.trips.get, { tripId: trip!._id }))!.subTrips[0]!;
+  await expect(ana.mutation(api.localPicks.apply, { subTripId: day._id, activities: [] })).rejects.toThrow("Subscribe to start this trip");
+  await expect(ana.action(api.ai.localPickDay, { subTripId: day._id, language: "en" })).rejects.toThrow("Subscribe to start this trip");
   // …or plan a second one.
   await expect(
     ana.mutation(internal.trips.saveGenerated, { userId: "user_ana", prompt: "Kyoto", model: "m", tree: tokyoAdventure }),
