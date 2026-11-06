@@ -3,7 +3,7 @@ import type { Id } from "@trip/backend/dataModel";
 import { optimisticSetCompleted } from "@trip/backend/optimistic";
 import { useI18n } from "@trip/i18n/react";
 import { TRAVELER_PRICE } from "@trip/ui";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
@@ -92,22 +92,32 @@ export function useToggleDone() {
   const restore = useMutation(api.activities.restoreCompleted);
   const show = useContext(UndoContext);
   const { subscribe } = useSubscribe();
+  const locked = useQuery(api.billing.lockedTrips, {});
   const { t } = useI18n();
+  // Explained here, before the server is asked: a refused mutation still logs a red error in dev.
+  const explainLock = useCallback(
+    (isOwner: boolean) => {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      if (!isOwner) return Alert.alert(t("errors.organizerMustSubscribe"));
+      Alert.alert(t("errors.subscribeToStart"), t("billing.lockedBody"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("billing.subscribe", { price: TRAVELER_PRICE }), onPress: () => void subscribe() },
+      ]);
+    },
+    [subscribe, t],
+  );
   return useCallback(
-    async (activity: { _id: Id<"activities">; title: string }, isCompleted: boolean) => {
+    async (activity: { _id: Id<"activities">; tripId: Id<"trips">; title: string }, isCompleted: boolean) => {
+      const lock = locked?.find((l) => l.tripId === activity.tripId);
+      if (lock) return explainLock(lock.isOwner);
       let changed: Id<"activities">[];
       try {
         changed = await setCompleted({ activityId: activity._id, isCompleted });
       } catch (e) {
         // The optimistic check rolls back on its own; say why instead of a red error screen.
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         const message = serverMessage(e) ?? t("common.somethingWrong");
-        if (message === t("errors.subscribeToStart")) {
-          Alert.alert(message, t("billing.lockedBody"), [
-            { text: t("common.cancel"), style: "cancel" },
-            { text: t("billing.subscribe", { price: TRAVELER_PRICE }), onPress: () => void subscribe() },
-          ]);
-        } else Alert.alert(message);
+        if (message === t("errors.subscribeToStart")) explainLock(true);
+        else Alert.alert(message);
         return;
       }
       if (isCompleted && changed.length > 0) {
@@ -115,7 +125,7 @@ export function useToggleDone() {
         show(steps > 0 ? t("undo.doneWithSteps", { title: activity.title, count: steps }) : t("undo.done", { title: activity.title }), () => void restore({ activityIds: changed, isCompleted: false }));
       }
     },
-    [setCompleted, restore, show, subscribe, t],
+    [locked, explainLock, setCompleted, restore, show, t],
   );
 }
 

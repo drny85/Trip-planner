@@ -18,7 +18,7 @@ import { deleteJournal } from "./journal";
 import { deleteTripVotes } from "./groupVotes";
 
 /** Trips the user owns or has joined, soonest first. */
-async function myTrips(ctx: QueryCtx, userId: string) {
+export async function myTrips(ctx: QueryCtx, userId: string) {
   const [owned, memberships] = await Promise.all([
     ctx.db
       .query("trips")

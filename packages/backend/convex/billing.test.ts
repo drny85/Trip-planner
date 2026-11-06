@@ -39,6 +39,7 @@ test("the first trip is free to plan, but starting it needs a subscription", asy
   const [trip] = await ana.query(api.trips.list, {});
   expect(await ana.query(api.billing.status, {})).toMatchObject({ blocked: "subscribe", tripsCreated: 1 });
   expect(await ana.query(api.billing.tripLocked, { tripId: trip!._id })).toEqual({ locked: true, isOwner: true });
+  expect(await ana.query(api.billing.lockedTrips, {})).toEqual([{ tripId: trip!._id, isOwner: true }]);
 
   // Can't start it…
   const activity = await firstActivity(ana, trip!._id);
@@ -61,6 +62,7 @@ test("subscribers can start trips and keep up to 3 upcoming", async () => {
   const save = () => ana.mutation(internal.trips.saveGenerated, { userId: "user_ana", prompt: "Tokyo", model: "m", tree: tokyoAdventure });
   const first = await save();
   await save();
+  expect(await ana.query(api.billing.lockedTrips, {})).toEqual([]);
   await save();
   expect(await ana.query(api.billing.status, {})).toMatchObject({ subscribed: true, upcoming: 3, blocked: "tooManyUpcoming" });
   await expect(save()).rejects.toThrow("You already have 3 upcoming trips");

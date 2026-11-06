@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { getOptionalUserId, getUserId, authEnabled } from "./lib/auth";
 import { billingRow, planKey, tripAllowance, tripUnlocked } from "./lib/billing";
+import { myTrips } from "./trips";
 
 /**
  * Subscriptions run on Clerk Billing. Convex learns who is subscribed two ways:
@@ -22,6 +23,21 @@ export const status = query({
     const userId = await getOptionalUserId(ctx);
     if (!userId) return null;
     return { ...(await tripAllowance(ctx, userId)), enforced: authEnabled() };
+  },
+});
+
+/**
+ * The caller's trips that can't be started yet, so the apps can explain the lock
+ * before calling a mutation that would only refuse.
+ */
+export const lockedTrips = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getOptionalUserId(ctx);
+    if (!userId || !authEnabled()) return [];
+    const trips = await myTrips(ctx, userId);
+    const unlocked = await Promise.all(trips.map((trip) => tripUnlocked(ctx, trip)));
+    return trips.filter((_, i) => !unlocked[i]).map((trip) => ({ tripId: trip._id, isOwner: trip.userId === userId }));
   },
 });
 

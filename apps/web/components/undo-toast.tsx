@@ -4,7 +4,7 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { optimisticSetCompleted } from "@trip/backend/optimistic";
 import { useI18n } from "@trip/i18n/react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -79,18 +79,28 @@ export function useToggleDone() {
   const restore = useMutation(api.activities.restoreCompleted);
   const show = useContext(UndoContext);
   const router = useRouter();
+  const locked = useQuery(api.billing.lockedTrips, {});
   const { t } = useI18n();
+  // Explained here, before the server is asked, so a locked trip never shows a refused request.
+  const explainLock = useCallback(
+    (isOwner: boolean) => {
+      if (!isOwner) return window.alert(t("errors.organizerMustSubscribe"));
+      if (window.confirm(`${t("errors.subscribeToStart")}\n\n${t("billing.lockedBody")}`)) router.push("/pricing");
+    },
+    [router, t],
+  );
   return useCallback(
-    async (activity: { _id: Id<"activities">; title: string }, isCompleted: boolean) => {
+    async (activity: { _id: Id<"activities">; tripId: Id<"trips">; title: string }, isCompleted: boolean) => {
+      const lock = locked?.find((l) => l.tripId === activity.tripId);
+      if (lock) return explainLock(lock.isOwner);
       let changed: Id<"activities">[];
       try {
         changed = await setCompleted({ activityId: activity._id, isCompleted });
       } catch (e) {
         // The optimistic check rolls back on its own; say why instead of an unhandled error.
         const message = serverMessage(e) ?? t("common.somethingWrong");
-        if (message === t("errors.subscribeToStart")) {
-          if (window.confirm(`${message}\n\n${t("billing.lockedBody")}`)) router.push("/pricing");
-        } else window.alert(message);
+        if (message === t("errors.subscribeToStart")) explainLock(true);
+        else window.alert(message);
         return;
       }
       if (isCompleted && changed.length > 0) {
@@ -98,7 +108,7 @@ export function useToggleDone() {
         show(steps > 0 ? t("undo.doneWithSteps", { title: activity.title, count: steps }) : t("undo.done", { title: activity.title }), () => void restore({ activityIds: changed, isCompleted: false }));
       }
     },
-    [setCompleted, restore, show, router, t],
+    [locked, explainLock, setCompleted, restore, show, t],
   );
 }
 
