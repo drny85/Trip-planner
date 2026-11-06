@@ -27,6 +27,7 @@ import { shareCalendar } from "@/lib/calendar";
 import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
 import { BookingsProvider, BookingsSection } from "./bookings";
+import { FlightsSection } from "./flights";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { JournalProvider, StoryCard } from "./journal";
@@ -158,6 +159,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <TodayBanner trip={trip} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
+        <FlightsSection tripId={trip._id} days={trip.subTrips} />
         <BookingsSection tripId={trip._id} days={trip.subTrips} />
         <GroupVotesSection tripId={trip._id} subTrips={trip.subTrips} />
         {trip.subTrips.map((subTrip, index) => (

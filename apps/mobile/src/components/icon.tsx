@@ -30,6 +30,7 @@ const icons = {
   bell: { ios: "bell.fill", android: "notifications", web: "notifications" },
   lockScreen: { ios: "iphone.badge.play", android: "smartphone", web: "smartphone" },
   undo: { ios: "arrow.uturn.backward", android: "undo", web: "undo" },
+  airplane: { ios: "airplane", android: "flight", web: "flight" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 
 export type IconName = keyof typeof icons;

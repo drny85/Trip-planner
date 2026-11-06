@@ -78,3 +78,17 @@ export const TRAVELER_PRICE = "$5.99";
 export { betterTime, CROWD_DAY, CROWD_META, crowdBar, crowdPosition, inPeak, TIP_EMOJI, type Crowd, type CrowdLevel, type TipKind } from "./local";
 export { flightTone, isUpcoming, priceSummary, sparkline, type FlightTone } from "./alerts";
 export { currencyChoices, currencyForRegion, currencyFromLocales, CURRENCIES, isCurrencyCode } from "./currency";
+export {
+  ARRIVAL_BUFFER_MIN,
+  daysUntil,
+  DEPARTURE_BUFFER_MIN,
+  fareAdvice,
+  fareHistory,
+  fareTrend,
+  flexGrid,
+  flightFit,
+  type FareLevel,
+  type FareVerdict,
+  type FareWhy,
+  type FlexCellView,
+} from "./fares";

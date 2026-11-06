@@ -16,6 +16,7 @@ import type * as alerts from "../alerts.js";
 import type * as bookings from "../bookings.js";
 import type * as crons from "../crons.js";
 import type * as expenses from "../expenses.js";
+import type * as fares from "../fares.js";
 import type * as fx from "../fx.js";
 import type * as http from "../http.js";
 import type * as groupVotes from "../groupVotes.js";
@@ -28,6 +29,7 @@ import type * as lib_webhook from "../lib/webhook.js";
 import type * as lib_budget from "../lib/budget.js";
 import type * as lib_categories from "../lib/categories.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
+import type * as lib_fares from "../lib/fares.js";
 import type * as lib_fx from "../lib/fx.js";
 import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as places from "../places.js";
@@ -83,6 +85,7 @@ import type * as users from "../users.js";
 "bookings": typeof bookings,
 "crons": typeof crons,
 "expenses": typeof expenses,
+"fares": typeof fares,
 "fx": typeof fx,
 "http": typeof http,
 "groupVotes": typeof groupVotes,
@@ -95,6 +98,7 @@ import type * as users from "../users.js";
 "lib/budget": typeof lib_budget,
 "lib/categories": typeof lib_categories,
 "lib/fakeData": typeof lib_fakeData,
+"lib/fares": typeof lib_fares,
 "lib/fx": typeof lib_fx,
 "lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
