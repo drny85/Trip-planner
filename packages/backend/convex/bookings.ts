@@ -5,6 +5,7 @@ import { internalAction, internalMutation, internalQuery, mutation, query, type 
 import { createFormat, defaultLocale, formatTagFor, isLocale, languageInEnglish, translator, type Locale } from "@trip/i18n";
 import { aiVia, generateStructured, type AiFile } from "./ai";
 import { deleteAlertsFor, ensureFlightTrack } from "./alerts";
+import { markFareBooked } from "./fares";
 import { getMemberTrip, getOptionalUserId, findMembership, getOwnedTrip } from "./lib/auth";
 import {
   type Booking,
@@ -367,7 +368,11 @@ export const apply = mutation({
       const bookingId = await ctx.db.insert("bookings", { tripId: trip._id, activityId, importId, addedBy: userId, ...proposal.booking });
       // Flights with a flight number get delay and gate alerts by themselves.
       const saved = await ctx.db.get("bookings", bookingId);
-      if (saved?.kind === "flight") await ensureFlightTrack(ctx, saved);
+      if (saved?.kind === "flight") {
+        await ensureFlightTrack(ctx, saved);
+        // They booked: their fare watch is done, live tracking takes over.
+        await markFareBooked(ctx, trip._id, userId);
+      }
       added.push(activityId);
     }
     await ctx.db.patch("bookingImports", importId, { status: "applied", text: undefined });

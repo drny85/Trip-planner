@@ -12,7 +12,9 @@ export type NotificationKind =
   | "priceDrop"
   | "flightDelay"
   | "flightGate"
-  | "flightCanceled";
+  | "flightCanceled"
+  | "fareDrop"
+  | "fareTarget";
 
 /**
  * What a notification says, stored as data so each reader sees it in their own

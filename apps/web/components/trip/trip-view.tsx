@@ -16,6 +16,7 @@ import { EASE_OUT, layoutSpring, rise, useParallax } from "@/lib/motion";
 import { ScrollProgress } from "@/components/marketing/sections";
 import { ActivityItem } from "./activity-item";
 import { BookingsProvider, Bookings } from "./bookings";
+import { Flights } from "./flights";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
@@ -133,6 +134,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
         <BudgetCard trip={trip} />
         {mode !== "public" && <Crew tripId={trip._id} />}
         {storyToken && <StoryBanner token={storyToken} />}
+        {mode !== "public" && <Flights tripId={trip._id} days={trip.subTrips} />}
         {mode !== "public" && <Bookings tripId={trip._id} days={trip.subTrips} />}
         {mode !== "public" && <GroupVotes tripId={trip._id} subTrips={trip.subTrips} />}
         {mode === "public" && (

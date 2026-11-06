@@ -191,6 +191,18 @@ npx convex run alerts:backfillFlightTracks          # once, to track flights add
 
 Without keys nothing is called and the bookings list says alerts are off.
 
+### Flights for travelers who haven't booked yet
+
+The trip page's **Flights** card (`convex/fares.ts`, `convex/lib/fares.ts`, advice in `packages/ui/src/fares.ts`) watches fares from the traveler's home airport (remembered on their profile) for the trip's dates, using the same `SERPAPI_API_KEY`:
+
+- **Fare watch:** today's cheapest fare, the 3 best options, Google's price level and typical range, and a price trend. The apps turn these into a "good time to book?" hint (book in the last 2 weeks or when it's low, wait when it's falling far out, and so on).
+- **Alerts:** only the watcher gets a push, on a real drop (same 5% / 10-unit rule) or once the fare reaches the target they set.
+- **Nearby dates:** on request, the same trip moved ±3 days (6 searches, at most once a day per watch). The organizer can move the whole trip to a cheaper window while nothing is booked.
+- **Book, then track:** "Book" opens Google Flights. Coming back, they're asked "Booked it?" and can add the confirmation through booking import; the flight then gets live status like any other, and the fare watch ends.
+- **Fit the plan:** once flights are on the trip, the organizer can have the AI re-plan day 1 from about 90 minutes after landing, and the last day so they leave for the airport 3 hours before take-off (it reuses the day re-plan).
+
+Fare checks run daily after the booking price checks, at most `FARE_CHECKS_PER_DAY` (default 3). Both share SerpApi's 250 searches a month, so lower `PRICE_CHECKS_PER_DAY` or upgrade the plan if fare watches get busy.
+
 ## Sharing and maps
 
 - **Share a trip:** the Share button (web hero, or "Share trip" on mobile) creates a random read-only link at `/share/<token>` on the web app. Anyone with the link can view the trip without signing in, and nobody can edit it through it. "Stop sharing" turns the link off. On mobile, set `EXPO_PUBLIC_WEB_URL` to your deployed web URL so shared links point to it.

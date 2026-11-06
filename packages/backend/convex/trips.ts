@@ -3,6 +3,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { deleteTripBookings } from "./bookings";
+import { deleteTripFares } from "./fares";
 import { translator } from "@trip/i18n";
 import { findMembership, getOptionalUserId, getOwnedTrip, getUserId } from "./lib/auth";
 import { copyTripTree, isIsoDate } from "./lib/copyTrip";
@@ -229,6 +230,7 @@ export const remove = mutation({
     await deleteJournal(ctx, tripId);
     await deleteTripVotes(ctx, tripId);
     await deleteTripBookings(ctx, tripId);
+    await deleteTripFares(ctx, tripId);
     await ctx.db.delete("trips", tripId);
   },
 });
