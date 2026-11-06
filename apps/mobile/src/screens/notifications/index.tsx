@@ -9,7 +9,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import Animated, { FadeIn } from "react-native-reanimated";
 import { EASE_OUT } from "@/lib/motion";
 
-const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝", priceDrop: "📉", flightDelay: "⏰", flightGate: "🚪", flightCanceled: "⚠️" } as const;
+const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝", groupPlan: "🗳️", priceDrop: "📉", flightDelay: "⏰", flightGate: "🚪", flightCanceled: "⚠️" } as const;
 
 
 /** What the crew has been up to: ideas, votes, joins and shared costs. */

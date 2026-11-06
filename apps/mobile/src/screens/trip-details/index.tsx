@@ -34,6 +34,7 @@ import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingSection } from "./packing";
 import { SplitCostsSection } from "./split-costs";
 import { Crew, IdeasSection } from "./together";
+import { GroupVotesSection } from "./group-votes";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 import { TodayBanner } from "./today-banner";
@@ -156,6 +157,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
         <BookingsSection tripId={trip._id} days={trip.subTrips} />
+        <GroupVotesSection tripId={trip._id} subTrips={trip.subTrips} />
         {trip.subTrips.map((subTrip, index) => (
           <View
             key={subTrip._id}

@@ -8,6 +8,7 @@ export type NotificationKind =
   | "joined"
   | "expense"
   | "settled"
+  | "groupPlan"
   | "priceDrop"
   | "flightDelay"
   | "flightGate"

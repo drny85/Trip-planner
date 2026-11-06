@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { EASE_OUT } from "@/lib/motion";
 
-const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝", priceDrop: "📉", flightDelay: "⏰", flightGate: "🚪", flightCanceled: "⚠️" } as const;
+const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝", groupPlan: "🗳️", priceDrop: "📉", flightDelay: "⏰", flightGate: "🚪", flightCanceled: "⚠️" } as const;
 
 
 /** Bell with an unread badge, and a dropdown of what the crew has been up to. */

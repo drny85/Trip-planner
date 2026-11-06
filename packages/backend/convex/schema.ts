@@ -284,6 +284,7 @@ export default defineSchema({
       v.literal("joined"),
       v.literal("expense"),
       v.literal("settled"),
+      v.literal("groupPlan"),
       v.literal("priceDrop"),
       v.literal("flightDelay"),
       v.literal("flightGate"),
@@ -334,6 +335,22 @@ export default defineSchema({
     .index("by_suggestionId_userId", ["suggestionId", "userId"])
     .index("by_tripId", ["tripId"]),
 
+  /**
+   * Group voting on stops already in the itinerary (lib/groupVotes.ts): one row
+   * per person per stop, with a 👍/👎 and an optional top-3 pick (1, 2 or 3).
+   * A top pick always counts as 👍.
+   */
+  activityVotes: defineTable({
+    tripId: v.id("trips"),
+    activityId: v.id("activities"),
+    userId: v.string(),
+    value: v.optional(v.union(v.literal("up"), v.literal("down"))),
+    pick: v.optional(v.number()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_tripId_userId", ["tripId", "userId"])
+    .index("by_activityId_userId", ["activityId", "userId"]),
+
   /** A day ("Day 1") or a leg ("Kyoto Leg") of a trip. */
   subTrips: defineTable({
     tripId: v.id("trips"),
@@ -342,7 +359,19 @@ export default defineSchema({
     date: v.optional(v.string()),
     location: v.optional(v.string()),
     order: v.number(),
+    /** When "local's pick" swapped this day's tourist spots for local favorites. */
+    localPickAt: v.optional(v.number()),
   }).index("by_tripId_order", ["tripId", "order"]),
+
+  /**
+   * What a day looked like before "local's pick", so the swap can be undone:
+   * the activities it replaced and the ones it added. One per day while it's on.
+   */
+  localPickSnapshots: defineTable({
+    subTripId: v.id("subTrips"),
+    replaced: v.array(v.object({ ...activityFields, photoCredit: v.optional(v.string()), placeId: v.optional(v.string()), order: v.number() })),
+    addedIds: v.array(v.id("activities")),
+  }).index("by_subTripId", ["subTripId"]),
 
   /**
    * Places whose Google photo our /place-photo route may serve. Only place IDs we

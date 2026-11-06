@@ -11,6 +11,7 @@ import { buildTree } from "./lib/tree";
 import { tripTreeInput } from "./lib/validators";
 import type { PublicTripDetails, TripDetails } from "./lib/types";
 import { deleteJournal } from "./journal";
+import { deleteTripVotes } from "./groupVotes";
 
 /** Trips the user owns or has joined, soonest first. */
 async function myTrips(ctx: QueryCtx, userId: string) {
@@ -182,6 +183,9 @@ export const remove = mutation({
     await Promise.all([
       ...activities.map((a) => ctx.db.delete("activities", a._id)),
       ...subTrips.map((s) => ctx.db.delete("subTrips", s._id)),
+      ...(await Promise.all(subTrips.map((s) => ctx.db.query("localPickSnapshots").withIndex("by_subTripId", (q) => q.eq("subTripId", s._id)).collect())))
+        .flat()
+        .map((snap) => ctx.db.delete("localPickSnapshots", snap._id)),
       ...members.map((m) => ctx.db.delete("tripMembers", m._id)),
       ...suggestions.map((s) => ctx.db.delete("suggestions", s._id)),
       ...votes.map((x) => ctx.db.delete("votes", x._id)),
@@ -193,6 +197,7 @@ export const remove = mutation({
       ...notifications.map((n) => ctx.db.delete("notifications", n._id)),
     ]);
     await deleteJournal(ctx, tripId);
+    await deleteTripVotes(ctx, tripId);
     await deleteTripBookings(ctx, tripId);
     await ctx.db.delete("trips", tripId);
   },
