@@ -51,7 +51,17 @@ export async function generateViaGateway<S extends z.ZodType>(models: string[], 
       : { prompt: content }),
     output: Output.object({ schema: spec.schema }),
     maxOutputTokens: MAX_TOKENS[tier],
-    providerOptions: fallbacks.length ? { gateway: { models: fallbacks } } : undefined,
+    providerOptions: {
+      // Claude answers in its native structured-output format (output_config.format)
+      // instead of a forced "json" tool. The AI SDK only does that on its own for
+      // schemas with at most 10 optional fields; ours have up to 21, so it fell back
+      // to a forced tool call, which Claude rejects while thinking (toolChoice
+      // 'required' -> 'auto', and the model could skip the tool). The API allows 24
+      // optional fields: structuredSchemas.test.ts keeps every schema under that.
+      // Ignored by the other providers in the fallback list.
+      anthropic: { structuredOutputMode: "outputFormat" },
+      ...(fallbacks.length ? { gateway: { models: fallbacks } } : {}),
+    },
   }).catch((error: unknown) => {
     // A reply that doesn't match the schema (often a cut-off one) is retried a tier up.
     if (NoObjectGeneratedError.isInstance(error)) return null;
