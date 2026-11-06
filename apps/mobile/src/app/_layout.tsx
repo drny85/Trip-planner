@@ -79,6 +79,10 @@ function AppStack() {
         options={{ title: t("mobile.titleReplan"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
       <Stack.Screen
+        name="trips/[tripId]/local/[subTripId]"
+        options={{ title: t("local.button"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
+      <Stack.Screen
         name="trips/[tripId]/group-plan"
         options={{ title: t("groupVote.title"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
