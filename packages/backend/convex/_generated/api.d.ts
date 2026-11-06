@@ -15,6 +15,7 @@ import type * as bookings from "../bookings.js";
 import type * as expenses from "../expenses.js";
 import type * as fx from "../fx.js";
 import type * as http from "../http.js";
+import type * as groupVotes from "../groupVotes.js";
 import type * as journal from "../journal.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_bookings from "../lib/bookings.js";
@@ -29,6 +30,7 @@ import type * as lib_interview from "../lib/interview.js";
 import type * as lib_localPick from "../lib/localPick.js";
 import type * as localPicks from "../localPicks.js";
 import type * as lib_majority from "../lib/majority.js";
+import type * as lib_groupVotes from "../lib/groupVotes.js";
 import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
 import type * as lib_notify from "../lib/notify.js";
@@ -39,6 +41,7 @@ import type * as lib_replan from "../lib/replan.js";
 import type * as lib_settle from "../lib/settle.js";
 import type * as lib_splitDraft from "../lib/splitDraft.js";
 import type * as lib_story from "../lib/story.js";
+import type * as lib_subtree from "../lib/subtree.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as lib_tree from "../lib/tree.js";
 import type * as lib_tripSchema from "../lib/tripSchema.js";
@@ -73,6 +76,7 @@ import type * as users from "../users.js";
 "expenses": typeof expenses,
 "fx": typeof fx,
 "http": typeof http,
+"groupVotes": typeof groupVotes,
 "journal": typeof journal,
 "lib/auth": typeof lib_auth,
 "lib/bookings": typeof lib_bookings,
@@ -85,6 +89,7 @@ import type * as users from "../users.js";
 "lib/interview": typeof lib_interview,
 "lib/localPick": typeof lib_localPick,
 "lib/majority": typeof lib_majority,
+"lib/groupVotes": typeof lib_groupVotes,
 "lib/members": typeof lib_members,
 "lib/modelRouter": typeof lib_modelRouter,
 "lib/notify": typeof lib_notify,
@@ -95,6 +100,7 @@ import type * as users from "../users.js";
 "lib/settle": typeof lib_settle,
 "lib/splitDraft": typeof lib_splitDraft,
 "lib/story": typeof lib_story,
+"lib/subtree": typeof lib_subtree,
 "lib/tokens": typeof lib_tokens,
 "lib/tree": typeof lib_tree,
 "lib/tripSchema": typeof lib_tripSchema,
