@@ -27,6 +27,8 @@ import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as places from "../places.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
 import type * as lib_interview from "../lib/interview.js";
+import type * as lib_localPick from "../lib/localPick.js";
+import type * as localPicks from "../localPicks.js";
 import type * as lib_majority from "../lib/majority.js";
 import type * as lib_groupVotes from "../lib/groupVotes.js";
 import type * as lib_members from "../lib/members.js";
@@ -85,6 +87,7 @@ import type * as users from "../users.js";
 "lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
 "lib/interview": typeof lib_interview,
+"lib/localPick": typeof lib_localPick,
 "lib/majority": typeof lib_majority,
 "lib/groupVotes": typeof lib_groupVotes,
 "lib/members": typeof lib_members,
@@ -105,6 +108,7 @@ import type * as users from "../users.js";
 "lib/upNext": typeof lib_upNext,
 "lib/validators": typeof lib_validators,
 "lib/wikiPhotos": typeof lib_wikiPhotos,
+"localPicks": typeof localPicks,
 "members": typeof members,
 "memories": typeof memories,
 "notifications": typeof notifications,

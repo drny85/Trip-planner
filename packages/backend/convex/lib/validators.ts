@@ -23,6 +23,30 @@ export const tripWeather = v.object({
   snowyDays: v.number(),
 });
 
+/**
+ * Local tips on an activity: when to go, what to order, free days, insider
+ * tricks, and what to skip. Written by the AI in the traveler's language.
+ */
+export const TIP_KINDS = ["time", "order", "free", "insider", "avoid"] as const;
+export type TipKind = (typeof TIP_KINDS)[number];
+export const localTip = v.object({
+  kind: v.union(v.literal("time"), v.literal("order"), v.literal("free"), v.literal("insider"), v.literal("avoid")),
+  text: v.string(),
+});
+
+/** How busy a place is likely to be at the planned time, and when it's calmer. */
+export const CROWD_LEVELS = ["quiet", "moderate", "busy", "packed"] as const;
+export type CrowdLevel = (typeof CROWD_LEVELS)[number];
+export const crowdForecast = v.object({
+  /** At the planned start time, on that day of the week. */
+  level: v.union(v.literal("quiet"), v.literal("moderate"), v.literal("busy"), v.literal("packed")),
+  /** Busiest stretch of that day, local "HH:mm". */
+  peakFrom: v.optional(v.string()),
+  peakTo: v.optional(v.string()),
+  /** The calmest good time to arrive, local "HH:mm". */
+  bestTime: v.optional(v.string()),
+});
+
 /** Editable activity fields (everything except ids, order and completion). */
 export const activityFields = {
   title: v.string(),
@@ -44,6 +68,11 @@ export const activityFields = {
   estimatedCost: v.optional(v.number()),
   /** What was actually spent per person, entered by the traveler. */
   actualCost: v.optional(v.number()),
+  /** Up to three local tips. */
+  localTips: v.optional(v.array(localTip)),
+  crowd: v.optional(crowdForecast),
+  /** A place locals love rather than a big tourist sight (a "hidden gem"). */
+  isLocalPick: v.optional(v.boolean()),
 };
 
 /** One level of sub-activities in seed/AI input; deeper nesting is added in the app. */

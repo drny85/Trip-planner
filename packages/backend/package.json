@@ -19,7 +19,8 @@
     "./packing": "./convex/lib/packingCategories.ts",
     "./promptAnswer": "./convex/lib/promptAnswer.ts",
     "./interview": "./convex/lib/interview.ts",
-    "./sample": "./convex/lib/fakeData.ts"
+    "./sample": "./convex/lib/fakeData.ts",
+    "./localPick": "./convex/lib/localPick.ts"
   },
   "scripts": {
     "dev": "convex dev",
