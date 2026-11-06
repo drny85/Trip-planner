@@ -18,6 +18,7 @@ import { ActivityNotes } from "./journal";
 import { ActivityPhotos } from "./memories";
 import { SubSteps } from "./sub-steps";
 import { useBookingFor } from "./bookings";
+import { VoteBar } from "./group-votes";
 
 /** `canEdit` is false for trip members: they check things off but don't edit. */
 type Props = { activity: Activity; tripId: Id<"trips">; isLast: boolean; canEdit: boolean };
@@ -158,6 +159,7 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                 </Button>
               ) : null}
             </View>
+            <VoteBar tripId={tripId} activityId={activity._id} title={activity.title} />
             <ActivityPhotos activityId={activity._id} />
             <ActivityNotes tripId={tripId} activityId={activity._id} isCompleted={done} />
           </View>

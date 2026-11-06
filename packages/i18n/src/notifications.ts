@@ -1,7 +1,7 @@
 import type { Format } from "./format";
 import type { Vars } from "./translate";
 
-export type NotificationKind = "idea" | "accepted" | "rejected" | "joined" | "expense" | "settled";
+export type NotificationKind = "idea" | "accepted" | "rejected" | "joined" | "expense" | "settled" | "groupPlan";
 
 /**
  * What a notification says, stored as data so each reader sees it in their own
