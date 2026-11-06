@@ -3,7 +3,7 @@ import type { Id } from "@trip/backend/dataModel";
 import { errorCode } from "@trip/backend/splitDraft";
 import { useI18n } from "@trip/i18n/react";
 import { cn, currencyChoices } from "@trip/ui";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -12,6 +12,7 @@ import { Alert, Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { EASE_IN_OUT, EASE_OUT } from "@/lib/motion";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 export type SplitData = NonNullable<FunctionReturnType<typeof api.expenses.forTrip>>;
 type T = ReturnType<typeof useI18n>["t"];
@@ -41,7 +42,7 @@ export function splitErrorMessage(t: T, e: unknown) {
 
 /** The group's shared costs: your balance, where everyone stands, who pays whom, and the history. */
 export function SplitCostsSection({ tripId }: { tripId: Id<"trips"> }) {
-  const data = useQuery(api.expenses.forTrip, { tripId });
+  const data = useCachedQuery(api.expenses.forTrip, { tripId }).data;
   const undo = useMutation(api.expenses.removePayment);
   const changeCurrency = useMutation(api.expenses.setGroupCurrency);
   const fetchRate = useAction(api.fx.rate);

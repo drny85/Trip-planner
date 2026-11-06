@@ -2,7 +2,7 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -11,6 +11,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanim
 import { Button } from "@/components/button";
 import { webUrl } from "@/lib/open";
 import { CSS_EASE_OUT, EASE_IN_OUT, EASE_OUT, enterUp } from "@/lib/motion";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 const AVATAR_COLORS = ["#0e7c66", "#6366f1", "#f97316", "#ec4899", "#0ea5e9", "#8b5cf6", "#16a34a", "#e11d48"];
 const colorFor = (id: string) => AVATAR_COLORS[[...id].reduce((h, c) => h + c.charCodeAt(0), 0) % AVATAR_COLORS.length]!;
@@ -37,7 +38,7 @@ function Avatar({ name, userId, size = 34 }: { name: string; userId: string; siz
 
 /** Who's going, plus the invite link (organizer) or a Leave button (member). */
 export function Crew({ tripId }: { tripId: Id<"trips"> }) {
-  const data = useQuery(api.members.forTrip, { tripId });
+  const data = useCachedQuery(api.members.forTrip, { tripId }).data;
   const createInvite = useMutation(api.members.createInvite);
   const revokeInvite = useMutation(api.members.revokeInvite);
   const removeMember = useMutation(api.members.remove);
@@ -97,7 +98,7 @@ type Day = { _id: Id<"subTrips">; dayNumber: number };
 
 /** Group ideas with yes/no voting. An idea joins the plan when more than half vote yes. */
 export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTrips: Day[] }) {
-  const data = useQuery(api.suggestions.forTrip, { tripId });
+  const data = useCachedQuery(api.suggestions.forTrip, { tripId }).data;
   const router = useRouter();
   const { t } = useI18n();
   if (!data) return null;

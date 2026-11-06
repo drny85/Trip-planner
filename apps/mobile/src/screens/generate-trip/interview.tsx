@@ -30,6 +30,7 @@ import { Button } from "@/components/button";
 import { PressableScale } from "@/components/pressable-scale";
 import { CSS_EASE_OUT, EASE_OUT, enterUp } from "@/lib/motion";
 import { Planning } from "./planning";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 const POPULAR = [
   { emoji: "🗼", name: "Tokyo" },
@@ -83,7 +84,9 @@ export function TripInterview({ onTypeInstead }: { onTypeInstead: () => void }) 
   };
   const hasDestination = answers.destination.trim().length >= 2;
 
+  const blockedOffline = useOfflineGuard();
   const submit = async () => {
+    if (blockedOffline()) return;
     setLoading(true);
     setError(null);
     try {

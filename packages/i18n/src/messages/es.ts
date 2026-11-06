@@ -1346,4 +1346,13 @@ export const es: Shape<typeof en> = {
     errMoveFar: "Un viaje se puede mover hasta 14 días cada vez.",
     errHasBookings: "Este viaje tiene reservas. Cámbialas primero y luego mueve las fechas.",
   },
+  offline: {
+    waiting: { one: "📴 Sin conexión · {count} marca se sincronizará cuando vuelvas", other: "📴 Sin conexión · {count} marcas se sincronizarán cuando vuelvas" },
+    syncing: { one: "Sincronizando {count} marca…", other: "Sincronizando {count} marcas…" },
+    synced: { one: "✓ Conectado de nuevo · {count} marca sincronizada", other: "✓ Conectado de nuevo · {count} marcas sincronizadas" },
+    notSaved: { one: "No se pudo guardar {count} marca", other: "No se pudieron guardar {count} marcas" },
+    needsConnection: "Estás sin conexión",
+    needsConnectionBody: "Esto necesita conexión a internet. Tu viaje, tus reservas y tu lista de equipaje siguen funcionando sin conexión.",
+    mapOffline: "📴 El mapa necesita conexión. Las paradas, direcciones y rutas están guardadas.",
+  },
 };

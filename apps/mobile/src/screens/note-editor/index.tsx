@@ -2,19 +2,20 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput } from "react-native";
 import { Button } from "@/components/button";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 const MAX_NOTE = 500;
 
 /** Sheet: write, edit or delete your journal note on a done activity. */
 export function NoteEditor({ tripId, activityId }: { tripId: Id<"trips">; activityId: Id<"activities"> }) {
-  const notes = useQuery(api.journal.notesForTrip, { tripId });
-  const trip = useQuery(api.trips.get, { tripId });
+  const notes = useCachedQuery(api.journal.notesForTrip, { tripId }).data;
+  const trip = useCachedQuery(api.trips.get, { tripId }).data;
   const save = useMutation(api.journal.saveNote);
   const router = useRouter();
   const [text, setText] = useState<string | null>(null);
