@@ -79,6 +79,17 @@ export { betterTime, CROWD_DAY, CROWD_META, crowdBar, crowdPosition, inPeak, TIP
 export { flightTone, isUpcoming, priceSummary, sparkline, type FlightTone } from "./alerts";
 export { currencyChoices, currencyForRegion, currencyFromLocales, CURRENCIES, isCurrencyCode } from "./currency";
 export {
+  FLIGHT_PATH,
+  flightPoint,
+  formatElapsed,
+  PLANNING_FACT_EVERY,
+  PLANNING_STOPS,
+  PLANNING_SLOW_AFTER,
+  PLANNING_STAGES,
+  planningProgress,
+  planningStage,
+} from "./planning";
+export {
   ARRIVAL_BUFFER_MIN,
   daysUntil,
   DEPARTURE_BUFFER_MIN,
