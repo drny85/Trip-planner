@@ -4,7 +4,7 @@ import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { api } from "@trip/backend/api";
 import { useI18n } from "@trip/i18n/react";
 import { UndoToastProvider } from "./undo-toast";
-import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
+import { ConvexProviderWithAuth, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { MotionConfig } from "motion/react";
 import { Fragment, useEffect, type ReactNode } from "react";
@@ -32,10 +32,10 @@ function ConvexProviders({ children }: { children: ReactNode }) {
   if (!convex) return <MissingConfig />;
   if (!clerkKey)
     return (
-      <ConvexProvider client={convex}>
+      <ConvexProviderWithAuth client={convex} useAuth={useNoAuth}>
         <SyncLanguage />
         {children}
-      </ConvexProvider>
+      </ConvexProviderWithAuth>
     );
   return (
     <ClerkProvider publishableKey={clerkKey}>
@@ -46,6 +46,12 @@ function ConvexProviders({ children }: { children: ReactNode }) {
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );
+}
+
+/** Demo mode has no sign-in, but useConvexAuth still needs an auth provider above it. */
+const noAuth = { isLoading: false, isAuthenticated: false, fetchAccessToken: async () => null };
+function useNoAuth() {
+  return noAuth;
 }
 
 function SyncUser() {
