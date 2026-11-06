@@ -15,6 +15,7 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
+import { launchSystemScheme } from "@/lib/theme";
 import { geometry } from "./geometry";
 
 // Keep the native splash up until the animated one has drawn its first frame,
@@ -44,7 +45,11 @@ const ease = Easing.bezier(0.22, 1, 0.36, 1);
  * With Reduce Motion on, it just fades.
  */
 export function AnimatedSplash() {
+  // The native splash follows the phone's setting; the app may use a different theme.
+  // Start in the native look and cross-fade to the app's, so the hand-off doesn't jump.
+  const nativeDark = launchSystemScheme === "dark";
   const dark = useColorScheme() === "dark";
+  const switchTheme = nativeDark !== dark;
   const reduced = useReducedMotion();
   const [done, setDone] = useState(Platform.OS === "web");
 
@@ -55,6 +60,7 @@ export function AnimatedSplash() {
   const spark = useSharedValue(0);
   const title = useSharedValue(0);
   const exit = useSharedValue(0);
+  const themed = useSharedValue(0);
 
   const [started, setStarted] = useState(false);
 
@@ -66,6 +72,7 @@ export function AnimatedSplash() {
         if (ok) scheduleOnRN(finish);
       }));
 
+    if (switchTheme) themed.value = withTiming(1, { duration: reduced ? 200 : 420, easing: Easing.inOut(Easing.quad) });
     if (reduced) {
       exit.value = out(350, 260);
       return;
@@ -77,9 +84,10 @@ export function AnimatedSplash() {
     spark.value = withDelay(beat.sparkle, withSpring(1, { damping: 8, stiffness: 180 }));
     title.value = withDelay(beat.title, withTiming(1, { duration: 520, easing: ease }));
     exit.value = out(beat.exit, 460);
-  }, [started, reduced, glow, sunScale, route, hop, spark, title, exit]);
+  }, [started, reduced, switchTheme, glow, sunScale, route, hop, spark, title, exit, themed]);
 
   const overlayStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
+  const themedStyle = useAnimatedStyle(() => ({ opacity: themed.value }));
   const stageStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 + exit.value * 0.28 }] }));
   const pinStyle = useAnimatedStyle(() => ({
     transform: [
@@ -104,6 +112,7 @@ export function AnimatedSplash() {
 
   if (done) return null;
 
+  const nativeBackground = nativeDark ? geometry.colors.dark : geometry.colors.light;
   const background = dark ? geometry.colors.dark : geometry.colors.light;
   const dotColor = dark ? geometry.colors.dotDark : geometry.colors.dotLight;
   const { sun, sparkle } = geometry;
@@ -111,13 +120,14 @@ export function AnimatedSplash() {
   return (
     <Animated.View
       pointerEvents="none"
-      style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: background }, overlayStyle]}
+      style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: nativeBackground }, overlayStyle]}
       onLayout={() => {
         // The first frame is on screen and matches the native splash, so swap them.
         SplashScreen.hide();
         setStarted(true);
       }}
     >
+      {switchTheme && <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: background }, themedStyle]} />}
       <Animated.View style={[styles.stage, stageStyle]}>
         {geometry.dots.map((dot, i) => (
           <RouteDot key={i} index={i} count={geometry.dots.length} progress={route} color={dotColor} {...dot} />
@@ -130,7 +140,12 @@ export function AnimatedSplash() {
           ]}
         />
         <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: `50% ${(geometry.pinTipY / 1024) * 100}%` }, pinStyle]}>
-          <Image source={dark ? art.pinDark : art.pinLight} style={StyleSheet.absoluteFill} contentFit="contain" />
+          <Image source={nativeDark ? art.pinDark : art.pinLight} style={StyleSheet.absoluteFill} contentFit="contain" />
+          {switchTheme && (
+            <Animated.View style={[StyleSheet.absoluteFill, themedStyle]}>
+              <Image source={dark ? art.pinDark : art.pinLight} style={StyleSheet.absoluteFill} contentFit="contain" />
+            </Animated.View>
+          )}
         </Animated.View>
         <Animated.View style={[StyleSheet.absoluteFill, { transformOrigin: `${(sun.cx / 1024) * 100}% ${(sun.cy / 1024) * 100}%` }, sunStyle]}>
           <Image source={art.sun} style={StyleSheet.absoluteFill} contentFit="contain" />
