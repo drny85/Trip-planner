@@ -31,6 +31,7 @@ import { DayMap } from "./day-map";
 import { PdfButton } from "./pdf-button";
 import { ShareButton } from "./share-button";
 import { UseTripButton } from "./use-trip";
+import { TripChat } from "./trip-chat";
 import { TodayBanner } from "@/components/today/today-banner";
 import { TripLockedBanner } from "@/components/billing";
 
@@ -119,7 +120,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
     setDropTarget(null);
   };
 
-  return (
+  const page = (
     <MemoriesProvider tripId={trip._id} enabled={canCheck}>
     <JournalProvider tripId={trip._id} enabled={canCheck}>
     <BookingsProvider tripId={trip._id} enabled={canCheck}>
@@ -292,6 +293,8 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
     </JournalProvider>
     </MemoriesProvider>
   );
+  // The group chat is for people on the trip only, never share-link viewers.
+  return mode === "public" ? page : <TripChat tripId={trip._id} days={trip.subTrips}>{page}</TripChat>;
 }
 
 function Hero({ trip, action }: { trip: PublicTripDetails; action?: React.ReactNode }) {

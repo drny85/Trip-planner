@@ -70,3 +70,36 @@ export function optimisticRemove(store: OptimisticLocalStore, args: { activityId
     }),
   );
 }
+
+/**
+ * Shows a sent chat message right away, at the bottom of every open copy of
+ * that trip's chat. The server's copy (with its link details) replaces it.
+ */
+export function optimisticSendChat(
+  store: OptimisticLocalStore,
+  args: { tripId: Id<"trips">; text: string; activityId?: Id<"activities">; suggestionId?: Id<"suggestions"> },
+) {
+  for (const { args: queryArgs, value } of store.getAllQueries(api.chat.list)) {
+    if (!value || queryArgs.tripId !== args.tripId) continue;
+    const mine = [...value.messages].reverse().find((m) => m.isMine);
+    const now = Date.now();
+    store.setQuery(api.chat.list, queryArgs, {
+      ...value,
+      messages: [
+        ...value.messages,
+        {
+          _id: `pending-${now}` as Id<"chatMessages">,
+          _creationTime: now,
+          authorId: mine?.authorId ?? "me",
+          authorName: mine?.authorName ?? "",
+          authorImageUrl: mine?.authorImageUrl,
+          authorIsMember: true,
+          isMine: true,
+          text: args.text.trim(),
+          deleted: false,
+          link: undefined,
+        },
+      ],
+    });
+  }
+}

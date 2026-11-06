@@ -20,7 +20,8 @@
     "./promptAnswer": "./convex/lib/promptAnswer.ts",
     "./interview": "./convex/lib/interview.ts",
     "./sample": "./convex/lib/fakeData.ts",
-    "./localPick": "./convex/lib/localPick.ts"
+    "./localPick": "./convex/lib/localPick.ts",
+    "./chat": "./convex/lib/chat.ts"
   },
   "scripts": {
     "dev": "convex dev",

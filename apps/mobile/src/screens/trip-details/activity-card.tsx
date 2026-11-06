@@ -164,6 +164,14 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
                   {t("activity.website")}
                 </Button>
               ) : null}
+              <Button
+                size="sm"
+                variant="secondary"
+                icon="chat"
+                onPress={() => router.push({ pathname: "/trips/[tripId]/chat", params: { tripId, activityId: activity._id } })}
+              >
+                {t("chat.discuss")}
+              </Button>
             </View>
             <VoteBar tripId={tripId} activityId={activity._id} title={activity.title} />
             <ActivityPhotos activityId={activity._id} />

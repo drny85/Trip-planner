@@ -9,6 +9,8 @@ import { useRouter } from "expo-router";
 import { Alert, Pressable, Share, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
+import { PressableScale } from "@/components/pressable-scale";
 import { webUrl } from "@/lib/open";
 import { CSS_EASE_OUT, EASE_IN_OUT, EASE_OUT, enterUp } from "@/lib/motion";
 
@@ -157,6 +159,7 @@ export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTri
 function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: string }) {
   const vote = useMutation(api.suggestions.vote);
   const withdraw = useMutation(api.suggestions.withdraw);
+  const router = useRouter();
   const { t, f, category } = useI18n();
   const badge = category(idea.category, idea.subcategory);
   const { yes, no, members } = idea.tally;
@@ -215,6 +218,14 @@ function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: str
             </Button>
           );
         })}
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t("chat.discuss")}
+          onPress={() => router.push({ pathname: "/trips/[tripId]/chat", params: { tripId: idea.tripId, suggestionId: idea._id } })}
+          className="h-8 w-8 items-center justify-center rounded-full bg-muted"
+        >
+          <Icon name="chat" size={14} />
+        </PressableScale>
         {idea.isMine && (
           <Button size="sm" variant="ghost" onPress={() => void withdraw({ suggestionId: idea._id })}>
             {t("ideas.withdraw")}

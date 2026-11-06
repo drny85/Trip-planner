@@ -158,3 +158,16 @@ body {
   .animate-kenburns, .animate-blob, .shimmer, .text-gradient-animated, .conic-border, .animate-scroll-dot, .animate-caret { animation: none; }
   .shine::after { display: none; }
 }
+
+/* A chat link lands on a stop or idea: a brief ring so the eye finds it. */
+@keyframes chat-flash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  20%, 70% { box-shadow: 0 0 0 4px var(--color-primary); }
+}
+.chat-flash {
+  animation: chat-flash 1.6s ease-out;
+  border-radius: 1.5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-flash { animation-duration: 0.01s; outline: 3px solid var(--color-primary); }
+}
