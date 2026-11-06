@@ -1,5 +1,6 @@
 import { v, type Infer } from "convex/values";
 import { CATEGORIES } from "./categories";
+import { PACKING_CATEGORIES } from "./packingCategories";
 
 /**
  * Shared validators. The schema, the mutations and (later) the AI action all
@@ -8,6 +9,43 @@ import { CATEGORIES } from "./categories";
 
 const [first, second, ...rest] = CATEGORIES.map((c) => v.literal(c));
 export const activityCategory = v.union(first!, second!, ...rest);
+
+const [p1, p2, ...pRest] = PACKING_CATEGORIES.map((c) => v.literal(c));
+export const packingCategory = v.union(p1!, p2!, ...pRest);
+
+/** The trip's weather the packing list was made for (lib/packingAi.ts `TripWeather`). */
+export const tripWeather = v.object({
+  source: v.union(v.literal("forecast"), v.literal("lastYear")),
+  days: v.number(),
+  high: v.number(),
+  low: v.number(),
+  rainyDays: v.number(),
+  snowyDays: v.number(),
+});
+
+/**
+ * Local tips on an activity: when to go, what to order, free days, insider
+ * tricks, and what to skip. Written by the AI in the traveler's language.
+ */
+export const TIP_KINDS = ["time", "order", "free", "insider", "avoid"] as const;
+export type TipKind = (typeof TIP_KINDS)[number];
+export const localTip = v.object({
+  kind: v.union(v.literal("time"), v.literal("order"), v.literal("free"), v.literal("insider"), v.literal("avoid")),
+  text: v.string(),
+});
+
+/** How busy a place is likely to be at the planned time, and when it's calmer. */
+export const CROWD_LEVELS = ["quiet", "moderate", "busy", "packed"] as const;
+export type CrowdLevel = (typeof CROWD_LEVELS)[number];
+export const crowdForecast = v.object({
+  /** At the planned start time, on that day of the week. */
+  level: v.union(v.literal("quiet"), v.literal("moderate"), v.literal("busy"), v.literal("packed")),
+  /** Busiest stretch of that day, local "HH:mm". */
+  peakFrom: v.optional(v.string()),
+  peakTo: v.optional(v.string()),
+  /** The calmest good time to arrive, local "HH:mm". */
+  bestTime: v.optional(v.string()),
+});
 
 /** Editable activity fields (everything except ids, order and completion). */
 export const activityFields = {
@@ -30,6 +68,11 @@ export const activityFields = {
   estimatedCost: v.optional(v.number()),
   /** What was actually spent per person, entered by the traveler. */
   actualCost: v.optional(v.number()),
+  /** Up to three local tips. */
+  localTips: v.optional(v.array(localTip)),
+  crowd: v.optional(crowdForecast),
+  /** A place locals love rather than a big tourist sight (a "hidden gem"). */
+  isLocalPick: v.optional(v.boolean()),
 };
 
 /** One level of sub-activities in seed/AI input; deeper nesting is added in the app. */
@@ -63,3 +106,7 @@ export const tripTreeInput = v.object({
 export type ActivityInput = Infer<typeof activityInput>;
 export type SubTripInput = Infer<typeof subTripInput>;
 export type TripTreeInput = Infer<typeof tripTreeInput>;
+
+/** How an expense is divided. See SplitMode in lib/settle.ts. */
+export const splitMode = v.union(v.literal("equal"), v.literal("exact"), v.literal("shares"), v.literal("percent"));
+export const splitInput = v.object({ mode: splitMode, people: v.array(v.string()), values: v.optional(v.array(v.number())) });

@@ -122,3 +122,17 @@ test("the Clerk webhook checks its Svix signature, then re-reads the subscriptio
   await t.finishAllScheduledFunctions(vi.runAllTimers);
   expect(await ana.query(api.billing.status, {})).toMatchObject({ subscribed: true });
 });
+
+test("copying a shared trip counts as planning one", async () => {
+  const { t, ana } = await setup();
+  const bob = t.withIdentity({ subject: "user_bob", name: "Bob" });
+  await bob.mutation(internal.trips.saveGenerated, { userId: "user_bob", prompt: "Tokyo", model: "m", tree: tokyoAdventure });
+  const [shared] = await bob.query(api.trips.list, {});
+  const token = await bob.mutation(api.trips.share, { tripId: shared!._id });
+
+  // Ana's free trip can be a copy…
+  await ana.mutation(api.trips.copyShared, { token, startDate: "2027-04-10" });
+  expect(await ana.query(api.billing.status, {})).toMatchObject({ blocked: "subscribe", tripsCreated: 1 });
+  // …but a second copy needs a subscription.
+  await expect(ana.mutation(api.trips.copyShared, { token, startDate: "2027-05-10" })).rejects.toThrow("Subscribe to plan more trips");
+});

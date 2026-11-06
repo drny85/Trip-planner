@@ -27,6 +27,8 @@ const icons = {
   document: { ios: "doc.text.fill", android: "description", web: "description" },
   photo: { ios: "photo.on.rectangle", android: "image", web: "image" },
   mail: { ios: "envelope.fill", android: "mail", web: "mail" },
+  bell: { ios: "bell.fill", android: "notifications", web: "notifications" },
+  lockScreen: { ios: "iphone.badge.play", android: "smartphone", web: "smartphone" },
   undo: { ios: "arrow.uturn.backward", android: "undo", web: "undo" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 

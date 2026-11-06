@@ -12,10 +12,15 @@
   import type * as activities from "../activities.js";
 import type * as ai from "../ai.js";
 import type * as billing from "../billing.js";
+import type * as alerts from "../alerts.js";
 import type * as bookings from "../bookings.js";
+import type * as crons from "../crons.js";
 import type * as expenses from "../expenses.js";
+import type * as fx from "../fx.js";
 import type * as http from "../http.js";
+import type * as groupVotes from "../groupVotes.js";
 import type * as journal from "../journal.js";
+import type * as lib_alerts from "../lib/alerts.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_billing from "../lib/billing.js";
 import type * as lib_bookings from "../lib/bookings.js";
@@ -23,11 +28,15 @@ import type * as lib_webhook from "../lib/webhook.js";
 import type * as lib_budget from "../lib/budget.js";
 import type * as lib_categories from "../lib/categories.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
+import type * as lib_fx from "../lib/fx.js";
 import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as places from "../places.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
 import type * as lib_interview from "../lib/interview.js";
+import type * as lib_localPick from "../lib/localPick.js";
+import type * as localPicks from "../localPicks.js";
 import type * as lib_majority from "../lib/majority.js";
+import type * as lib_groupVotes from "../lib/groupVotes.js";
 import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
 import type * as lib_notify from "../lib/notify.js";
@@ -36,7 +45,9 @@ import type * as lib_promptAnswer from "../lib/promptAnswer.js";
 import type * as lib_promptBrief from "../lib/promptBrief.js";
 import type * as lib_replan from "../lib/replan.js";
 import type * as lib_settle from "../lib/settle.js";
+import type * as lib_splitDraft from "../lib/splitDraft.js";
 import type * as lib_story from "../lib/story.js";
+import type * as lib_subtree from "../lib/subtree.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as lib_tree from "../lib/tree.js";
 import type * as lib_tripSchema from "../lib/tripSchema.js";
@@ -68,10 +79,15 @@ import type * as users from "../users.js";
     "activities": typeof activities,
 "ai": typeof ai,
 "billing": typeof billing,
+"alerts": typeof alerts,
 "bookings": typeof bookings,
+"crons": typeof crons,
 "expenses": typeof expenses,
+"fx": typeof fx,
 "http": typeof http,
+"groupVotes": typeof groupVotes,
 "journal": typeof journal,
+"lib/alerts": typeof lib_alerts,
 "lib/auth": typeof lib_auth,
 "lib/billing": typeof lib_billing,
 "lib/bookings": typeof lib_bookings,
@@ -79,10 +95,13 @@ import type * as users from "../users.js";
 "lib/budget": typeof lib_budget,
 "lib/categories": typeof lib_categories,
 "lib/fakeData": typeof lib_fakeData,
+"lib/fx": typeof lib_fx,
 "lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
 "lib/interview": typeof lib_interview,
+"lib/localPick": typeof lib_localPick,
 "lib/majority": typeof lib_majority,
+"lib/groupVotes": typeof lib_groupVotes,
 "lib/members": typeof lib_members,
 "lib/modelRouter": typeof lib_modelRouter,
 "lib/notify": typeof lib_notify,
@@ -91,7 +110,9 @@ import type * as users from "../users.js";
 "lib/promptBrief": typeof lib_promptBrief,
 "lib/replan": typeof lib_replan,
 "lib/settle": typeof lib_settle,
+"lib/splitDraft": typeof lib_splitDraft,
 "lib/story": typeof lib_story,
+"lib/subtree": typeof lib_subtree,
 "lib/tokens": typeof lib_tokens,
 "lib/tree": typeof lib_tree,
 "lib/tripSchema": typeof lib_tripSchema,
@@ -99,6 +120,7 @@ import type * as users from "../users.js";
 "lib/upNext": typeof lib_upNext,
 "lib/validators": typeof lib_validators,
 "lib/wikiPhotos": typeof lib_wikiPhotos,
+"localPicks": typeof localPicks,
 "members": typeof members,
 "memories": typeof memories,
 "notifications": typeof notifications,

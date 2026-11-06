@@ -199,3 +199,31 @@ export function todayAlerts(status: TodayStatus<TodayStop>, weather: LiveWeather
   }
   return alerts;
 }
+
+/* ---------- Ahead-of-time schedule (home screen widget) ---------- */
+
+export type ProjectedStatus<S extends TodayStop> = { at: number; status: TodayStatus<S> };
+
+/**
+ * How the day will look over time if the traveler keeps to the plan, for
+ * surfaces that can't run app code later (the iOS widget's timeline): the real
+ * status at `now`, then a step when each open stop starts and one when it ends
+ * (counted as done from then on). It stops at a stop without a start time, or
+ * at one that's already overdue, because only the app knows when that changes.
+ */
+export function projectDay<S extends TodayStop>(stops: S[], now: number, maxSteps = 40): ProjectedStatus<S>[] {
+  const steps: ProjectedStatus<S>[] = [{ at: now, status: todayStatus(stops, now) }];
+  let assumed = stops;
+  for (const s of stops) {
+    if (s.isCompleted) continue;
+    const start = toMinutes(s.startTime);
+    if (start == null) break;
+    const end = start + (s.durationMinutes ?? 60);
+    if (end <= now) break;
+    if (start > now) steps.push({ at: start, status: todayStatus(assumed, start) });
+    assumed = assumed.map((a) => (a._id === s._id ? { ...a, isCompleted: true } : a));
+    if (end < 24 * 60) steps.push({ at: end, status: todayStatus(assumed, end) });
+    if (steps.length >= maxSteps) break;
+  }
+  return steps.slice(0, maxSteps);
+}

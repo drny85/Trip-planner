@@ -5,7 +5,7 @@ import type { ActivityNode } from "./tree";
  * Shape returned by `trips.get`: the trip with its days. Each day's `activities`
  * are the top-level ones; sub-activities hang off `children`, to any depth.
  */
-export type TripDetails = Omit<Doc<"trips">, "inviteToken"> & {
+export type TripDetails = Omit<Doc<"trips">, "inviteToken" | "importToken"> & {
   /** The caller's role: the owner edits the itinerary, members suggest and vote. */
   myRole: "owner" | "member";
   subTrips: Array<Doc<"subTrips"> & { activities: ActivityNode[] }>;
@@ -13,7 +13,7 @@ export type TripDetails = Omit<Doc<"trips">, "inviteToken"> & {
 };
 
 /** What a share link exposes: the itinerary without owner fields. */
-export type PublicTripDetails = Omit<TripDetails, "userId" | "prompt" | "shareToken" | "myRole">;
+export type PublicTripDetails = Omit<TripDetails, "userId" | "prompt" | "shareToken" | "myRole" | "copiedFromTripId">;
 
 export type Trip = Doc<"trips">;
 export type SubTrip = Doc<"subTrips">;

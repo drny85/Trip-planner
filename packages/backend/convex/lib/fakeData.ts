@@ -45,6 +45,8 @@ export const tokyoAdventure: TripTreeInput = {
       activities: [
         {
           title: "Visit Senso-ji Temple",
+          localTips: [{ kind: "time", text: "Come before 9 am or after dark: the grounds stay open and the lit-up pagoda has no crowds." }, { kind: "insider", text: "Nakamise stalls open around 10 am, so try ningyo-yaki cakes on your way out." }],
+          crowd: { level: "moderate", peakFrom: "11:00", peakTo: "15:00", bestTime: "07:00" },
           description:
             "Tokyo's oldest temple. Walk in through Kaminarimon Gate and browse the Nakamise shopping street on the way.",
           address: "2-3-1 Asakusa, Taito City, Tokyo 111-0032",
@@ -61,6 +63,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Tempura lunch at Daikokuya",
+          localTips: [{ kind: "order", text: "Get the ebi tendon: the sauce is darker and sweeter than most." }, { kind: "time", text: "A queue forms by 11:15. Arrive right at opening or after 2 pm." }],
+          crowd: { level: "busy", peakFrom: "11:30", peakTo: "13:30", bestTime: "14:00" },
           description: "A classic Asakusa tempura house known for its rich tendon rice bowls.",
           address: "1-38-10 Asakusa, Taito City, Tokyo 111-0032",
           phone: "+81 3-3844-1111",
@@ -75,6 +79,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Ueno Park & Tokyo National Museum",
+          localTips: [{ kind: "insider", text: "In blossom season, locals claim picnic spots with blue tarps early in the morning." }, { kind: "time", text: "The museum is closed on Mondays." }],
+          crowd: { level: "packed", peakFrom: "11:00", peakTo: "16:00", bestTime: "09:30" },
           description: "Cherry blossoms in early April, then Japan's largest collection of national treasures.",
           address: "13-9 Uenokoen, Taito City, Tokyo 110-8712",
           phone: "+81 50-5541-8600",
@@ -90,6 +96,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Sunset at Tokyo Skytree",
+          localTips: [{ kind: "time", text: "Book a timed ticket online. Sunset slots sell out first." }, { kind: "avoid", text: "On a hazy day the view disappoints; check the sky before you go." }],
+          crowd: { level: "busy", peakFrom: "16:30", peakTo: "19:00", bestTime: "10:00" },
           description: "Watch the city light up from the Tembo Deck at 350 m.",
           address: "1-1-2 Oshiage, Sumida City, Tokyo 131-0045",
           phone: "+81 570-55-0634",
@@ -113,6 +121,8 @@ export const tokyoAdventure: TripTreeInput = {
       activities: [
         {
           title: "Meiji Jingu Shrine",
+          localTips: [{ kind: "time", text: "Arrive when the gates open at sunrise for a silent forest walk." }, { kind: "free", text: "Entry to the shrine grounds is free." }],
+          crowd: { level: "moderate", peakFrom: "10:30", peakTo: "15:00", bestTime: "07:00" },
           description: "A forested Shinto shrine a short walk from Harajuku Station.",
           address: "1-1 Yoyogikamizonocho, Shibuya City, Tokyo 151-8557",
           phone: "+81 3-3379-5511",
@@ -128,6 +138,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Takeshita Street crepes",
+          localTips: [{ kind: "avoid", text: "Weekend afternoons are shoulder to shoulder. The back streets of Ura-Harajuku are calmer." }, { kind: "order", text: "Try a strawberry and cream crepe from one of the original stands." }],
+          crowd: { level: "packed", peakFrom: "12:00", peakTo: "18:00", bestTime: "10:00" },
           description: "Harajuku's famous pedestrian street of fashion shops and sweets.",
           address: "1 Chome Jingumae, Shibuya City, Tokyo 150-0001",
           photoUrl: photo("takeshita"),
@@ -141,6 +153,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Shibuya Sky observation deck",
+          localTips: [{ kind: "time", text: "Sunset slots sell out weeks ahead, so book as soon as tickets open." }, { kind: "insider", text: "Bags go in lockers before the rooftop, so travel light." }],
+          crowd: { level: "busy", peakFrom: "16:00", peakTo: "19:30", bestTime: "10:00" },
           description: "An open-air rooftop above Shibuya Crossing. Book a sunset slot early.",
           address: "2-24-12 Shibuya, Shibuya City, Tokyo 150-6145",
           phone: "+81 3-4221-0229",
@@ -156,6 +170,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Izakaya dinner in Omoide Yokocho",
+          localTips: [{ kind: "insider", text: "Many bars have a few seats and a small cover charge. Walk the alley first and pick a lively one." }, { kind: "order", text: "Order yakitori by the skewer: tsukune and negima are the classics." }],
+          crowd: { level: "busy", peakFrom: "19:00", peakTo: "22:00", bestTime: "17:30" },
           description: "Tiny yakitori stalls packed into a lantern-lit alley by Shinjuku Station.",
           address: "1-2 Nishishinjuku, Shinjuku City, Tokyo 160-0023",
           photoUrl: photo("omoide-yokocho"),
@@ -177,6 +193,8 @@ export const tokyoAdventure: TripTreeInput = {
       activities: [
         {
           title: "Tsukiji Outer Market breakfast",
+          localTips: [{ kind: "time", text: "Go early: many stalls close by early afternoon, and some close on Sundays and Wednesdays." }, { kind: "insider", text: "Eat at the stall where you buy. Walking while eating is frowned upon here." }],
+          crowd: { level: "moderate", peakFrom: "09:30", peakTo: "12:00", bestTime: "07:00" },
           description: "Fresh sushi, tamagoyaki and grilled scallops from the market stalls.",
           address: "4-16-2 Tsukiji, Chuo City, Tokyo 104-0045",
           photoUrl: photo("tsukiji"),
@@ -223,6 +241,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "teamLab Planets",
+          localTips: [{ kind: "insider", text: "You walk through knee-deep water, so wear shorts or trousers that roll up." }, { kind: "time", text: "The first slot of the day is the calmest." }],
+          crowd: { level: "busy", peakFrom: "11:00", peakTo: "17:00", bestTime: "09:00" },
           description: "An immersive digital art museum where you walk barefoot through water.",
           address: "6-1-16 Toyosu, Koto City, Tokyo 135-0061",
           photoUrl: photo("teamlab"),
@@ -282,6 +302,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Fushimi Inari Taisha",
+          localTips: [{ kind: "insider", text: "Most visitors turn back at the Yotsutsuji crossroads. Keep climbing for empty gates." }, { kind: "free", text: "It's free and open 24 hours, so sunrise is the quiet time." }],
+          crowd: { level: "packed", peakFrom: "09:30", peakTo: "16:00", bestTime: "07:00" },
           description: "Thousands of vermilion torii gates up Mount Inari. Go early to beat the crowds.",
           address: "68 Fukakusa Yabunouchicho, Fushimi Ward, Kyoto 612-0882",
           phone: "+81 75-641-7331",
@@ -297,6 +319,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Arashiyama Bamboo Grove",
+          localTips: [{ kind: "time", text: "Before 8 am the grove is almost empty." }, { kind: "insider", text: "Carry on to Okochi Sanso villa at the end of the path. The ticket includes matcha." }],
+          crowd: { level: "packed", peakFrom: "09:00", peakTo: "16:00", bestTime: "07:30" },
           description: "Walk the bamboo path, then cross Togetsukyo Bridge.",
           address: "Sagaogurayama Tabuchiyamacho, Ukyo Ward, Kyoto 616-8394",
           photoUrl: photo("arashiyama"),
@@ -310,6 +334,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Kaiseki dinner in Gion",
+          localTips: [{ kind: "insider", text: "Mention allergies when you book: kaiseki courses are prepared in advance." }, { kind: "order", text: "Ask for a sake from Fushimi, Kyoto's own sake district." }],
+          crowd: { level: "moderate" },
           description: "A multi-course seasonal dinner in Kyoto's geisha district.",
           address: "Gionmachi Minamigawa, Higashiyama Ward, Kyoto 605-0074",
           photoUrl: photo("kaiseki"),
@@ -324,6 +350,8 @@ export const tokyoAdventure: TripTreeInput = {
         },
         {
           title: "Kinkaku-ji (Golden Pavilion)",
+          localTips: [{ kind: "time", text: "It opens at 9 am. The first half hour is the calmest for photos across the pond." }],
+          crowd: { level: "busy", peakFrom: "10:00", peakTo: "15:00", bestTime: "09:00" },
           description: "The gold-leaf Zen temple reflected in its mirror pond.",
           address: "1 Kinkakujicho, Kita Ward, Kyoto 603-8361",
           phone: "+81 75-461-0013",

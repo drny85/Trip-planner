@@ -9,7 +9,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-nati
 import Animated, { FadeIn } from "react-native-reanimated";
 import { EASE_OUT } from "@/lib/motion";
 
-const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝" } as const;
+const ICON = { idea: "💡", accepted: "✅", rejected: "🗳️", joined: "👋", expense: "💸", settled: "🤝", groupPlan: "🗳️", priceDrop: "📉", flightDelay: "⏰", flightGate: "🚪", flightCanceled: "⚠️" } as const;
 
 
 /** What the crew has been up to: ideas, votes, joins and shared costs. */
@@ -38,7 +38,7 @@ export function NotificationsScreen() {
               className={cn("flex-row gap-3 rounded-2xl px-4 py-3", n.isRead ? "bg-card" : "bg-primary/10")}
             >
               <Text>{ICON[n.kind]}</Text>
-              <Text className="flex-1 text-sm text-foreground">{n.params ? notificationText(t, f.money, n.kind, n.params) : n.text}</Text>
+              <Text className="flex-1 text-sm text-foreground">{n.params ? notificationText(t, f, n.kind, n.params) : n.text}</Text>
               <Text className="text-xs text-muted-foreground">{f.ago(n._creationTime)}</Text>
             </Pressable>
           </Animated.View>

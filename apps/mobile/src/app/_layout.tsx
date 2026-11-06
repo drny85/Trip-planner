@@ -10,6 +10,7 @@ import { AnimatedSplash } from "@/components/animated-splash";
 import { AuthGate } from "@/components/auth-gate";
 import { CloseButton } from "@/components/close-button";
 import { PushSetup } from "@/components/push-setup";
+import { TravelDaySync } from "@/components/travel-day-sync";
 import { UndoToastProvider } from "@/components/undo-toast";
 import { MobileI18nProvider } from "@/lib/i18n";
 import { AppProviders } from "@/providers/app-providers";
@@ -25,6 +26,8 @@ export default function RootLayout() {
         <AuthGate>
           <UndoToastProvider>
           <PushSetup />
+          {/* iOS "Next stop" widget and travel-day Live Activity. */}
+          <TravelDaySync />
           <AppStack />
           </UndoToastProvider>
         </AuthGate>
@@ -65,15 +68,31 @@ function AppStack() {
       />
       <Stack.Screen
         name="trips/[tripId]/expense"
-        options={{ title: t("mobile.titleExpense"), presentation: "formSheet", sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+        options={{ title: t("mobile.titleExpense"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
+      <Stack.Screen
+        name="trips/[tripId]/payment"
+        options={{ title: t("split.paymentTitle"), presentation: "formSheet", sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
       <Stack.Screen
         name="trips/[tripId]/replan/[subTripId]"
         options={{ title: t("mobile.titleReplan"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
       <Stack.Screen
+        name="trips/[tripId]/local/[subTripId]"
+        options={{ title: t("local.button"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
+      <Stack.Screen
+        name="trips/[tripId]/group-plan"
+        options={{ title: t("groupVote.title"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
+      <Stack.Screen
         name="trips/[tripId]/import"
         options={{ title: t("bookings.importTitle"), presentation: "formSheet", sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true, headerLeft: cancel }}
+      />
+      <Stack.Screen
+        name="trips/[tripId]/watch"
+        options={{ title: t("alerts.watchTitle"), presentation: "formSheet", sheetAllowedDetents: [0.7, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
       <Stack.Screen name="trips/[tripId]/today" options={{ title: t("today.title") }} />
       <Stack.Screen
@@ -87,6 +106,7 @@ function AppStack() {
         options={{ title: t("mobile.titleLanguage"), headerShown: false, presentation: "formSheet", sheetAllowedDetents: [0.75, 1], sheetGrabberVisible: true }}
       />
       <Stack.Screen name="join/[token]" options={{ title: t("mobile.titleInvited") }} />
+      <Stack.Screen name="share/[token]" options={{ title: t("copyTrip.screenTitle") }} />
     </Stack>
   );
 }

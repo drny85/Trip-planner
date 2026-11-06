@@ -2,7 +2,7 @@ import { z } from "zod";
 import { CATEGORIES, CATEGORY_TREE, isCategory, toSubcategory, type Category } from "./categories";
 import { photoFor, photoPicker } from "./photos";
 import { decodeEntities } from "./text";
-import type { TripTreeInput } from "./validators";
+import { CROWD_LEVELS, TIP_KINDS, type CrowdLevel, type TipKind, type TripTreeInput } from "./validators";
 
 /**
  * The exact JSON shape Claude must return for a generated trip. It is sent to the
@@ -41,8 +41,39 @@ const generatedActivityFields = {
   estimatedCost: z.number().optional().describe("Approximate cost per person in the trip currency"),
 };
 
+/**
+ * Local knowledge on a top-level activity: tips, a crowd forecast and whether
+ * it's a hidden gem. Sub-activities don't get these, to keep replies short.
+ */
+export const insightFields = {
+  localTips: z
+    .array(
+      z.object({
+        kind: z
+          .string()
+          .describe(
+            "One of: time (best time to go, how to beat the crowds), order (what to order or try), free (free days, discounts, passes), insider (a trick locals know), avoid (a nearby tourist trap or what to skip)",
+          ),
+        text: z.string().describe("One short, specific sentence, under 20 words"),
+      }),
+    )
+    .optional()
+    .describe("1 to 3 practical tips a local would give about this exact place"),
+  crowd: z
+    .object({
+      level: z.string().describe("quiet, moderate, busy or packed: how crowded it usually is at the planned start time on that weekday"),
+      peakFrom: z.string().optional().describe("Start of the busiest stretch that day, HH:mm 24h"),
+      peakTo: z.string().optional().describe("End of the busiest stretch that day, HH:mm 24h"),
+      bestTime: z.string().optional().describe("The calmest good time to arrive that day, HH:mm 24h"),
+    })
+    .optional()
+    .describe("Crowd forecast. Leave it out for transport and stays"),
+  isLocalPick: z.boolean().optional().describe("true only for a place mostly locals know and love, not a major tourist sight"),
+};
+
 export const generatedActivitySchema = z.object({
   ...generatedActivityFields,
+  ...insightFields,
   subActivities: z
     .array(z.object(generatedActivityFields))
     .optional()
@@ -72,13 +103,54 @@ export const generatedTripSchema = z.object({
 export type GeneratedTrip = z.infer<typeof generatedTripSchema>;
 
 
+type RawInsights = Partial<z.infer<z.ZodObject<typeof insightFields>>>;
+const isTipKind = (k: string): k is TipKind => (TIP_KINDS as readonly string[]).includes(k);
+const isCrowdLevel = (k: string): k is CrowdLevel => (CROWD_LEVELS as readonly string[]).includes(k);
+
+/** "9:05" -> "09:05"; anything that isn't a time of day -> undefined. */
+export function toHHMM(value?: string) {
+  const m = value ? /^(\d{1,2}):(\d{2})$/.exec(value.trim()) : null;
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return undefined;
+  return `${m[1]!.padStart(2, "0")}:${m[2]}`;
+}
+
+/** Keeps up to three well-formed tips, one per kind where possible. */
+export function toTips(tips: RawInsights["localTips"]) {
+  const out: { kind: TipKind; text: string }[] = [];
+  for (const tip of tips ?? []) {
+    const kind = tip.kind.trim().toLowerCase();
+    const text = decodeEntities(tip.text).trim().slice(0, 240);
+    if (!isTipKind(kind) || !text || out.some((t) => t.text === text)) continue;
+    out.push({ kind, text });
+  }
+  return out.length ? out.slice(0, 3) : undefined;
+}
+
+export function toCrowd(crowd: RawInsights["crowd"]) {
+  const level = crowd?.level.trim().toLowerCase();
+  if (!level || !isCrowdLevel(level)) return undefined;
+  const peakFrom = toHHMM(crowd!.peakFrom);
+  const peakTo = toHHMM(crowd!.peakTo);
+  // A peak needs both ends, in order.
+  const peak = peakFrom && peakTo && peakFrom < peakTo ? { peakFrom, peakTo } : {};
+  return { level, ...peak, bestTime: toHHMM(crowd!.bestTime) };
+}
+
+/** The normalized local tips, crowd forecast and hidden-gem flag. */
+export const toInsights = (raw: RawInsights) => ({
+  localTips: toTips(raw.localTips),
+  crowd: toCrowd(raw.crowd),
+  isLocalPick: raw.isLocalPick ? true : undefined,
+});
+
 /** Only keep links that are real http(s) URLs. */
 const safeUrl = (url?: string) => (url && /^https?:\/\//i.test(url) ? url : undefined);
 
-function toActivity(activity: z.infer<z.ZodObject<typeof generatedActivityFields>>, destination: string, pick: typeof photoFor = photoFor) {
+function toActivity(activity: z.infer<z.ZodObject<typeof generatedActivityFields>> & RawInsights, destination: string, pick: typeof photoFor = photoFor) {
   const category = toCategory(activity.category);
   return {
     ...activity,
+    ...toInsights(activity),
     title: decodeEntities(activity.title),
     description: decodeEntities(activity.description),
     address: decodeEntities(activity.address),
@@ -122,6 +194,7 @@ export const replanSchema = z.object({
       z.object({
         keepId: z.string().optional().describe("The id of an existing activity to keep. Leave it out for a new activity"),
         ...generatedActivityFields,
+        ...insightFields,
       }),
     )
     .describe("The whole day in time order, kept and new activities together"),
@@ -129,4 +202,27 @@ export const replanSchema = z.object({
 export type Replan = z.infer<typeof replanSchema>;
 
 /** A new activity from a re-plan, normalized like a generated one. */
-export const toNewActivity = (activity: z.infer<z.ZodObject<typeof generatedActivityFields>>, destination: string) => toActivity(activity, destination);
+export const toNewActivity = (activity: z.infer<z.ZodObject<typeof generatedActivityFields>> & RawInsights, destination: string) => toActivity(activity, destination);
+
+/**
+ * "Local's pick" for one day: tourist-heavy stops swapped for places locals
+ * love. Kept stops (`keepId`) come back with their tips and crowd forecast too.
+ */
+export const localPickSchema = z.object({
+  summary: z.string().describe("One or two sentences, addressed to the traveler, on what you swapped and why locals prefer it"),
+  activities: z
+    .array(
+      z.object({
+        keepId: z.string().optional().describe("The id of an existing activity to keep. Leave it out for a new activity"),
+        replaces: z.string().optional().describe("For a new stop: the title of the stop it swaps out"),
+        ...generatedActivityFields,
+        ...insightFields,
+      }),
+    )
+    .describe("The whole day in time order, kept and new activities together"),
+});
+
+/** Just the tips and crowd forecast for activities already planned. */
+export const tipsSchema = z.object({
+  activities: z.array(z.object({ id: z.string().describe("The activity's id, as given"), ...insightFields })),
+});

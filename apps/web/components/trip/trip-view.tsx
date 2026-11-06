@@ -7,18 +7,20 @@ import type { PublicTripDetails, TripDetails } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
 import { cn, dayTitle } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
-import { AnimatePresence, LayoutGroup, motion, useScroll, useTransform } from "motion/react";
+import { AnimatePresence, LayoutGroup, animate, motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SmartImage } from "@/components/smart-image";
-import { EASE_OUT, layoutSpring, rise } from "@/lib/motion";
+import { EASE_OUT, layoutSpring, rise, useParallax } from "@/lib/motion";
+import { ScrollProgress } from "@/components/marketing/sections";
 import { ActivityItem } from "./activity-item";
 import { BookingsProvider, Bookings } from "./bookings";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
 import { Ideas } from "./ideas";
+import { GroupVotes } from "./group-votes";
 import { JournalProvider, TripStory } from "./journal";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingList } from "./packing-list";
@@ -26,6 +28,7 @@ import { DayExtras } from "./replan-day";
 import { SplitCosts } from "./split-costs";
 import { DayMap } from "./day-map";
 import { ShareButton } from "./share-button";
+import { UseTripButton } from "./use-trip";
 import { TodayBanner } from "@/components/today/today-banner";
 import { TripLockedBanner } from "@/components/billing";
 
@@ -113,10 +116,12 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
     <JournalProvider tripId={trip._id} enabled={canCheck}>
     <BookingsProvider tripId={trip._id} enabled={canCheck}>
     <main className="pb-24">
+      <ScrollProgress />
       <Hero
         trip={trip}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {mode === "public" && storyToken && <UseTripButton token={storyToken} trip={trip} variant="hero" />}
             <CalendarButton trip={trip} />
             {!readOnly && <ShareButton tripId={trip._id} shareToken={"shareToken" in trip ? trip.shareToken : undefined} />}
           </div>
@@ -131,14 +136,18 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
         {mode !== "public" && <Crew tripId={trip._id} />}
         {storyToken && <StoryBanner token={storyToken} />}
         {mode !== "public" && <Bookings tripId={trip._id} days={trip.subTrips} />}
+        {mode !== "public" && <GroupVotes tripId={trip._id} subTrips={trip.subTrips} />}
         {mode === "public" && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">
-              <span className="font-semibold">{t("trip.sharedTitle")}</span> <span className="text-muted-foreground">{t("trip.sharedBody")}</span>
+              <span className="font-semibold">{t("copyTrip.bannerTitle")}</span> <span className="text-muted-foreground">{t("copyTrip.bannerBody")}</span>
             </p>
-            <Link href="/trips/new" className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 active:scale-[0.97]">
-              ✨ {t("trip.planYourOwn")}
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/trips/new" className="rounded-full bg-muted px-4 py-2 text-sm font-semibold active:scale-[0.97]">
+                ✨ {t("trip.planYourOwn")}
+              </Link>
+              {storyToken && <UseTripButton token={storyToken} trip={trip} variant="banner" />}
+            </div>
           </motion.div>
         )}
 
@@ -166,21 +175,18 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
 
         <LayoutGroup>
           {trip.subTrips.map((subTrip) => (
-            <motion.section
-              key={subTrip._id}
-              id={`day-${subTrip._id}`}
-              data-day={subTrip._id}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.5, ease: EASE_OUT }}
-              className="mt-10"
-            >
+            <DaySection key={subTrip._id} id={subTrip._id}>
               <header className="mb-5 flex items-center gap-4">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-primary-foreground shadow-lg shadow-primary/25">
+                <motion.div
+                  initial={{ scale: 0.4, rotate: -20, opacity: 0 }}
+                  whileInView={{ scale: 1, rotate: 0, opacity: 1 }}
+                  viewport={{ once: true, margin: "-80px" }}
+                  transition={{ type: "spring", bounce: 0.5, duration: 0.7 }}
+                  className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-primary-foreground shadow-lg shadow-primary/25"
+                >
                   <span className="text-[10px] font-semibold uppercase leading-none tracking-wider opacity-80">{t("trip.day")}</span>
                   <span className="-mt-2 text-xl font-extrabold leading-none">{subTrip.dayNumber}</span>
-                </div>
+                </motion.div>
                 <div className="min-w-0">
                   <h2 className="truncate text-2xl font-bold tracking-tight">{dayTitle(subTrip.title)}</h2>
                   <p className="text-sm text-muted-foreground">
@@ -195,6 +201,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
               <DayMap activities={subTrip.activities} />
 
               <ol className="relative ml-7 border-l-2 border-dashed border-border pl-8">
+                <TimelineFill />
                 <AnimatePresence initial={false}>
                   {subTrip.activities.map((activity, index) => (
                     <motion.li
@@ -219,6 +226,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
                       {dropTarget === activity._id && dragging?.activityId !== activity._id && (
                         <motion.span layoutId="drop-line" className="absolute -top-3 left-0 right-0 h-1 rounded-full bg-primary" />
                       )}
+                      <RevealOnScroll index={index}>
                       <ActivityItem
                         activity={activity}
                         trip={trip}
@@ -233,6 +241,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
                           setDropTarget(null);
                         }}
                       />
+                      </RevealOnScroll>
                     </motion.li>
                   ))}
                 </AnimatePresence>
@@ -256,7 +265,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
                   {dragging ? t("trip.dropHere") : subTrip.activities.length === 0 ? t("trip.nothingPlanned") : null}
                 </li>
               </ol>
-            </motion.section>
+            </DaySection>
           ))}
         </LayoutGroup>
 
@@ -276,14 +285,19 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
 }
 
 function Hero({ trip, action }: { trip: PublicTripDetails; action?: React.ReactNode }) {
-  const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 500], [0, 120]);
-  const fade = useTransform(scrollY, [0, 300], [1, 0]);
+  const ref = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  // Layered parallax: the photo sinks and zooms, the title lifts away faster.
+  const y = useParallax(scrollYProgress, 0, 160);
+  const scale = useParallax(scrollYProgress, 1, 1.15);
+  const titleY = useParallax(scrollYProgress, 0, -80);
+  const fade = useTransform(scrollYProgress, [0, 0.6], [1, reduce ? 1 : 0]);
   const { t, f } = useI18n();
 
   return (
-    <section className="relative h-[26rem] w-full overflow-hidden sm:h-[30rem]">
-      <motion.div style={{ y }} className="absolute inset-0">
+    <section ref={ref} className="relative h-[26rem] w-full overflow-hidden sm:h-[30rem]">
+      <motion.div style={{ y, scale }} className="absolute inset-0 will-change-transform">
         <SmartImage
           src={trip.imageUrl}
           seed={trip.destination}
@@ -295,14 +309,26 @@ function Hero({ trip, action }: { trip: PublicTripDetails; action?: React.ReactN
       </motion.div>
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
       {action && <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">{action}</div>}
-      <motion.div style={{ opacity: fade }} className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-20 text-white">
+      <motion.div style={{ opacity: fade, y: titleY }} className="absolute inset-x-0 bottom-0 mx-auto max-w-4xl px-4 pb-20 text-white">
         <motion.div {...rise(0)} className="mb-3 flex flex-wrap gap-2">
           <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">📍 {trip.destination}</span>
           {trip.isAIGenerated && <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-md">✨ {t("trip.aiGenerated")}</span>}
         </motion.div>
-        <motion.h1 {...rise(1)} className="text-4xl font-extrabold tracking-tight drop-shadow-sm sm:text-6xl">
-          {trip.title}
-        </motion.h1>
+        <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-sm sm:text-6xl">
+          {trip.title.split(" ").map((word, i) => (
+            <span key={i} className="inline-block overflow-hidden pb-[0.1em] align-bottom">
+              <motion.span
+                className="inline-block"
+                initial={{ y: "105%" }}
+                animate={{ y: "0%" }}
+                transition={{ duration: 0.7, ease: EASE_OUT, delay: 0.1 + i * 0.08 }}
+              >
+                {word}
+              </motion.span>
+              &nbsp;
+            </span>
+          ))}
+        </h1>
         <motion.p {...rise(2)} className="mt-2 text-lg text-white/90">
           {f.dateRange(trip.startDate, trip.endDate)}
         </motion.p>
@@ -316,9 +342,9 @@ function Stats({ trip, readOnly }: { trip: PublicTripDetails; readOnly: boolean 
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
   const { t } = useI18n();
   const stats = [
-    { label: t("trip.statDays"), value: trip.subTrips.length },
-    { label: t("trip.statActivities"), value: total },
-    { label: t("trip.statDone"), value: `${percent}%` },
+    { label: t("trip.statDays"), value: trip.subTrips.length, suffix: "" },
+    { label: t("trip.statActivities"), value: total, suffix: "" },
+    { label: t("trip.statDone"), value: percent, suffix: "%" },
   ];
 
   return (
@@ -331,9 +357,9 @@ function Stats({ trip, readOnly }: { trip: PublicTripDetails; readOnly: boolean 
       <div className="grid grid-cols-3 divide-x divide-border">
         {stats.map((s) => (
           <div key={s.label} className="px-2 text-center">
-            <motion.p key={String(s.value)} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-extrabold tabular-nums sm:text-3xl">
-              {s.value}
-            </motion.p>
+            <p className="text-2xl font-extrabold tabular-nums sm:text-3xl">
+              <CountUp value={s.value} suffix={s.suffix} />
+            </p>
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{s.label}</p>
           </div>
         ))}
@@ -353,6 +379,76 @@ function Stats({ trip, readOnly }: { trip: PublicTripDetails; readOnly: boolean 
       {!readOnly && <p className="mt-3 text-xs text-muted-foreground">{t("trip.dragTip")}</p>}
     </motion.div>
   );
+}
+
+/** A day of the itinerary; it rises in as it scrolls into view. */
+function DaySection({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <motion.section
+      id={`day-${id}`}
+      data-day={id}
+      initial={{ opacity: 0, y: 32 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.6, ease: EASE_OUT }}
+      className="mt-10"
+    >
+      {children}
+    </motion.section>
+  );
+}
+
+/** A solid line that draws down the dashed timeline as you read through the day. */
+function TimelineFill() {
+  const ref = useRef<HTMLSpanElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 75%", "end 55%"] });
+  const scaleY = useParallax(scrollYProgress, 0, 1);
+  return (
+    <span ref={ref} aria-hidden className="pointer-events-none absolute motion-reduce:hidden -left-[2px] bottom-0 top-0 w-0.5">
+      <motion.span style={{ scaleY }} className="absolute inset-0 origin-top rounded-full bg-gradient-to-b from-primary to-emerald-400" />
+    </span>
+  );
+}
+
+/** Slides an activity card in from the timeline the first time it scrolls into view. */
+function RevealOnScroll({ index, children }: { index: number; children: ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -24 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease: EASE_OUT, delay: Math.min(index, 4) * 0.06 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** Counts up to a number when it first shows, and eases between later changes. */
+function CountUp({ value, suffix }: { value: number; suffix: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true });
+  const reduce = useReducedMotion();
+  const shown = useRef(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !inView) return;
+    if (reduce) {
+      el.textContent = `${value}${suffix}`;
+      shown.current = value;
+      return;
+    }
+    const controls = animate(shown.current, value, {
+      duration: 0.9,
+      ease: EASE_OUT,
+      onUpdate: (v) => {
+        shown.current = v;
+        el.textContent = `${Math.round(v)}${suffix}`;
+      },
+    });
+    return () => controls.stop();
+  }, [inView, value, suffix, reduce]);
+  return <span ref={ref}>{`0${suffix}`}</span>;
 }
 
 /** Tracks which day section is in view, for the sticky tab pill. */
