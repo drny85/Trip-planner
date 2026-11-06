@@ -8,7 +8,7 @@ export const metadata = { title: "Today · Trip Planner" };
 
 export default function TodayPage({ params, searchParams }: PageProps<"/trips/[tripId]/today">) {
   return (
-    <RequireAuth>
+    <RequireAuth reason="trip">
       <Suspense fallback={<p className="p-8 text-center text-muted-foreground"><T k="today.loading" /></p>}>
         <TodayFromParams params={params} searchParams={searchParams} />
       </Suspense>
