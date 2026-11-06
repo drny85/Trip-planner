@@ -46,6 +46,10 @@ function useRates(codes: string[], display: string) {
   return { rates, loading };
 }
 
+/** A source row's figure: only the side it has when the other is zero ("$40 spent", not "$40 of $0"). */
+const sourceText = (t: (k: "budgetOverview.spentAmount" | "budgetOverview.plannedAmount" | "budgetOverview.plannedSpent", v: Record<string, string>) => string, money: (n: number) => string, line: { planned: number; spent: number }) =>
+  line.planned === 0 ? t("budgetOverview.spentAmount", { amount: money(line.spent) }) : line.spent === 0 ? t("budgetOverview.plannedAmount", { amount: money(line.planned) }) : t("budgetOverview.plannedSpent", { spent: money(line.spent), planned: money(line.planned) });
+
 const pct = (part: number, whole: number) => (whole > 0 ? Math.min(100, (part / whole) * 100) : part > 0 ? 100 : 0);
 
 /**
@@ -69,7 +73,8 @@ export function BudgetOverviewView({ tripId }: { tripId: Id<"trips"> }) {
   if (trip === null || extras === null) return <p className="p-8 text-center text-muted-foreground">{t("budgetOverview.notFound")}</p>;
 
   const view = budgetOverview({ trip, extras, scope, display, rates });
-  const money = (n: number) => f.money(Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 100) / 100, display);
+  // Whole units everywhere, so small and large amounts read the same way.
+  const money = (n: number) => f.money(Math.round(n), display);
   const { planned, spent } = view.total;
   const over = spent > planned;
   const empty = planned === 0 && spent === 0;
@@ -182,9 +187,7 @@ export function BudgetOverviewView({ tripId }: { tripId: Id<"trips"> }) {
                   <p className="font-semibold">{t(`budgetOverview.sources.${s.source}`)}</p>
                   <p className="text-xs text-muted-foreground">{t(`budgetOverview.sourceHints.${s.source}`)}</p>
                 </div>
-                <p className="text-sm tabular-nums text-muted-foreground">
-                  <span className="font-semibold text-foreground">{money(s.spent)}</span> {t("budgetOverview.spent").toLowerCase()} · {money(s.planned)} {t("budgetOverview.planned").toLowerCase()}
-                </p>
+<p className="text-sm font-semibold tabular-nums text-foreground">{sourceText(t, money, s)}</p>
               </li>
             ))}
           </ul>

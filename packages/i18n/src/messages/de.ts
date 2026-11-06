@@ -463,6 +463,8 @@ export const de: Shape<typeof en> = {
     notFound: "Reise nicht gefunden.",
     expenseCategory: "Kategorie",
     plannedSpent: "{spent} von {planned}",
+    spentAmount: "{amount} ausgegeben",
+    plannedAmount: "{amount} geplant",
     sources: { itinerary: "Reiseplan", bookings: "Buchungen", shared: "Geteilte Kosten", flights: "Noch nicht gebuchte Flüge" },
     sourceHints: { itinerary: "Schätzungen pro Aktivität. Ausgegeben ist, was du eingetragen oder abgehakt hast.", bookings: "Preise aus deinen Bestätigungen und Preisalarmen.", shared: "Ausgaben aus „Kosten teilen“.", flights: "Der günstigste Preis von heute aus deinem Flugpreis-Alarm." },
   },

@@ -10,6 +10,10 @@ import Animated from "react-native-reanimated";
 import { useRates } from "@/lib/use-rates";
 import { CSS_EASE_OUT, enterUp } from "@/lib/motion";
 
+/** A source row's figure: only the side it has when the other is zero ("$40 spent", not "$40 of $0"). */
+const sourceText = (t: (k: "budgetOverview.spentAmount" | "budgetOverview.plannedAmount" | "budgetOverview.plannedSpent", v: Record<string, string>) => string, money: (n: number) => string, line: { planned: number; spent: number }) =>
+  line.planned === 0 ? t("budgetOverview.spentAmount", { amount: money(line.spent) }) : line.spent === 0 ? t("budgetOverview.plannedAmount", { amount: money(line.planned) }) : t("budgetOverview.plannedSpent", { spent: money(line.spent), planned: money(line.planned) });
+
 const pct = (part: number, whole: number) => (whole > 0 ? Math.min(100, (part / whole) * 100) : part > 0 ? 100 : 0);
 const bar = { transitionProperty: "width", transitionDuration: 400, transitionTimingFunction: CSS_EASE_OUT } as const;
 const PRIMARY = "#0e7c66";
@@ -34,7 +38,8 @@ export function BudgetOverviewScreen({ tripId }: { tripId: Id<"trips"> }) {
   if (trip === null || extras === null) return <Text className="p-8 text-center text-muted-foreground">{t("budgetOverview.notFound")}</Text>;
 
   const view = budgetOverview({ trip, extras, scope, display, rates });
-  const money = (n: number) => f.money(Math.abs(n) >= 100 ? Math.round(n) : Math.round(n * 100) / 100, display);
+  // Whole units everywhere, so small and large amounts read the same way.
+  const money = (n: number) => f.money(Math.round(n), display);
   const { planned, spent } = view.total;
   const over = spent > planned;
   const empty = planned === 0 && spent === 0;
@@ -125,7 +130,7 @@ export function BudgetOverviewScreen({ tripId }: { tripId: Id<"trips"> }) {
             <View key={s.source} className="gap-0.5 border-t border-border/60 pt-3 first:border-t-0 first:pt-0">
               <View className="flex-row items-baseline justify-between gap-3">
                 <Text className="flex-1 font-semibold text-foreground">{t(`budgetOverview.sources.${s.source}`)}</Text>
-                <Text className="text-sm text-muted-foreground">{t("budgetOverview.plannedSpent", { spent: money(s.spent), planned: money(s.planned) })}</Text>
+                <Text className="text-sm text-muted-foreground">{sourceText(t, money, s)}</Text>
               </View>
               <Text className="text-xs text-muted-foreground">{t(`budgetOverview.sourceHints.${s.source}`)}</Text>
             </View>

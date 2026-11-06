@@ -460,6 +460,8 @@ export const en = {
     notFound: "Trip not found.",
     expenseCategory: "Category",
     plannedSpent: "{spent} of {planned}",
+    spentAmount: "{amount} spent",
+    plannedAmount: "{amount} planned",
     sources: { itinerary: "Itinerary", bookings: "Bookings", shared: "Shared costs", flights: "Flights not booked yet" },
     sourceHints: { itinerary: "Activity estimates. Spent is what you entered, or what you checked off.", bookings: "Prices from your confirmations and price alerts.", shared: "Expenses logged in Split costs.", flights: "Today's cheapest fare from your fare watch." },
   },

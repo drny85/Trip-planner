@@ -463,6 +463,8 @@ export const ja: Shape<typeof en> = {
     notFound: "旅行が見つかりません。",
     expenseCategory: "カテゴリー",
     plannedSpent: "{spent} / {planned}",
+    spentAmount: "支出 {amount}",
+    plannedAmount: "予定 {amount}",
     sources: { itinerary: "旅程", bookings: "予約", shared: "割り勘", flights: "未予約の航空券" },
     sourceHints: { itinerary: "アクティビティごとの見積もり。支出は入力した金額、または完了にした分です。", bookings: "予約確認と価格アラートの金額。", shared: "「費用の割り勘」に記録した支出。", flights: "航空券ウォッチの今日の最安値。" },
   },
