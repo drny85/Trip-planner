@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx } from "./_generated/server";
 import { createFormat, defaultLocale, formatTagFor, isLocale, languageInEnglish, translator, type Locale } from "@trip/i18n";
 import { aiVia, generateStructured, type AiFile } from "./ai";
+import { deleteAlertsFor, ensureFlightTrack } from "./alerts";
 import { getMemberTrip, getOptionalUserId, findMembership, getOwnedTrip } from "./lib/auth";
 import {
   type Booking,
@@ -363,7 +364,10 @@ export const apply = mutation({
         target && target.tripId === trip._id
           ? await attachTo(ctx, target, proposal.booking)
           : await insertActivity(ctx, day, proposal.booking, bookingSummary(proposal.booking, text.t, text.f));
-      await ctx.db.insert("bookings", { tripId: trip._id, activityId, importId, addedBy: userId, ...proposal.booking });
+      const bookingId = await ctx.db.insert("bookings", { tripId: trip._id, activityId, importId, addedBy: userId, ...proposal.booking });
+      // Flights with a flight number get delay and gate alerts by themselves.
+      const saved = await ctx.db.get("bookings", bookingId);
+      if (saved?.kind === "flight") await ensureFlightTrack(ctx, saved);
       added.push(activityId);
     }
     await ctx.db.patch("bookingImports", importId, { status: "applied", text: undefined });
@@ -421,6 +425,7 @@ export const remove = mutation({
     if (!booking) return;
     const { trip, userId } = await getMemberTrip(ctx, booking.tripId);
     if (booking.addedBy !== userId && trip.userId !== userId) throw new Error("Only the person who added it or the organizer can remove it");
+    await deleteAlertsFor(ctx, bookingId);
     await ctx.db.delete("bookings", bookingId);
   },
 });
@@ -431,6 +436,7 @@ export async function deleteTripBookings(ctx: MutationCtx, tripId: Id<"trips">) 
     ctx.db.query("bookings").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
     ctx.db.query("bookingImports").withIndex("by_tripId", (q) => q.eq("tripId", tripId)).collect(),
   ]);
+  for (const b of bookings) await deleteAlertsFor(ctx, b._id);
   await Promise.all([
     ...bookings.map((b) => ctx.db.delete("bookings", b._id)),
     ...imports.map((i) => ctx.db.delete("bookingImports", i._id)),

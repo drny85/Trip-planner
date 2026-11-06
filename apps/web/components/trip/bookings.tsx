@@ -9,6 +9,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
+import { BookingAlerts, type AlertsData } from "./booking-alerts";
 
 /**
  * Booking import: paste a confirmation email, drop a PDF or screenshot, or
@@ -75,6 +76,7 @@ const when = (f: I18n["f"], b: { startDate?: string; startTime?: string }) => [b
 export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] }) {
   const { t } = useI18n();
   const { data } = useContext(Ctx);
+  const alerts = useQuery(api.alerts.forTrip, data ? { tripId } : "skip");
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   if (!data) return null;
@@ -108,7 +110,7 @@ export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] })
       {bookings.length > 0 && (
         <ul className="mt-4 flex flex-col">
           {shown.map((b) => (
-            <SavedBooking key={b._id} booking={b} />
+            <SavedBooking key={b._id} booking={b} alerts={alerts ?? undefined} />
           ))}
         </ul>
       )}
@@ -123,44 +125,47 @@ export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] })
   );
 }
 
-function SavedBooking({ booking: b }: { booking: Booking }) {
+function SavedBooking({ booking: b, alerts }: { booking: Booking; alerts?: AlertsData }) {
   const { t, f } = useI18n();
   const remove = useMutation(api.bookings.remove);
   const [copied, setCopied] = useState(false);
   return (
-    <li className="group flex items-center gap-3 border-b border-border/60 py-2.5 last:border-0">
-      <span className="text-xl" aria-hidden>
-        {KIND_EMOJI[b.kind]}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{b.title}</p>
-        <p className="truncate text-xs text-muted-foreground">{[when(f, b), b.provider, b.details].filter(Boolean).join(" · ")}</p>
-      </div>
-      {b.confirmationCode && (
+    <li className="group border-b border-border/60 py-2.5 last:border-0">
+      <div className="flex items-center gap-3">
+        <span className="text-xl" aria-hidden>
+          {KIND_EMOJI[b.kind]}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold">{b.title}</p>
+          <p className="truncate text-xs text-muted-foreground">{[when(f, b), b.provider, b.details].filter(Boolean).join(" · ")}</p>
+        </div>
+        {b.confirmationCode && (
+          <button
+            onClick={() => {
+              void navigator.clipboard?.writeText(b.confirmationCode!);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            title={t("bookings.copyCode")}
+            className="rounded-lg bg-muted px-2.5 py-1 font-mono text-xs font-semibold tabular-nums transition hover:bg-border"
+          >
+            {copied ? t("bookings.copied") : b.confirmationCode}
+          </button>
+        )}
+        {b.bookingUrl && (
+          <a href={b.bookingUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline">
+            {t("bookings.manage")}
+          </a>
+        )}
         <button
-          onClick={() => {
-            void navigator.clipboard?.writeText(b.confirmationCode!);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-          title={t("bookings.copyCode")}
-          className="rounded-lg bg-muted px-2.5 py-1 font-mono text-xs font-semibold tabular-nums transition hover:bg-border"
+          onClick={() => confirm(t("bookings.removeConfirm", { title: b.title })) && void remove({ bookingId: b._id })}
+          className="text-sm text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100 focus:opacity-100"
+          aria-label={t("bookings.removeLabel", { title: b.title })}
         >
-          {copied ? t("bookings.copied") : b.confirmationCode}
+          ✕
         </button>
-      )}
-      {b.bookingUrl && (
-        <a href={b.bookingUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline">
-          {t("bookings.manage")}
-        </a>
-      )}
-      <button
-        onClick={() => confirm(t("bookings.removeConfirm", { title: b.title })) && void remove({ bookingId: b._id })}
-        className="text-sm text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100 focus:opacity-100"
-        aria-label={t("bookings.removeLabel", { title: b.title })}
-      >
-        ✕
-      </button>
+      </div>
+      {alerts && <BookingAlerts booking={b} alerts={alerts} />}
     </li>
   );
 }

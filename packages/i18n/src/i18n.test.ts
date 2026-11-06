@@ -109,6 +109,15 @@ describe("notifications", () => {
     expect(notificationText(t, f.money, "expense", params)).toMatch(/^Ana agregó Cena \((US\$|USD\s?)45\), dividido entre 3\.$/);
     expect(notificationText(t, f.money, "idea", { name: "Ana", title: "Museo" })).toBe("Ana sugirió «Museo». Vota.");
   });
+  it("renders flight times on the reader's clock and both prices of a drop", () => {
+    const en = buildI18n("en");
+    expect(notificationText(en.t, en.f, "flightDelay", { title: "UA 837", count: 45, time: "14:25" })).toBe("UA 837 is delayed 45 min. Now leaving at 2:25 PM.");
+    const de = buildI18n("de");
+    expect(notificationText(de.t, de.f, "flightDelay", { title: "UA 837", count: 45, time: "14:25" })).toContain("14:25");
+    expect(notificationText(en.t, en.f, "priceDrop", { title: "Park Hyatt", amountCents: 90000, wasCents: 100000, currency: "USD" })).toBe(
+      "Price drop: Park Hyatt is now $900 (was $1,000).",
+    );
+  });
 });
 
 describe("dayTitle", () => {
