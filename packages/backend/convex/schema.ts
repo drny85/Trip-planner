@@ -211,7 +211,15 @@ export default defineSchema({
   notifications: defineTable({
     userId: v.string(),
     tripId: v.id("trips"),
-    kind: v.union(v.literal("idea"), v.literal("accepted"), v.literal("rejected"), v.literal("joined"), v.literal("expense"), v.literal("settled")),
+    kind: v.union(
+      v.literal("idea"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("joined"),
+      v.literal("expense"),
+      v.literal("settled"),
+      v.literal("groupPlan"),
+    ),
     /** Rendered in the recipient's language when sent; the apps re-render `params` in the reader's current one. */
     text: v.string(),
     params: v.optional(
@@ -272,6 +280,22 @@ export default defineSchema({
     .index("by_suggestionId", ["suggestionId"])
     .index("by_suggestionId_userId", ["suggestionId", "userId"])
     .index("by_tripId", ["tripId"]),
+
+  /**
+   * Group voting on stops already in the itinerary (lib/groupVotes.ts): one row
+   * per person per stop, with a 👍/👎 and an optional top-3 pick (1, 2 or 3).
+   * A top pick always counts as 👍.
+   */
+  activityVotes: defineTable({
+    tripId: v.id("trips"),
+    activityId: v.id("activities"),
+    userId: v.string(),
+    value: v.optional(v.union(v.literal("up"), v.literal("down"))),
+    pick: v.optional(v.number()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_tripId_userId", ["tripId", "userId"])
+    .index("by_activityId_userId", ["activityId", "userId"]),
 
   /** A day ("Day 1") or a leg ("Kyoto Leg") of a trip. */
   subTrips: defineTable({
