@@ -68,8 +68,10 @@ export function idleProps(text: Text, next: TripSummary | null, date: string): N
     ...blank(next, next ? `${SCHEME}trips/${next._id}` : SCHEME),
     state: "idle",
     eyebrow: next ? t("widget.nextTrip") : "Trip Planner",
-    title: next && days > 0 ? t("today.startsIn", { title: next.title, count: days }) : t("widget.noTrip"),
-    detail: next ? next.destination : t("widget.noTripBody"),
+    title: next ? next.title : t("widget.noTrip"),
+    // "In 103 days": short enough to survive the small widget.
+    detail: next ? text.f.countdown(days, 1) : t("widget.noTripBody"),
+    trip: next?.destination ?? "",
     symbol: next ? "suitcase.rolling.fill" : "map.fill",
   };
 }
