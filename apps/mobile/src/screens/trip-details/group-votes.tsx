@@ -2,13 +2,14 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Alert, Pressable, Text, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { CSS_EASE_OUT, EASE_IN_OUT, enterUp } from "@/lib/motion";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 /**
  * Group voting on the itinerary: 👍 / 👎 and a top-3 ⭐ on every stop, and a
@@ -20,7 +21,7 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
 
 /** 👍 👎 ⭐ under one stop. Hidden on solo trips and for stops that aren't voted on (transport). */
 export function VoteBar({ tripId, activityId, title }: { tripId: Id<"trips">; activityId: Id<"activities">; title: string }) {
-  const data = useQuery(api.groupVotes.forTrip, { tripId });
+  const data = useCachedQuery(api.groupVotes.forTrip, { tripId }).data;
   const vote = useMutation(api.groupVotes.vote);
   const setPick = useMutation(api.groupVotes.setPick);
   const { t } = useI18n();
@@ -91,7 +92,7 @@ type Day = { activities: { _id: string; title: string }[] };
 
 /** "Group picks": how voting works, the most wanted stops, and "Build plan from votes". */
 export function GroupVotesSection({ tripId, subTrips }: { tripId: Id<"trips">; subTrips: Day[] }) {
-  const data = useQuery(api.groupVotes.forTrip, { tripId });
+  const data = useCachedQuery(api.groupVotes.forTrip, { tripId }).data;
   const router = useRouter();
   const { t } = useI18n();
   if (!data || data.memberCount < 2) return null;

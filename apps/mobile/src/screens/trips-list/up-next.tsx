@@ -1,9 +1,12 @@
 import { api } from "@trip/backend/api";
+import { applyPendingToTrip } from "@trip/backend/offline";
+import type { TripDetails } from "@trip/backend/types";
+import { pickUpNext, type UpNext as UpNextData } from "@trip/backend/upNext";
 import { useI18n } from "@trip/i18n/react";
 import { localToday } from "@trip/ui";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeIn, FadeInRight, FadeOutLeft, ReduceMotion } from "react-native-reanimated";
 import { Button } from "@/components/button";
@@ -13,7 +16,9 @@ import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { openDirections } from "@/lib/open";
 import { CSS_EASE_OUT, EASE_OUT } from "@/lib/motion";
-import { useCachedQuery } from "@/hooks/use-cached-query";
+import { cacheKey, useCachedQuery } from "@/hooks/use-cached-query";
+import { readCache } from "@/lib/offline-cache";
+import { useOutbox } from "@/lib/outbox";
 
 /** Soft pulse for the live dot; loops, so it lives in a CSS animation on the UI thread. */
 const pulse = {
@@ -27,7 +32,7 @@ const pulse = {
  */
 export function UpNext() {
   const [today] = useState(localToday);
-  const next = useCachedQuery(api.trips.upNext, { today }).data;
+  const next = useUpNextWithPending(today);
   const toggleDone = useToggleDone();
   const router = useRouter();
   const { t, f, category } = useI18n();
@@ -135,4 +140,26 @@ export function UpNext() {
       </PressableScale>
     </Animated.View>
   );
+}
+
+/**
+ * trips.upNext, but with check-offs still waiting in the outbox applied: the
+ * server can't know about them yet, so it's worked out again here from the
+ * saved trips (the same pickUpNext the server uses).
+ */
+function useUpNextWithPending(today: string): UpNextData | null | undefined {
+  const server = useCachedQuery(api.trips.upNext, { today }).data;
+  const trips = useCachedQuery(api.trips.list, {}).data;
+  const { queue } = useOutbox();
+  return useMemo(() => {
+    if (!trips || !queue.some((op) => op.kind === "activity")) return server;
+    for (const t of trips.filter((t) => t.endDate >= today)) {
+      const saved = readCache<TripDetails | null>(cacheKey(api.trips.get, { tripId: t._id }));
+      // A trip that was never opened or prefetched: the server's answer is the best there is.
+      if (!saved) return server;
+      const next = pickUpNext(applyPendingToTrip(saved, queue), today);
+      if (next) return next;
+    }
+    return null;
+  }, [server, trips, queue, today]);
 }

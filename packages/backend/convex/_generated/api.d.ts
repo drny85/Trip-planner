@@ -15,6 +15,7 @@ import type * as billing from "../billing.js";
 import type * as chat from "../chat.js";
 import type * as alerts from "../alerts.js";
 import type * as bookings from "../bookings.js";
+import type * as budget from "../budget.js";
 import type * as crons from "../crons.js";
 import type * as expenses from "../expenses.js";
 import type * as fares from "../fares.js";
@@ -29,6 +30,7 @@ import type * as lib_chat from "../lib/chat.js";
 import type * as lib_bookings from "../lib/bookings.js";
 import type * as lib_webhook from "../lib/webhook.js";
 import type * as lib_budget from "../lib/budget.js";
+import type * as lib_budgetOverview from "../lib/budgetOverview.js";
 import type * as lib_categories from "../lib/categories.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
 import type * as lib_fares from "../lib/fares.js";
@@ -88,6 +90,7 @@ import type * as users from "../users.js";
 "chat": typeof chat,
 "alerts": typeof alerts,
 "bookings": typeof bookings,
+"budget": typeof budget,
 "crons": typeof crons,
 "expenses": typeof expenses,
 "fares": typeof fares,
@@ -102,6 +105,7 @@ import type * as users from "../users.js";
 "lib/bookings": typeof lib_bookings,
 "lib/webhook": typeof lib_webhook,
 "lib/budget": typeof lib_budget,
+"lib/budgetOverview": typeof lib_budgetOverview,
 "lib/categories": typeof lib_categories,
 "lib/fakeData": typeof lib_fakeData,
 "lib/fares": typeof lib_fares,

@@ -3,6 +3,7 @@ import type { TripDetails } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
 import { useMemo, useState } from "react";
+import { useRouter } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { CSS_EASE_OUT, enterUp } from "@/lib/motion";
@@ -13,8 +14,21 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
   const [view, setView] = useState<"category" | "day">("category");
   const { t, f, category } = useI18n();
   const money = (n: number) => f.money(n, trip.currency ?? "USD");
+  const router = useRouter();
   const { estimated, actual } = budget.total;
-  if (estimated === 0 && actual === 0) return null;
+  const overviewLink = (
+    <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push({ pathname: "/trips/[tripId]/budget", params: { tripId: trip._id } })} className="self-end">
+      <Text className="text-sm font-semibold text-primary">{t("budgetOverview.seeOverview")} →</Text>
+    </Pressable>
+  );
+  // No estimates yet, but bookings or shared costs may still add up on the overview.
+  if (estimated === 0 && actual === 0)
+    return (
+      <Animated.View entering={enterUp(1)} className="mx-4 mt-4 flex-row items-center justify-between rounded-3xl bg-card px-5 py-4 shadow-sm shadow-black/5">
+        <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{t("budgetOverview.title")}</Text>
+        {overviewLink}
+      </Animated.View>
+    );
 
   const over = actual > estimated;
   const spentPct = estimated ? Math.min(100, Math.round((actual / estimated) * 100)) : 0;
@@ -82,6 +96,7 @@ export function BudgetCard({ trip }: { trip: TripDetails }) {
           </View>
         ))}
       </View>
+      {overviewLink}
     </Animated.View>
   );
 }

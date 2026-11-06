@@ -7,6 +7,7 @@ import { getLocales } from "expo-localization";
 import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useEffect, type ReactNode } from "react";
+import { OfflineSync, OfflineSyncWhenSignedIn } from "@/components/offline-sync";
 import { Text, View } from "react-native";
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
@@ -24,6 +25,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     return (
       <ConvexProvider client={convex}>
         <SyncLanguage ready />
+        <OfflineSync ready />
         {children}
       </ConvexProvider>
     );
@@ -34,6 +36,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SyncUser />
         <SyncLanguageWhenSignedIn />
+        <OfflineSyncWhenSignedIn />
         {children}
       </ConvexProviderWithClerk>
     </ClerkProvider>

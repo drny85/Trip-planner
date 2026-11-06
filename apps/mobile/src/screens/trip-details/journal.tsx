@@ -1,7 +1,6 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useI18n } from "@trip/i18n/react";
-import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -10,6 +9,7 @@ import { Pressable, Text, View } from "react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { PressableScale } from "@/components/pressable-scale";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 /**
  * The trip journal on mobile: each traveler's note on things they've done, loaded
@@ -19,7 +19,7 @@ type Note = NonNullable<FunctionReturnType<typeof api.journal.notesForTrip>>[num
 const JournalContext = createContext<Map<string, Note[]>>(new Map());
 
 export function JournalProvider({ tripId, children }: { tripId: Id<"trips">; children: ReactNode }) {
-  const notes = useQuery(api.journal.notesForTrip, { tripId });
+  const notes = useCachedQuery(api.journal.notesForTrip, { tripId }).data;
   const byActivity = useMemo(() => {
     const map = new Map<string, Note[]>();
     for (const n of notes ?? []) map.set(n.activityId, [...(map.get(n.activityId) ?? []), n]);
@@ -69,7 +69,7 @@ export function ActivityNotes({ tripId, activityId, isCompleted }: { tripId: Id<
 
 /** The "Our story" card near the end of the trip page. Opens the story screen. */
 export function StoryCard({ tripId }: { tripId: Id<"trips"> }) {
-  const data = useQuery(api.journal.story, { tripId });
+  const data = useCachedQuery(api.journal.story, { tripId }).data;
   const router = useRouter();
   const { t } = useI18n();
   if (!data) return null;
