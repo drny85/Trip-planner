@@ -146,7 +146,7 @@ test("through the gateway, a weekend goes to the cheap tier with cross-provider 
   expect(generateText).toHaveBeenCalledTimes(1);
   const call = generateText.mock.calls[0]![0];
   expect(call.model).toBe("google/gemini-3.5-flash");
-  expect(call.providerOptions).toEqual({ gateway: { models: ["anthropic/claude-haiku-5.5"] } });
+  expect(call.providerOptions).toEqual({ anthropic: { structuredOutputMode: "outputFormat" }, gateway: { models: ["anthropic/claude-haiku-5.5"] } });
   expect(await t.query(api.trips.get, { tripId })).toMatchObject({ title: "Lisbon Long Weekend", aiModel: "google/gemini-3.5-flash" });
 });
 
@@ -173,7 +173,7 @@ test("per-tier env overrides pick any provider's models", async () => {
   await t.action(api.ai.generateTrip, { prompt: "Two weeks backpacking Rome, Florence and Venice" });
   const call = generateText.mock.calls[0]![0];
   expect(call.model).toBe("openai/gpt-5.5");
-  expect(call.providerOptions).toEqual({ gateway: { models: ["google/gemini-3.5-flash"] } });
+  expect(call.providerOptions).toEqual({ anthropic: { structuredOutputMode: "outputFormat" }, gateway: { models: ["google/gemini-3.5-flash"] } });
 });
 
 test("generateTrip explains what to set when no AI key is configured", async () => {
