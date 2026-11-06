@@ -8,6 +8,7 @@ import { UndoToastProvider } from "./undo-toast";
 import { ConvexProviderWithAuth, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { MotionConfig } from "motion/react";
+import { clerkAppearance, clerkLocalization } from "@/lib/clerk-appearance";
 import { Fragment, useEffect, type ReactNode } from "react";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
@@ -30,6 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
 }
 
 function ConvexProviders({ children }: { children: ReactNode }) {
+  const { locale } = useI18n();
   if (!convex) return <MissingConfig />;
   if (!clerkKey)
     return (
@@ -39,7 +41,13 @@ function ConvexProviders({ children }: { children: ReactNode }) {
       </ConvexProviderWithAuth>
     );
   return (
-    <ClerkProvider publishableKey={clerkKey}>
+    <ClerkProvider
+      publishableKey={clerkKey}
+      appearance={clerkAppearance}
+      localization={clerkLocalization[locale]}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+    >
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SyncUser />
         <SyncLanguage />
