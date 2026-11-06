@@ -13,6 +13,7 @@
 import type * as ai from "../ai.js";
 import type * as bookings from "../bookings.js";
 import type * as expenses from "../expenses.js";
+import type * as fx from "../fx.js";
 import type * as http from "../http.js";
 import type * as journal from "../journal.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -20,6 +21,7 @@ import type * as lib_bookings from "../lib/bookings.js";
 import type * as lib_budget from "../lib/budget.js";
 import type * as lib_categories from "../lib/categories.js";
 import type * as lib_fakeData from "../lib/fakeData.js";
+import type * as lib_fx from "../lib/fx.js";
 import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as places from "../places.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
@@ -33,6 +35,7 @@ import type * as lib_promptAnswer from "../lib/promptAnswer.js";
 import type * as lib_promptBrief from "../lib/promptBrief.js";
 import type * as lib_replan from "../lib/replan.js";
 import type * as lib_settle from "../lib/settle.js";
+import type * as lib_splitDraft from "../lib/splitDraft.js";
 import type * as lib_story from "../lib/story.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as lib_tree from "../lib/tree.js";
@@ -66,6 +69,7 @@ import type * as users from "../users.js";
 "ai": typeof ai,
 "bookings": typeof bookings,
 "expenses": typeof expenses,
+"fx": typeof fx,
 "http": typeof http,
 "journal": typeof journal,
 "lib/auth": typeof lib_auth,
@@ -73,6 +77,7 @@ import type * as users from "../users.js";
 "lib/budget": typeof lib_budget,
 "lib/categories": typeof lib_categories,
 "lib/fakeData": typeof lib_fakeData,
+"lib/fx": typeof lib_fx,
 "lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
 "lib/interview": typeof lib_interview,
@@ -85,6 +90,7 @@ import type * as users from "../users.js";
 "lib/promptBrief": typeof lib_promptBrief,
 "lib/replan": typeof lib_replan,
 "lib/settle": typeof lib_settle,
+"lib/splitDraft": typeof lib_splitDraft,
 "lib/story": typeof lib_story,
 "lib/tokens": typeof lib_tokens,
 "lib/tree": typeof lib_tree,
