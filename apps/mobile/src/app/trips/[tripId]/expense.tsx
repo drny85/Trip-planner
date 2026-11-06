@@ -3,6 +3,6 @@ import { useLocalSearchParams } from "expo-router";
 import { AddExpense } from "@/screens/add-expense";
 
 export default function ExpenseRoute() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
-  return <AddExpense tripId={tripId as Id<"trips">} />;
+  const { tripId, expenseId } = useLocalSearchParams<{ tripId: string; expenseId?: string }>();
+  return <AddExpense tripId={tripId as Id<"trips">} expenseId={expenseId as Id<"expenses"> | undefined} />;
 }

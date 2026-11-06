@@ -197,3 +197,22 @@ test("generateTrip rejects an empty prompt without calling the API", async () =>
   await expect(t.action(api.ai.generateTrip, { prompt: " " })).rejects.toThrow("Describe the trip");
   expect(requests).toHaveLength(0);
 });
+
+test("interview answers reach the planner as exact rules, with real free time", async () => {
+  const t = convexTest(schema, modules);
+  await t.action(api.ai.generateTrip, {
+    prompt: "Lisboa · 2 días",
+    language: "es",
+    preferences: { destination: "Lisbon", days: 2, month: "2027-05", travelers: "couple", budget: "nope", pace: "relaxed", interests: ["food", "bogus"] },
+  });
+  const text = JSON.stringify(requests[0]!.body.messages);
+  expect(text).toContain("exactly 2 days");
+  expect(text).toContain("2027-05");
+  expect(text).toContain("A couple");
+  expect(text).toContain("Free afternoon");
+  expect(text).toContain("food and local dishes");
+  expect(text).not.toContain("bogus");
+  expect(text).not.toMatch(/Budget:/);
+  // The picked length routes a short trip to the cheap tier, whatever the text says.
+  expect(requests[0]!.body.model).toBe("claude-haiku-5-5");
+});

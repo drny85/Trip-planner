@@ -31,6 +31,7 @@ export {
   leaveBy,
   minutesNow,
   parseHourly,
+  projectDay,
   rainSoon,
   todayAlerts,
   todayStatus,
@@ -38,6 +39,7 @@ export {
   type Coords,
   type HourWeather,
   type LiveWeather,
+  type ProjectedStatus,
   type TodayAlert,
   type TodayStatus,
   type TodayStop,
@@ -52,3 +54,4 @@ export function googlePhotoCredit(activity: { photoUrl?: string; photoCredit?: s
   if (!activity.photoUrl?.includes("/place-photo/")) return null;
   return activity.photoCredit ?? "";
 }
+export { currencyChoices, currencyForRegion, currencyFromLocales, CURRENCIES, isCurrencyCode } from "./currency";

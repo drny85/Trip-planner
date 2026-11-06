@@ -33,7 +33,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 export function AccountButton() {
   const { t } = useI18n();
   if (!authEnabled) {
-    return <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">{t("nav.demoMode")}</span>;
+    return <span className="hidden rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground sm:inline">{t("nav.demoMode")}</span>;
   }
   return (
     <>

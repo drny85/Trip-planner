@@ -10,11 +10,15 @@
     "./categories": "./convex/lib/categories.ts",
     "./tree": "./convex/lib/tree.ts",
     "./budget": "./convex/lib/budget.ts",
+    "./settle": "./convex/lib/settle.ts",
+    "./splitDraft": "./convex/lib/splitDraft.ts",
     "./upNext": "./convex/lib/upNext.ts",
     "./optimistic": "./src/optimistic.ts",
     "./schemas": "./src/tripSchema.ts",
     "./replan": "./convex/lib/replan.ts",
     "./packing": "./convex/lib/packingCategories.ts",
+    "./promptAnswer": "./convex/lib/promptAnswer.ts",
+    "./interview": "./convex/lib/interview.ts",
     "./sample": "./convex/lib/fakeData.ts"
   },
   "scripts": {

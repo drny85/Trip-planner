@@ -9,6 +9,8 @@ import { action } from "./_generated/server";
 import { getUserId } from "./lib/auth";
 import { classifyRequest, MAX_TOKENS, modelsFor, nextTier, supportsServerFallback, type Tier, type Via } from "./lib/modelRouter";
 import type { z } from "zod";
+import { cleanPreferences, preferenceRules } from "./lib/interview";
+import { IMPROVE_SYSTEM_PROMPT, type ImproveResult, promptBriefSchema, toImproveResult } from "./lib/promptBrief";
 import { type GeneratedTrip, generatedTripSchema, replanSchema, toNewActivity, toTripTree } from "./lib/tripSchema";
 import { cleanItems, MAX_RUNS_PER_DAY, PACKING_PROMPT, packingContent, packingSchema, summarizeWeather, type TripWeather, weatherRequest } from "./lib/packingAi";
 import { tripWeather } from "./lib/validators";
@@ -141,8 +143,21 @@ export const generateTrip = action({
     prompt: v.string(),
     /** App language ("es", "ja", …). The itinerary is written in it. Defaults to English. */
     language: v.optional(v.string()),
+    /** Answers from the guided interview (lib/interview.ts), followed as exact rules. */
+    preferences: v.optional(
+      v.object({
+        destination: v.string(),
+        days: v.optional(v.number()),
+        month: v.optional(v.string()),
+        travelers: v.optional(v.string()),
+        budget: v.optional(v.string()),
+        pace: v.optional(v.string()),
+        interests: v.optional(v.array(v.string())),
+        notes: v.optional(v.string()),
+      }),
+    ),
   },
-  handler: async (ctx, { prompt, language }): Promise<Id<"trips">> => {
+  handler: async (ctx, { prompt, language, preferences }): Promise<Id<"trips">> => {
     const userId = await getUserId(ctx);
     const locale = toLocaleArg(language);
     const t = translator(locale);
@@ -156,11 +171,14 @@ export const generateTrip = action({
     const TRIP_SPEC = tripSpec(locale);
 
     const today = new Date().toISOString().slice(0, 10);
-    const content = `Today is ${today}.\n\nTrip request: ${request}`;
+    const prefs = preferences?.destination.trim() ? cleanPreferences(preferences) : null;
+    const content = prefs
+      ? `Today is ${today}.\n\nTrip request: ${request}\n\nThe traveler answered a short interview. Follow these exactly:\n${preferenceRules(prefs)}`
+      : `Today is ${today}.\n\nTrip request: ${request}`;
 
     // Start on the cheapest tier that fits the request; if its answer is cut off or
     // incomplete, retry once per tier upward instead of failing.
-    let tier: Tier | null = classifyRequest(request).tier;
+    let tier: Tier | null = classifyRequest(request, prefs?.days).tier;
     let lastError = t("errors.incomplete");
 
     while (tier) {
@@ -185,6 +203,57 @@ export const generateTrip = action({
       tier = process.env.AI_MODEL ? null : nextTier(tier);
     }
     throw new Error(lastError);
+  },
+});
+
+const improveResult = v.union(
+  v.object({
+    ok: v.literal(true),
+    improved: v.string(),
+    model: v.string(),
+    questions: v.array(
+      v.object({ topic: v.string(), question: v.string(), options: v.array(v.object({ label: v.string(), addition: v.string() })) }),
+    ),
+  }),
+  v.object({ ok: v.literal(false), reason: v.union(v.literal("limit"), v.literal("unavailable")) }),
+);
+type ImproveOutcome = ({ ok: true } & ImproveResult) | { ok: false; reason: "limit" | "unavailable" };
+
+/**
+ * "Improve with AI" on the Plan with AI screen: rewrites a rough trip request into a
+ * clear brief on the cheap tier, never inventing details, and returns the missing
+ * ones as short questions with tap-to-answer chips. Nothing is saved, and it doesn't
+ * count against the trip allowance; it's limited per hour (lib/promptBrief.ts).
+ * It never throws for a model problem: the app keeps the person's own text instead.
+ */
+export const improvePrompt = action({
+  args: {
+    prompt: v.string(),
+    /** App language, used only when the request's own language is unclear. */
+    language: v.optional(v.string()),
+  },
+  returns: improveResult,
+  handler: async (ctx, { prompt, language }): Promise<ImproveOutcome> => {
+    const userId = await getUserId(ctx);
+    const locale = toLocaleArg(language);
+    const t = translator(locale);
+    const request = prompt.trim();
+    if (request.length < 3) throw new Error(t("errors.describeTrip"));
+    if (request.length > 2000) throw new Error(t("errors.tooLong"));
+    const via = aiVia();
+    if (!via) return { ok: false, reason: "unavailable" };
+    if (!(await ctx.runMutation(internal.prompts.takeImproveSlot, { userId }))) return { ok: false, reason: "limit" };
+
+    const today = new Date().toISOString().slice(0, 10);
+    const content = `Today is ${today}. If the language of the request is unclear, write in ${languageInEnglish[locale]}.\n\nTraveler's request:\n"""\n${request}\n"""`;
+    try {
+      const result = await generateStructured(via, "simple", content, { system: IMPROVE_SYSTEM_PROMPT, schema: promptBriefSchema });
+      const improved = result.trip && !result.truncated && !result.refused ? toImproveResult(result.trip, request, result.model) : null;
+      return improved ? { ok: true, ...improved } : { ok: false, reason: "unavailable" };
+    } catch (error) {
+      console.error("improvePrompt failed", error);
+      return { ok: false, reason: "unavailable" };
+    }
   },
 });
 
