@@ -101,7 +101,8 @@ describe("ai.generatePackingList", () => {
 
     const result = await ben.action(api.ai.generatePackingList, { tripId, language: "es" });
     expect(result).toMatchObject({ added: 4, model: "google/gemini-3.5-flash", weather: { rainyDays: 1, high: 18, low: 8 } });
-    expect(weatherCalls.find((u) => u.includes("open-meteo.com"))).toContain("archive-api.open-meteo.com");
+    // The trip's time-zone lookup also calls Open-Meteo; the packing weather is the one asking for daily values.
+    expect(weatherCalls.find((u) => u.includes("open-meteo.com") && u.includes("daily="))).toContain("archive-api.open-meteo.com");
 
     const call = generateText.mock.calls[0]![0];
     expect(call.model).toBe("google/gemini-3.5-flash");

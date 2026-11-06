@@ -235,7 +235,7 @@ export const pt: Shape<typeof en> = {
     title: "Notificações",
     ariaLabel: "Notificações",
     ariaUnread: { one: "Notificações, {count} não lida", other: "Notificações, {count} não lidas" },
-    empty: "Nada por enquanto. Aqui você vê quando o grupo sugere ideias, vota ou divide uma conta.",
+    empty: "Nada por enquanto. Aqui você vê quando o grupo sugere ideias, vota ou divide uma conta, e quando um preço ou voo que você acompanha muda.",
     idea: "{name} sugeriu “{title}”. Vote.",
     accepted: "O grupo votou sim: “{title}” entrou no plano.",
     rejected: "“{title}” não teve votos suficientes.",
@@ -749,6 +749,7 @@ export const pt: Shape<typeof en> = {
   /** The Traveler subscription (Clerk Billing). */
   billing: {
     planName: "Viajante",
+    subscription: "Assinatura",
     lockedTitle: "Assine para começar esta viagem",
     lockedBody: "Seu roteiro está pronto. Assine para marcar atividades, adicionar fotos, replanejar dias e usar o modo Hoje.",
     lockedMember: "O organizador precisa assinar para que esta viagem possa começar.",

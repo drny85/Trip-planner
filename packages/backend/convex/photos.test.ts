@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
+import { photoFor, photoPicker } from "./lib/photos";
 import { keywords } from "./lib/wikiPhotos";
 import schema from "./schema";
 
@@ -29,6 +30,32 @@ test("a page that only shares a generic word is not a match", async () => {
   );
   expect(await findPlacePhoto("Lunch at Sea Me - Peixaria Moderna", "Lisbon, Portugal")).toBeNull();
   expect(await findPlacePhoto("LX Factory", "Lisbon, Portugal")).toBeNull();
+});
+
+test("a long name needs two of its words on the page, and Spanish place words don't count", async () => {
+  const { findPlacePhoto } = await import("./lib/wikiPhotos");
+  const page = (title: string) =>
+    new Response(JSON.stringify({ query: { pages: [{ title, index: 1, thumbnail: { source: `https://upload.wikimedia.org/${title}.jpg`, width: 1200, height: 800 } }] } }));
+  vi.stubGlobal("fetch", vi.fn(async () => page("San Cristóbal de La Laguna")));
+  expect(await findPlacePhoto("Laguna Gri-Gri boat tour", "Río San Juan, Dominican Republic")).toBeNull();
+  vi.stubGlobal("fetch", vi.fn(async () => page("Shibuya Scramble Square")));
+  expect(await findPlacePhoto("Shibuya Sky observation deck", "Tokyo, Japan")).toBeNull();
+  vi.stubGlobal("fetch", vi.fn(async () => page("Meiji Shrine")));
+  expect(await findPlacePhoto("Meiji Jingu Shrine", "Tokyo, Japan")).toContain("Meiji Shrine");
+});
+
+test("stock photos follow the subcategory", () => {
+  const train = "1474487548417-781cb71495f3";
+  const pizza = "1565299624946-b28f40a0ae38";
+  for (const seed of ["Transfer from Puerto Plata Airport", "Drive to Cabrera", "Rental car pickup"]) {
+    expect(photoFor("transport", seed, 1000, "car")).not.toContain(train);
+    expect(photoFor("food", seed, 1000, "lunch")).not.toContain(pizza);
+  }
+  expect(photoFor("transport", "Shinkansen to Kyoto", 1000, "train")).toContain(train);
+  // Unknown or missing subcategories use the whole category.
+  expect(photoFor("transport", "x", 1000)).toMatch(/images\.unsplash\.com/);
+  const pick = photoPicker();
+  expect(pick("food", "a", 1000, "cafe")).not.toBe(pick("food", "b", 1000, "cafe"));
 });
 
 test("enrichTrip swaps in Wikipedia photos only when the page matches the place", async () => {

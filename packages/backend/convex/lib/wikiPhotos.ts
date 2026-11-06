@@ -16,6 +16,8 @@ const STOPWORDS = new Set([
   "see", "try", "eat", "enjoy", "discover", "head", "stay", "hostel", "hotel", "free", "time", "local",
   "through", "around", "along", "over", "near", "via", "sunset", "sunrise", "viewpoint", "views", "view", "district",
   "neighborhood", "neighbourhood", "quarter", "area", "old", "town", "historic", "experience", "visit", "explore",
+  // Articles and joining words in Spanish, Portuguese, French and Italian place names.
+  "del", "los", "las", "das", "dos", "les", "des", "della", "der", "den",
 ]);
 
 /**
@@ -27,6 +29,13 @@ const GENERIC = new Set([
   "garden", "gardens", "tower", "square", "street", "palace", "castle", "temple", "shrine", "bridge", "river", "lake",
   "station", "airport", "hill", "bay", "harbour", "harbor", "port", "food", "seafood", "fish", "wine", "beer", "tavern",
   "bistro", "grill", "kitchen", "house", "hall", "center", "centre", "plaza", "mall", "store", "shop", "gallery",
+  "boat", "cruise", "ferry", "lagoon", "island", "cave", "waterfall", "falls", "mountain", "valley", "village", "city",
+  // The same kinds of place in Spanish, Portuguese, French and Italian, plus saints' names
+  // ("Laguna Gri-Gri" is not "San Cristóbal de La Laguna").
+  "laguna", "playa", "praia", "plage", "spiaggia", "iglesia", "igreja", "eglise", "chiesa", "catedral", "parque",
+  "museo", "musee", "mercado", "marche", "mercato", "lago", "isla", "ilha", "cueva", "bahia", "puerto", "porto",
+  "calle", "rua", "castillo", "castelo", "monte", "cerro", "piazza", "playita", "rio", "salto", "cascada",
+  "san", "santa", "santo", "sao", "saint", "sainte",
 ]);
 
 /** Distinctive words of a place name ("Visit Senso-ji Temple" → ["senso", "temple"]). */
@@ -50,20 +59,24 @@ export async function findPlacePhoto(name: string, context: string, width = 1200
   // Only a distinctive word ("Alfama", not "Sea" or "Factory") can confirm a match.
   const distinctive = wanted.filter((w) => !GENERIC.has(w));
   if (distinctive.length === 0) return null;
+  // A long activity name needs two of its words on the page, so one shared word
+  // can't attach a different place. A destination ("Tokyo & Kyoto, Japan", looked
+  // up with no context) names several places, so one is enough there.
+  const needed = context && distinctive.length >= 3 ? 2 : 1;
   // Wikipedia search wants every word to match, so filler like "Walk through" or
   // "Lunch at" finds nothing. Try the distinctive words with the city, then the
   // first distinctive word (usually the place) with the city, then the words alone.
   const city = context.split(",")[0]!.trim();
   const queries = [...new Set([`${wanted.join(" ")} ${city}`, `${distinctive[0]} ${city}`, wanted.join(" ")].map((q) => q.trim()))];
   for (const query of queries) {
-    const found = await search(query, distinctive, width);
+    const found = await search(query, distinctive, width, needed);
     if (found) return found;
   }
   console.log(`No Wikipedia photo for "${name}" (${context})`);
   return null;
 }
 
-async function search(query: string, wanted: string[], width: number): Promise<string | null> {
+async function search(query: string, wanted: string[], width: number, needed = 1): Promise<string | null> {
   const params = new URLSearchParams({
     action: "query",
     format: "json",
@@ -91,7 +104,7 @@ async function search(query: string, wanted: string[], width: number): Promise<s
       // Skip maps, flags, logos and diagrams.
       if (/\.(svg|png)/i.test(thumb.source) && !/\.jpe?g/i.test(thumb.source)) continue;
       const titleWords = new Set(keywords(page.title));
-      if (wanted.some((w) => titleWords.has(w))) return thumb.source;
+      if (wanted.filter((w) => titleWords.has(w)).length >= needed) return thumb.source;
     }
   } catch (e) {
     console.log(`Wikipedia search error for "${query}": ${e instanceof Error ? e.message : String(e)}`);
