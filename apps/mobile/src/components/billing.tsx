@@ -1,7 +1,7 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useI18n } from "@trip/i18n/react";
-import { TRAVELER_PRICE } from "@trip/ui";
+import { cn, TRAVELER_PRICE } from "@trip/ui";
 import { useAction, useQuery } from "convex/react";
 import { useState } from "react";
 import { Text, View } from "react-native";
@@ -33,13 +33,13 @@ export function useSubscribe() {
 }
 
 /** On a trip whose organizer hasn't subscribed: what's locked and how to unlock it. */
-export function TripLockedBanner({ tripId }: { tripId: Id<"trips"> }) {
+export function TripLockedBanner({ tripId, className }: { tripId: Id<"trips">; className?: string }) {
   const lock = useQuery(api.billing.tripLocked, { tripId });
   const { subscribe, busy } = useSubscribe();
   const { t } = useI18n();
   if (!lock?.locked) return null;
   return (
-    <Animated.View entering={FadeInDown.duration(350)} className="overflow-hidden rounded-3xl">
+    <Animated.View entering={FadeInDown.duration(350)} className={cn("overflow-hidden rounded-3xl", className)}>
       <LinearGradient colors={["#0e7c66", "#10b981"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} className="gap-3 p-5">
         <Text className="text-lg font-bold text-white">🔒 {lock.isOwner ? t("billing.lockedTitle") : t("billing.lockedMember")}</Text>
         {lock.isOwner && (
