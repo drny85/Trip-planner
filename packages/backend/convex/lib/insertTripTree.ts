@@ -1,3 +1,4 @@
+import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { getCallerProfile } from "./auth";
@@ -59,5 +60,7 @@ export async function insertTripTree(
     }
   }
 
+  // Look up the destination's time zone in the background, for calendar events.
+  await ctx.scheduler.runAfter(0, internal.timeZones.detect, { tripId });
   return tripId;
 }

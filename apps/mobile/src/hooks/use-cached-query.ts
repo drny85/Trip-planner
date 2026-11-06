@@ -1,5 +1,6 @@
 import { useConvexConnectionState, useQuery } from "convex/react";
 import { getFunctionName, type FunctionArgs, type FunctionReference, type FunctionReturnType } from "convex/server";
+import { useNetworkState } from "expo-network";
 import { useEffect, useMemo } from "react";
 import { readCache, writeCache } from "@/lib/offline-cache";
 
@@ -20,8 +21,14 @@ export function useCachedQuery<Q extends FunctionReference<"query">>(query: Q, a
   return live !== undefined ? { data: live, isCached: false } : { data: cached, isCached: cached !== undefined };
 }
 
-/** True once the app has lost its connection to the backend. */
+/**
+ * True when the phone has no internet (straight from the OS, so it shows the
+ * moment airplane mode goes on, even on a cold start with no signal), or once
+ * the app has lost its connection to the backend.
+ */
 export function useIsOffline() {
   const state = useConvexConnectionState();
+  const network = useNetworkState();
+  if (network.isConnected === false || network.isInternetReachable === false) return true;
   return state.hasEverConnected ? !state.isWebSocketConnected : false;
 }

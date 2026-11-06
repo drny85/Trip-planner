@@ -14,7 +14,7 @@ export function tripLength(start: string, end: string) {
   const ms = Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`);
   return Math.max(1, Math.round(ms / 86_400_000) + 1);
 }
-export { toICS } from "./calendar";
+export { calendarEvents, toICS, zonedTimeToUtc, type TripCalendarEvent } from "./calendar";
 
 /** "2027-04-02" moved by `days` ("2027-04-02", 3 -> "2027-04-05"). */
 export function addDays(iso: string, days: number) {

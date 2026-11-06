@@ -65,3 +65,44 @@ describe("12-hour times", async () => {
     expect(parseTime("soon")).toBeNull();
   });
 });
+
+describe("calendarEvents", () => {
+  test("keeps stable keys and wraps past midnight", async () => {
+    const { calendarEvents } = await import("./calendar");
+    const events = calendarEvents({
+      _id: "t",
+      title: "Trip",
+      startDate: "2027-04-02",
+      subTrips: [
+        { _id: "d2", dayNumber: 2, title: "Day two", activities: [{ _id: "a", title: "Late show", description: "", address: "Club", startTime: "23:30", durationMinutes: 90, children: [] }] },
+      ],
+    });
+    expect(events).toEqual([
+      { key: "a", title: "Late show", notes: "", location: "Club", allDay: false, start: { date: "2027-04-03", time: "23:30" }, end: { date: "2027-04-04", time: "01:00" } },
+      { key: "d2-day", title: "Trip: Day two", notes: "", location: "", allDay: true, start: { date: "2027-04-03" }, end: { date: "2027-04-04" } },
+    ]);
+  });
+});
+
+describe("trip time zones", () => {
+  test("turns the trip's wall clock into the right moment, across DST", async () => {
+    const { zonedTimeToUtc } = await import("./calendar");
+    expect(new Date(zonedTimeToUtc("2027-04-02", "14:30", "Asia/Tokyo")!).toISOString()).toBe("2027-04-02T05:30:00.000Z");
+    expect(new Date(zonedTimeToUtc("2027-01-10", "09:00", "America/New_York")!).toISOString()).toBe("2027-01-10T14:00:00.000Z");
+    expect(new Date(zonedTimeToUtc("2027-07-10", "09:00", "America/New_York")!).toISOString()).toBe("2027-07-10T13:00:00.000Z");
+    expect(new Date(zonedTimeToUtc("2027-03-15", "14:00", "America/Santo_Domingo")!).toISOString()).toBe("2027-03-15T18:00:00.000Z");
+    expect(zonedTimeToUtc("2027-01-10", "09:00", "Not/AZone")).toBeNull();
+  });
+
+  test("the .ics writes UTC times when the trip has a zone", () => {
+    const ics = toICS({
+      _id: "t",
+      title: "Tokyo",
+      startDate: "2027-04-02",
+      timeZone: "Asia/Tokyo",
+      subTrips: [{ _id: "d1", dayNumber: 1, title: "Day", activities: [{ _id: "a", title: "Lunch", description: "", address: "", startTime: "12:00", durationMinutes: 60, children: [] }] }],
+    });
+    expect(ics).toContain("DTSTART:20270402T030000Z\r\nDTEND:20270402T040000Z");
+    expect(ics).toContain("DTSTART;VALUE=DATE:20270402");
+  });
+});
