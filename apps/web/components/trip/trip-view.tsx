@@ -20,6 +20,7 @@ import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
 import { Ideas } from "./ideas";
+import { GroupVotes } from "./group-votes";
 import { JournalProvider, TripStory } from "./journal";
 import { MemoriesGallery, MemoriesProvider } from "./memories";
 import { PackingList } from "./packing-list";
@@ -131,6 +132,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
         {mode !== "public" && <Crew tripId={trip._id} />}
         {storyToken && <StoryBanner token={storyToken} />}
         {mode !== "public" && <Bookings tripId={trip._id} days={trip.subTrips} />}
+        {mode !== "public" && <GroupVotes tripId={trip._id} subTrips={trip.subTrips} />}
         {mode === "public" && (
           <motion.div {...rise(0)} className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm">

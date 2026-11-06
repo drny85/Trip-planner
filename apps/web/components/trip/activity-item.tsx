@@ -16,6 +16,7 @@ import { ActivityNotes } from "./journal";
 import { BookingChip } from "./bookings";
 import { ActivityPhotos } from "./memories";
 import { SubActivities } from "./sub-activities";
+import { VoteBar } from "./group-votes";
 import { useToggleDone } from "@/components/undo-toast";
 
 type Props = {
@@ -181,6 +182,7 @@ export function ActivityItem({ activity, trip, index, count, isDragging, onDragS
                   </button>
                 )}
               </div>
+              {canCheck && <VoteBar tripId={trip._id} activityId={activity._id} title={activity.title} />}
               {showPlace && (
                 <div className="mt-2">
                   <PlaceInfo activityId={activity._id} />
