@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { flightAlerted, flightSnapshot } from "./lib/alerts";
+import { fareInsights, fareOffer, flexCell } from "./lib/fares";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
 import { activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
 
@@ -15,7 +16,20 @@ export default defineSchema({
     language: v.optional(v.string()),
     /** ISO 4217 code of where they travel from, e.g. "USD". Guessed from the device, can be changed. */
     homeCurrency: v.optional(v.string()),
+    /** IATA code of the airport they usually fly from, e.g. "SFO". Remembered from the fare watch form. */
+    homeAirport: v.optional(v.string()),
   }).index("by_clerkId", ["clerkId"]),
+
+  /** Clerk Billing state per user (see lib/billing.ts), kept in sync by billing.refresh and the Clerk webhook. */
+  billing: defineTable({
+    userId: v.string(),
+    /** Trips planned so far, including deleted ones. */
+    tripsCreated: v.number(),
+    subscribed: v.boolean(),
+    /** When the paid period ends (ms). Set when they cancel, so access lasts until then. */
+    periodEnd: v.optional(v.number()),
+    checkedAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"]),
 
   trips: defineTable({
     /** Clerk user id (identity.subject), or the demo user before auth is wired. */
@@ -159,6 +173,47 @@ export default defineSchema({
     .index("by_nextCheckAt", ["nextCheckAt"]),
 
   /**
+   * A traveler who hasn't booked a flight yet watching fares for the trip's dates
+   * from their home airport (see fares.ts). One per traveler per trip, checked
+   * once a day; only that traveler hears about drops. "booked" once they add
+   * their flight, when live tracking (flightTracks) takes over.
+   */
+  fareWatches: defineTable({
+    tripId: v.id("trips"),
+    userId: v.string(),
+    from: v.string(),
+    to: v.string(),
+    outboundDate: v.string(),
+    /** Absent for one-way. */
+    returnDate: v.optional(v.string()),
+    adults: v.number(),
+    currency: v.string(),
+    /** Alert me once it's at or below this, in cents of `currency`. */
+    targetCents: v.optional(v.number()),
+    /** All prices are the cheapest fare for everyone (round trip when there's a return), in cents. */
+    firstCents: v.optional(v.number()),
+    lastCents: v.optional(v.number()),
+    lowestCents: v.optional(v.number()),
+    alertedCents: v.optional(v.number()),
+    history: v.array(v.object({ at: v.number(), cents: v.number() })),
+    insights: v.optional(fareInsights),
+    offers: v.array(fareOffer),
+    /** The ±3 day grid, checked on request. */
+    flex: v.optional(v.object({ checkedAt: v.number(), outboundDate: v.string(), cells: v.array(flexCell) })),
+    flexStatus: v.optional(v.union(v.literal("checking"), v.literal("failed"))),
+    googleUrl: v.optional(v.string()),
+    /** When they last tapped "Book", so the apps can ask whether they booked. */
+    bookStartedAt: v.optional(v.number()),
+    checks: v.number(),
+    lastCheckedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("booked"), v.literal("ended")),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_tripId_userId", ["tripId", "userId"])
+    .index("by_status_lastCheckedAt", ["status", "lastCheckedAt"]),
+
+  /**
    * Everyone going on a trip. The owner (`trips.userId`) has a row too, so votes
    * count everyone. Members can see the trip, check things off, suggest and vote;
    * the owner also edits the itinerary directly.
@@ -291,6 +346,8 @@ export default defineSchema({
       v.literal("flightDelay"),
       v.literal("flightGate"),
       v.literal("flightCanceled"),
+      v.literal("fareDrop"),
+      v.literal("fareTarget"),
     ),
     /** Rendered in the recipient's language when sent; the apps re-render `params` in the reader's current one. */
     text: v.string(),

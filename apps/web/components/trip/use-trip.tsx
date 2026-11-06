@@ -4,9 +4,10 @@ import { SignInButton } from "@clerk/nextjs";
 import { api } from "@trip/backend/api";
 import type { PublicTripDetails } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
-import { copyEnd, localToday, suggestedCopyStart } from "@trip/ui";
-import { Authenticated, Unauthenticated, useMutation } from "convex/react";
+import { copyEnd, localToday, suggestedCopyStart, TRAVELER_PRICE } from "@trip/ui";
+import { Authenticated, Unauthenticated, useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EASE_OUT } from "@/lib/motion";
@@ -83,6 +84,8 @@ function ResumeAfterSignIn({ token, onResume }: { token: string; onResume: () =>
 
 function CopyDialog({ open, onClose, token, trip }: { open: boolean; onClose: () => void; token: string; trip: PublicTripDetails }) {
   const copyShared = useMutation(api.trips.copyShared);
+  // A copy counts as planning a trip, so the plan's limits apply (checked again on the server).
+  const plan = useQuery(api.billing.status, {});
   const router = useRouter();
   const { t, f } = useI18n();
   const [today] = useState(localToday);
@@ -107,8 +110,8 @@ function CopyDialog({ open, onClose, token, trip }: { open: boolean; onClose: ()
     try {
       const tripId = await copyShared({ token, startDate: start });
       router.push(`/trips/${tripId}`);
-    } catch {
-      setError(t("copyTrip.failed"));
+    } catch (err) {
+      setError((err instanceof Error && err.message.match(/Uncaught Error: (.*?)(\n|$)/)?.[1]) || t("copyTrip.failed"));
       setBusy(false);
     }
   };
@@ -164,19 +167,30 @@ function CopyDialog({ open, onClose, token, trip }: { open: boolean; onClose: ()
               <li>🧹 {t("copyTrip.staysBehind")}</li>
             </ul>
 
-            {error && <p className="mt-4 text-sm font-medium text-danger">{error}</p>}
+            {plan?.blocked && (
+              <p className="mt-4 text-sm font-medium text-muted-foreground">
+                {t(plan.blocked === "subscribe" ? "errors.subscribeForMore" : "errors.tooManyUpcoming", { max: plan.maxUpcoming })}
+              </p>
+            )}
+            {error && !plan?.blocked && <p className="mt-4 text-sm font-medium text-danger">{error}</p>}
 
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" onClick={onClose} disabled={busy} className="rounded-full px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50">
                 {t("common.cancel")}
               </button>
+              {plan?.blocked === "subscribe" ? (
+                <Link href="/pricing" className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition hover:opacity-90">
+                  {t("billing.subscribe", { price: TRAVELER_PRICE })}
+                </Link>
+              ) : (
               <button
                 type="submit"
-                disabled={busy || !valid}
+                disabled={busy || !valid || Boolean(plan?.blocked)}
                 className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               >
                 {busy ? t("copyTrip.copying") : t("copyTrip.copy")}
               </button>
+              )}
             </div>
           </motion.form>
         </motion.div>

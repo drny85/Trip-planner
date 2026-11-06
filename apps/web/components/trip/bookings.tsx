@@ -36,16 +36,24 @@ const KIND_EMOJI: Record<Booking["kind"], string> = {
 const FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_BYTES = 10 * 1024 * 1024;
 
-const Ctx = createContext<{ data: Data | null | undefined; byActivity: Map<string, Booking> }>({ data: undefined, byActivity: new Map() });
+type BookingsCtx = { data: Data | null | undefined; byActivity: Map<string, Booking>; importOpen: boolean; setImportOpen: (open: boolean) => void };
+const Ctx = createContext<BookingsCtx>({ data: undefined, byActivity: new Map(), importOpen: false, setImportOpen: () => {} });
+
+/** Opens the "add a confirmation" dialog from elsewhere on the trip page (the Flights card). */
+export const useOpenImport = () => {
+  const { data, setImportOpen } = useContext(Ctx);
+  return data ? () => setImportOpen(true) : null;
+};
 
 /** Loads the trip's bookings once, for the section and the chips on each activity. */
 export function BookingsProvider({ tripId, enabled, children }: { tripId: Id<"trips">; enabled: boolean; children: React.ReactNode }) {
   const data = useQuery(api.bookings.forTrip, enabled ? { tripId } : "skip");
+  const [importOpen, setImportOpen] = useState(false);
   const value = useMemo(() => {
     const byActivity = new Map<string, Booking>();
     for (const b of data?.bookings ?? []) if (b.activityId) byActivity.set(b.activityId, b);
-    return { data, byActivity };
-  }, [data]);
+    return { data, byActivity, importOpen, setImportOpen };
+  }, [data, importOpen]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -75,9 +83,8 @@ const when = (f: I18n["f"], b: { startDate?: string; startTime?: string }) => [b
 
 export function Bookings({ tripId, days }: { tripId: Id<"trips">; days: Day[] }) {
   const { t } = useI18n();
-  const { data } = useContext(Ctx);
+  const { data, importOpen: open, setImportOpen: setOpen } = useContext(Ctx);
   const alerts = useQuery(api.alerts.forTrip, data ? { tripId } : "skip");
-  const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
   if (!data) return null;
   const { bookings, imports } = data;

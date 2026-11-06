@@ -4,11 +4,12 @@ import { api } from "@trip/backend/api";
 import { appendAnswer, type ImproveQuestion, withTimeout } from "@trip/backend/promptAnswer";
 import { localeNames } from "@trip/i18n";
 import { useI18n } from "@trip/i18n/react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
+import { PlanLimitNotice } from "./billing";
 import { ImprovingOverlay, Planning, ThinkingDots } from "./planning";
 import { TripInterview } from "./trip-interview";
 
@@ -22,6 +23,12 @@ const IDEAS = [
 /** Plan with AI: the guided interview by default, with free text as a shortcut. */
 export function GenerateTripForm() {
   const [mode, setMode] = useState<"interview" | "text">("interview");
+  const plan = useQuery(api.billing.status, {});
+  // Decided once on arrival, so saving the free trip doesn't swap the planning screen for the notice.
+  // The server checks again; this just saves answering for a trip that can't be planned.
+  const [gate, setGate] = useState<{ blocked: "subscribe" | "tooManyUpcoming" | null; max: number } | undefined>();
+  if (plan && gate === undefined) setGate({ blocked: plan.blocked, max: plan.maxUpcoming });
+  if (gate?.blocked) return <PlanLimitNotice blocked={gate.blocked} max={gate.max} />;
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div

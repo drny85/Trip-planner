@@ -27,6 +27,7 @@ import { shareCalendar } from "@/lib/calendar";
 import { scheduleTripReminders } from "@/lib/notifications";
 import { webUrl } from "@/lib/open";
 import { BookingsProvider, BookingsSection } from "./bookings";
+import { FlightsSection } from "./flights";
 import { BudgetCard } from "./budget-card";
 import { DaySection } from "./day-section";
 import { JournalProvider, StoryCard } from "./journal";
@@ -38,6 +39,7 @@ import { GroupVotesSection } from "./group-votes";
 import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 import { TodayBanner } from "./today-banner";
+import { TripLockedBanner } from "@/components/billing";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
   const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
@@ -153,9 +155,11 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
         <OfflineBanner cached={isCached} />
+        <TripLockedBanner tripId={trip._id} />
         <TodayBanner trip={trip} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
+        <FlightsSection tripId={trip._id} days={trip.subTrips} />
         <BookingsSection tripId={trip._id} days={trip.subTrips} />
         <GroupVotesSection tripId={trip._id} subTrips={trip.subTrips} />
         {trip.subTrips.map((subTrip, index) => (

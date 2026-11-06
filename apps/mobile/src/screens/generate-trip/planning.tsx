@@ -303,7 +303,7 @@ function Plane({ flown, width, height, bob }: { flown: SharedValue<number>; widt
             : undefined
         }
       >
-        <Icon name="plane" size={PLANE_SIZE - 4} colorVar="--color-on-image" />
+        <Icon name="airplane" size={PLANE_SIZE - 4} colorVar="--color-on-image" />
       </Animated.View>
     </Animated.View>
   );

@@ -3,11 +3,13 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { deleteTripBookings } from "./bookings";
+import { deleteTripFares } from "./fares";
 import { translator } from "@trip/i18n";
 import { findMembership, getOptionalUserId, getOwnedTrip, getUserId } from "./lib/auth";
+import { countTrip, tripAllowance } from "./lib/billing";
 import { copyTripTree, isIsoDate } from "./lib/copyTrip";
-import { languageOf } from "./lib/notify";
 import { insertTripTree } from "./lib/insertTripTree";
+import { languageOf } from "./lib/notify";
 import { newToken } from "./lib/tokens";
 import { pickUpNext, type UpNext } from "./lib/upNext";
 import { buildTree } from "./lib/tree";
@@ -17,7 +19,7 @@ import { deleteJournal } from "./journal";
 import { deleteTripVotes } from "./groupVotes";
 
 /** Trips the user owns or has joined, soonest first. */
-async function myTrips(ctx: QueryCtx, userId: string) {
+export async function myTrips(ctx: QueryCtx, userId: string) {
   const [owned, memberships] = await Promise.all([
     ctx.db
       .query("trips")
@@ -115,6 +117,12 @@ export const copyShared = mutation({
             .unique()
         : null;
     if (!source) throw new Error(t("errors.shareLinkOff"));
+    // A copy counts as planning a trip: the same free-trip and 3-upcoming limits apply.
+    const allowance = await tripAllowance(ctx, userId);
+    if (allowance.blocked) {
+      throw new Error(t(allowance.blocked === "subscribe" ? "errors.subscribeForMore" : "errors.tooManyUpcoming", { max: allowance.maxUpcoming }));
+    }
+    await countTrip(ctx, userId);
     // Photos and Google place matches come along, so nothing is looked up again.
     return copyTripTree(ctx, source, { userId, startDate });
   },
@@ -229,6 +237,7 @@ export const remove = mutation({
     await deleteJournal(ctx, tripId);
     await deleteTripVotes(ctx, tripId);
     await deleteTripBookings(ctx, tripId);
+    await deleteTripFares(ctx, tripId);
     await ctx.db.delete("trips", tripId);
   },
 });
@@ -237,6 +246,12 @@ export const remove = mutation({
 export const saveGenerated = internalMutation({
   args: { userId: v.string(), prompt: v.string(), model: v.string(), tree: tripTreeInput },
   handler: async (ctx, { userId, prompt, model, tree }) => {
+    const allowance = await tripAllowance(ctx, userId);
+    if (allowance.blocked) {
+      const t = translator(await languageOf(ctx, userId));
+      throw new Error(t(allowance.blocked === "subscribe" ? "errors.subscribeForMore" : "errors.tooManyUpcoming", { max: allowance.maxUpcoming }));
+    }
+    await countTrip(ctx, userId);
     const tripId = await insertTripTree(ctx, { userId, tree, prompt, aiModel: model, isAIGenerated: true });
     // Real photos of each place replace the stock ones in the background.
     await ctx.scheduler.runAfter(0, internal.photos.enrichTrip, { tripId });
