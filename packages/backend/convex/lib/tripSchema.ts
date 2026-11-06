@@ -148,6 +148,7 @@ const safeUrl = (url?: string) => (url && /^https?:\/\//i.test(url) ? url : unde
 
 function toActivity(activity: z.infer<z.ZodObject<typeof generatedActivityFields>> & RawInsights, destination: string, pick: typeof photoFor = photoFor) {
   const category = toCategory(activity.category);
+  const subcategory = toSubcategory(category, activity.subcategory);
   return {
     ...activity,
     ...toInsights(activity),
@@ -155,11 +156,11 @@ function toActivity(activity: z.infer<z.ZodObject<typeof generatedActivityFields
     description: decodeEntities(activity.description),
     address: decodeEntities(activity.address),
     category,
-    subcategory: toSubcategory(category, activity.subcategory),
+    subcategory,
     durationMinutes: Math.max(0, Math.round(activity.durationMinutes)),
     bookingUrl: safeUrl(activity.bookingUrl),
     websiteUrl: safeUrl(activity.websiteUrl),
-    photoUrl: pick(category, `${destination}-${activity.title}`, 1000),
+    photoUrl: pick(category, `${destination}-${activity.title}`, 1000, subcategory),
   };
 }
 

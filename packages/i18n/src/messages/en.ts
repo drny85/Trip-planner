@@ -232,7 +232,7 @@ export const en = {
     title: "Notifications",
     ariaLabel: "Notifications",
     ariaUnread: { one: "Notifications, {count} unread", other: "Notifications, {count} unread" },
-    empty: "Nothing yet. You'll hear here when the crew suggests ideas, votes, or splits a bill.",
+    empty: "Nothing yet. You'll hear here when the crew suggests ideas, votes, or splits a bill, and when a price or flight you're watching changes.",
     idea: '{name} suggested "{title}". Cast your vote.',
     accepted: 'The group voted yes: "{title}" is on the plan.',
     rejected: '"{title}" didn\'t get enough votes.',
@@ -782,6 +782,7 @@ export const en = {
   /** The Traveler subscription (Clerk Billing). */
   billing: {
     planName: "Traveler",
+    subscription: "Subscription",
     lockedTitle: "Subscribe to start this trip",
     lockedBody: "Your plan is ready. Subscribe to check things off, add photos, re-plan days and use today mode.",
     lockedMember: "The organizer needs to subscribe before this trip can start.",

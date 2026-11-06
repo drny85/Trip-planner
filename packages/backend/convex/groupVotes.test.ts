@@ -1,11 +1,17 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import { checkPlan, fairRanking, isDropCandidate, personPoints, tallyVotes, type VoteRow, votesOnlyPlan } from "./lib/groupVotes";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+
+// No AI in these tests, even when the machine running them has a key set.
+beforeEach(() => {
+  for (const name of ["AI_GATEWAY_API_KEY", "ANTHROPIC_API_KEY"]) vi.stubEnv(name, "");
+});
+afterEach(() => vi.unstubAllEnvs());
 
 /** Owner Ana with the demo trip, plus Ben and Cy who joined with the invite link. */
 async function crew() {

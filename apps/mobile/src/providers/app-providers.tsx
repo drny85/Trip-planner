@@ -1,4 +1,4 @@
-import { ClerkProvider, useAuth } from "@clerk/expo";
+import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { api } from "@trip/backend/api";
 import { useI18n } from "@trip/i18n/react";
@@ -47,9 +47,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
 function SyncUser() {
   const { isAuthenticated } = useConvexAuth();
   const store = useMutation(api.users.store);
+  const { user } = useUser();
+  const name = user?.fullName ?? user?.username ?? undefined;
+  const imageUrl = user?.hasImage ? user.imageUrl : undefined;
   useEffect(() => {
-    if (isAuthenticated) void store();
-  }, [isAuthenticated, store]);
+    if (isAuthenticated) void store({ name, imageUrl });
+  }, [isAuthenticated, store, name, imageUrl]);
   return null;
 }
 

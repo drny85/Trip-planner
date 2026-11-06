@@ -1,16 +1,51 @@
+import { api } from "@trip/backend/api";
 import { localeNames, locales, pickLocale, type Locale } from "@trip/i18n";
 import { useI18n } from "@trip/i18n/react";
-import { cn } from "@trip/ui";
+import { cn, TRAVELER_PRICE } from "@trip/ui";
+import { useQuery } from "convex/react";
 import { useLocales } from "expo-localization";
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import type { ReactNode } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { useSubscribe } from "@/components/billing";
 import { useAppLanguage } from "@/lib/i18n";
 import { setThemeChoice, useThemeChoice, type ThemeChoice } from "@/lib/theme";
 
 /** The language sheet route: language and light/dark, from the trips list. */
 export function LanguageScreen() {
   const router = useRouter();
-  return <LanguageAndTheme onPickLanguage={() => router.back()} onClose={() => router.back()} />;
+  return <LanguageAndTheme onPickLanguage={() => router.back()} onClose={() => router.back()} footer={<SubscriptionSection />} />;
+}
+
+/**
+ * The plan: subscribe, or manage it once subscribed. Both open the web pricing
+ * page (Clerk Billing runs there) and re-check the subscription after. Hidden in
+ * demo mode, where nothing is limited.
+ */
+function SubscriptionSection() {
+  const { t } = useI18n();
+  const plan = useQuery(api.billing.status, {});
+  const { subscribe, busy } = useSubscribe();
+  if (!plan?.enforced) return null;
+  return (
+    <>
+      <Text className="mt-4 px-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("billing.subscription")}</Text>
+      <Pressable
+        onPress={() => void subscribe()}
+        disabled={busy}
+        accessibilityRole="button"
+        className="flex-row items-center gap-3 rounded-2xl bg-card px-4 py-3.5 active:opacity-70"
+      >
+        <View className="flex-1">
+          <Text className="text-base font-semibold text-foreground">
+            {plan.subscribed ? t("billing.manage") : t("billing.subscribe", { price: TRAVELER_PRICE })}
+          </Text>
+          <Text className="mt-0.5 text-xs text-muted-foreground">{plan.subscribed ? t("billing.active") : t("billing.cancelAnytime")}</Text>
+        </View>
+        {busy ? <ActivityIndicator /> : <Text className="text-lg text-muted-foreground">›</Text>}
+      </Pressable>
+    </>
+  );
 }
 
 const THEMES: { value: ThemeChoice; key: "mobile.themeSystem" | "mobile.themeLight" | "mobile.themeDark" }[] = [
@@ -23,7 +58,7 @@ const THEMES: { value: ThemeChoice; key: "mobile.themeSystem" | "mobile.themeLig
  * Pick the app language (or follow the phone's) and the theme. Also shown on the
  * welcome tour, before sign-in. `onPickLanguage` runs after a language is chosen.
  */
-export function LanguageAndTheme({ onPickLanguage, onClose }: { onPickLanguage?: () => void; onClose?: () => void }) {
+export function LanguageAndTheme({ onPickLanguage, onClose, footer }: { onPickLanguage?: () => void; onClose?: () => void; footer?: ReactNode }) {
   const { t } = useI18n();
   const device = pickLocale(useLocales().map((l) => l.languageTag));
   const { choice, setChoice } = useAppLanguage();
@@ -83,6 +118,7 @@ export function LanguageAndTheme({ onPickLanguage, onClose }: { onPickLanguage?:
         <Row key={l} selected={choice === l} title={localeNames[l]} onPress={() => pick(l)} />
       ))}
       <Text className="mt-3 px-2 text-xs text-muted-foreground">{t("mobile.languageNote")}</Text>
+      {footer}
     </ScrollView>
   );
 }

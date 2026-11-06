@@ -61,5 +61,6 @@ describe("itineraryHtml", () => {
     expect(fileSlug("Tokyo Adventure!")).toBe("tokyo-adventure");
     expect(fileSlug("東京の旅")).toBe("東京の旅");
     expect(fileSlug("!!!")).toBe("trip");
+    expect(fileSlug("Río San Juan Sun, Surf & Whales")).toBe("río-san-juan-sun-surf-whales");
   });
 });

@@ -32,6 +32,38 @@ describe("majority", () => {
   });
 });
 
+describe("member profiles", () => {
+  test("a token with no name or photo falls back to what the app sent", async () => {
+    const t = convexTest(schema, modules);
+    const bare = t.withIdentity({ subject: "rob" });
+    await bare.mutation(api.users.store, { name: "Robert", imageUrl: "https://img.clerk.com/rob.png" });
+    const tripId = await bare.mutation(api.seed.demoTrip, {});
+    const view = await bare.query(api.members.forTrip, { tripId });
+    expect(view?.members[0]).toMatchObject({ name: "Robert", imageUrl: "https://img.clerk.com/rob.png", isMe: true });
+  });
+
+  test("fills in old member rows saved as \"Traveler\" without a photo", async () => {
+    const t = convexTest(schema, modules);
+    const bare = t.withIdentity({ subject: "rob" });
+    const tripId = await bare.mutation(api.seed.demoTrip, {});
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query("tripMembers").collect();
+      for (const r of rows) await ctx.db.patch("tripMembers", r._id, { name: "Traveler", imageUrl: undefined });
+    });
+    await bare.mutation(api.users.store, { name: "Robert", imageUrl: "https://img.clerk.com/rob.png" });
+    const view = await bare.query(api.members.forTrip, { tripId });
+    expect(view?.members[0]).toMatchObject({ name: "Robert", imageUrl: "https://img.clerk.com/rob.png" });
+  });
+
+  test("ignores a photo URL that isn't https", async () => {
+    const t = convexTest(schema, modules);
+    const bare = t.withIdentity({ subject: "rob" });
+    await bare.mutation(api.users.store, { name: "Robert", imageUrl: "javascript:alert(1)" });
+    const row = await t.run((ctx) => ctx.db.query("users").first());
+    expect(row?.imageUrl).toBeUndefined();
+  });
+});
+
 describe("members", () => {
   test("invite link lets friends join and see the trip; strangers can't", async () => {
     const { t, ana, others, tripId, token } = await crew();

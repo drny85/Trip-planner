@@ -5,6 +5,7 @@ import { cn } from "@trip/ui";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Alert, Pressable, Share, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
@@ -23,15 +24,19 @@ const initials = (name: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join("") || "?";
 
-function Avatar({ name, userId, size = 34 }: { name: string; userId: string; size?: number }) {
+function Avatar({ name, userId, imageUrl, size = 34 }: { name: string; userId: string; imageUrl?: string; size?: number }) {
   return (
     <View
-      className="items-center justify-center rounded-full border-2 border-card"
+      className="items-center justify-center overflow-hidden rounded-full border-2 border-card"
       style={{ width: size, height: size, backgroundColor: colorFor(userId) }}
     >
-      <Text className="font-bold text-white" style={{ fontSize: size * 0.36 }}>
-        {initials(name)}
-      </Text>
+      {imageUrl ? (
+        <Image source={imageUrl} style={{ width: "100%", height: "100%" }} contentFit="cover" accessibilityIgnoresInvertColors />
+      ) : (
+        <Text className="font-bold text-white" style={{ fontSize: size * 0.36 }}>
+          {initials(name)}
+        </Text>
+      )}
     </View>
   );
 }
@@ -66,7 +71,7 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
         <View className="flex-row">
           {data.members.slice(0, 5).map((m, i) => (
             <Pressable key={m.userId} onPress={() => manage(m)} style={{ marginLeft: i === 0 ? 0 : -10 }} accessibilityLabel={m.name}>
-              <Avatar name={m.name} userId={m.userId} />
+              <Avatar name={m.name} userId={m.userId} imageUrl={m.imageUrl} />
             </Pressable>
           ))}
         </View>

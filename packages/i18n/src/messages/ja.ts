@@ -235,7 +235,7 @@ export const ja: Shape<typeof en> = {
     title: "お知らせ",
     ariaLabel: "お知らせ",
     ariaUnread: { other: "お知らせ、未読{count}件" },
-    empty: "まだ何もありません。グループがアイデアを提案したり、投票したり、費用を割り勘したりするとここに表示されます。",
+    empty: "まだ何もありません。グループがアイデアを提案したり、投票したり、費用を割り勘したりしたときや、ウォッチ中の料金やフライトが変わったときにここに表示されます。",
     idea: "{name}さんが「{title}」を提案しました。投票してください。",
     accepted: "グループが賛成しました：「{title}」が予定に入りました。",
     rejected: "「{title}」は票が足りませんでした。",
@@ -783,6 +783,7 @@ export const ja: Shape<typeof en> = {
   /** The Traveler subscription (Clerk Billing). */
   billing: {
     planName: "トラベラー",
+    subscription: "サブスクリプション",
     lockedTitle: "この旅行を始めるには登録が必要です",
     lockedBody: "プランは完成しています。登録すると、アクティビティのチェック、写真の追加、日程の再計画、今日モードが使えます。",
     lockedMember: "この旅行を始めるには、主催者のサブスクリプション登録が必要です。",

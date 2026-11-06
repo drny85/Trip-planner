@@ -417,7 +417,7 @@ async function insertActivity(ctx: MutationCtx, day: Doc<"subTrips">, b: Booking
     subcategory,
     startTime: b.startTime,
     durationMinutes: durationOf(b),
-    photoUrl: photoFor(category, `${day.location ?? ""}-${b.title}`, 1000),
+    photoUrl: photoFor(category, `${day.location ?? ""}-${b.title}`, 1000, subcategory),
     isCompleted: false,
     order,
   });

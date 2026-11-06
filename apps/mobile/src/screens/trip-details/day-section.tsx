@@ -74,11 +74,11 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
       {canMap && mapOpen && <DayMap activities={subTrip.activities} />}
 
       {canEdit && subTrip.activities.length > 0 && (
-        <View className="mx-5 mb-4 flex-row gap-2">
+        <View className="mx-5 mb-4 flex-row gap-3">
           <PressableScale
             onPress={() => router.push({ pathname: "/trips/[tripId]/replan/[subTripId]", params: { tripId, subTripId: subTrip._id } })}
             accessibilityRole="button"
-            className={cn("flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-2.5", rainy ? "bg-sky-500" : "bg-muted")}
+            className={cn("flex-1 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3", rainy ? "bg-sky-500" : "bg-muted")}
           >
             <Text className={cn("text-sm font-semibold", rainy ? "text-white" : "text-foreground")} numberOfLines={1}>
               {rainy ? `☔ ${t("mobileDay.rainPlan", { percent: weather!.rainChance })}` : `✨ ${t("mobileDay.replan")}`}
@@ -89,7 +89,7 @@ export function DaySection({ subTrip, tripId, sectionIndex, canEdit }: Props) {
             accessibilityRole="button"
             accessibilityHint={t("local.buttonTitle")}
             accessibilityState={{ selected: localOn }}
-            className={cn("flex-1 flex-row items-center justify-center gap-2 rounded-2xl py-2.5", localOn ? "bg-violet-600" : "bg-muted")}
+            className={cn("flex-1 flex-row items-center justify-center gap-2 rounded-2xl px-4 py-3", localOn ? "bg-violet-600" : "bg-muted")}
           >
             <Text className={cn("text-sm font-semibold", localOn ? "text-white" : "text-foreground")} numberOfLines={1}>
               {`💎 ${localOn ? t("local.gem") : t("local.button")}`}
