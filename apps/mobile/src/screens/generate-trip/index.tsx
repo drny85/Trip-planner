@@ -15,6 +15,7 @@ import { PressableScale } from "@/components/pressable-scale";
 import { enterUp } from "@/lib/motion";
 import { TripInterview } from "./interview";
 import { Planning } from "./planning";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 const IDEAS = ["idea1", "idea2", "idea3", "idea4"] as const;
 
@@ -53,7 +54,9 @@ function FreeText({ onUseInterview }: { onUseInterview: () => void }) {
   const ready = prompt.trim().length >= 3;
   const improved = original !== null;
 
+  const blockedOffline = useOfflineGuard();
   const submit = async () => {
+    if (blockedOffline()) return;
     setLoading(true);
     setError(null);
     try {

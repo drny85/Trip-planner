@@ -2,13 +2,15 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useI18n } from "@trip/i18n/react";
 import { cn, TRAVELER_PRICE } from "@trip/ui";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { openInAppBrowser, webUrl } from "@/lib/open";
 import { Button } from "./button";
 import { LinearGradient } from "./gradient";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 /**
  * Checkout runs on the web (Clerk Billing has no in-app purchase), so this opens
@@ -17,8 +19,10 @@ import { LinearGradient } from "./gradient";
  */
 export function useSubscribe() {
   const refresh = useAction(api.billing.refresh);
+  const blockedOffline = useOfflineGuard();
   const [busy, setBusy] = useState(false);
   const subscribe = async () => {
+    if (blockedOffline()) return;
     setBusy(true);
     try {
       await openInAppBrowser(`${webUrl}/pricing`);
@@ -34,7 +38,7 @@ export function useSubscribe() {
 
 /** On a trip whose organizer hasn't subscribed: what's locked and how to unlock it. */
 export function TripLockedBanner({ tripId, className }: { tripId: Id<"trips">; className?: string }) {
-  const lock = useQuery(api.billing.tripLocked, { tripId });
+  const lock = useCachedQuery(api.billing.tripLocked, { tripId }).data;
   const { subscribe, busy } = useSubscribe();
   const { t } = useI18n();
   if (!lock?.locked) return null;

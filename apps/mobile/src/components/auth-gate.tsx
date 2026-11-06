@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { authEnabled } from "@/providers/app-providers";
 import { clearCache } from "@/lib/offline-cache";
+import { outbox } from "@/lib/outbox";
 import { Image } from "./image";
 import { Welcome } from "./welcome";
 
@@ -38,7 +39,10 @@ function ClerkGate({ children }: { children: ReactNode }) {
   // any signed-in → signed-out change rather than in a button handler.
   const wasSignedIn = useRef(false);
   useEffect(() => {
-    if (wasSignedIn.current && isSignedIn === false) clearCache();
+    if (wasSignedIn.current && isSignedIn === false) {
+      clearCache();
+      outbox.clear();
+    }
     if (isSignedIn !== undefined) wasSignedIn.current = isSignedIn;
   }, [isSignedIn]);
 
@@ -128,6 +132,7 @@ function SignOutButtonInner() {
             style: "destructive",
             onPress: () => {
               clearCache();
+              outbox.clear();
               void signOut();
             },
           },

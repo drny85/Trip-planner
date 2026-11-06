@@ -42,6 +42,7 @@ import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 import { TodayBanner } from "./today-banner";
 import { TripLockedBanner } from "@/components/billing";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
   const { data: trip, isCached } = useCachedQuery(api.trips.get, { tripId });
@@ -253,8 +254,10 @@ function ShareTrip({ tripId, title, isShared }: { tripId: Id<"trips">; title: st
   const share = useMutation(api.trips.share);
   const unshare = useMutation(api.trips.unshare);
   const { t } = useI18n();
+  const blockedOffline = useOfflineGuard();
 
   const onShare = async () => {
+    if (blockedOffline()) return;
     const token = await share({ tripId });
     const url = `${webUrl}/share/${token}`;
     await Share.share({ title, message: t("mobileTrip.shareMessage", { title, url }), url });

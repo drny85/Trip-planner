@@ -7,7 +7,7 @@ import type { Activity, TripDetails } from "@trip/backend/types";
 import type { Messages } from "@trip/i18n";
 import { useI18n } from "@trip/i18n/react";
 import { categoryMeta, cn, fallbackPhoto, parseTime, subcategoryMeta } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -15,11 +15,12 @@ import { Button } from "@/components/button";
 import { Chips, Field } from "@/components/form";
 import { Icon } from "@/components/icon";
 import { PlaceInfo } from "./place-info";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 type Props = { tripId: Id<"trips">; activityId: Id<"activities"> };
 
 export function EditActivity({ tripId, activityId }: Props) {
-  const trip = useQuery(api.trips.get, { tripId });
+  const trip = useCachedQuery(api.trips.get, { tripId }).data;
   const activity = trip?.subTrips.map((s) => findNode(s.activities, activityId)).find(Boolean);
   const { t } = useI18n();
 

@@ -1346,4 +1346,13 @@ export const de: Shape<typeof en> = {
     errMoveFar: "Eine Reise kann höchstens 14 Tage auf einmal verschoben werden.",
     errHasBookings: "Diese Reise hat Buchungen. Ändere zuerst sie, dann die Daten.",
   },
+  offline: {
+    waiting: { one: "📴 Offline · {count} Abhaken wird synchronisiert, sobald du wieder online bist", other: "📴 Offline · {count} Abhaken werden synchronisiert, sobald du wieder online bist" },
+    syncing: { one: "{count} Abhaken wird synchronisiert…", other: "{count} Abhaken werden synchronisiert…" },
+    synced: { one: "✓ Wieder online · {count} Abhaken synchronisiert", other: "✓ Wieder online · {count} Abhaken synchronisiert" },
+    notSaved: { one: "{count} Abhaken konnte nicht gespeichert werden", other: "{count} Abhaken konnten nicht gespeichert werden" },
+    needsConnection: "Du bist offline",
+    needsConnectionBody: "Dafür brauchst du eine Internetverbindung. Deine Reise, Buchungen und Packliste funktionieren auch offline.",
+    mapOffline: "📴 Die Karte braucht eine Verbindung. Stopps, Adressen und Wegbeschreibungen sind gespeichert.",
+  },
 };

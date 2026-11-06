@@ -2,7 +2,7 @@ import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -13,6 +13,7 @@ import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/icon";
 import { EASE_OUT } from "@/lib/motion";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 /**
  * Trip memories on mobile: one query for the whole trip, shared through context
@@ -23,7 +24,7 @@ type Ctx = { photos: Photo[]; byActivity: Map<string, Photo[]>; open: (photos: P
 const MemoriesContext = createContext<Ctx>({ photos: [], byActivity: new Map(), open: () => {} });
 
 export function MemoriesProvider({ tripId, children }: { tripId: Id<"trips">; children: ReactNode }) {
-  const data = useQuery(api.memories.forTrip, { tripId });
+  const data = useCachedQuery(api.memories.forTrip, { tripId }).data;
   const [viewer, setViewer] = useState<{ photos: Photo[]; index: number } | null>(null);
   const value = useMemo<Ctx>(() => {
     const photos = data ?? [];
