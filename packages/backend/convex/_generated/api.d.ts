@@ -23,6 +23,7 @@ import type * as lib_fakeData from "../lib/fakeData.js";
 import type * as lib_googlePlaces from "../lib/googlePlaces.js";
 import type * as places from "../places.js";
 import type * as lib_insertTripTree from "../lib/insertTripTree.js";
+import type * as lib_interview from "../lib/interview.js";
 import type * as lib_majority from "../lib/majority.js";
 import type * as lib_members from "../lib/members.js";
 import type * as lib_modelRouter from "../lib/modelRouter.js";
@@ -74,6 +75,7 @@ import type * as users from "../users.js";
 "lib/fakeData": typeof lib_fakeData,
 "lib/googlePlaces": typeof lib_googlePlaces,
 "lib/insertTripTree": typeof lib_insertTripTree,
+"lib/interview": typeof lib_interview,
 "lib/majority": typeof lib_majority,
 "lib/members": typeof lib_members,
 "lib/modelRouter": typeof lib_modelRouter,

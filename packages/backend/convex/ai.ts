@@ -9,6 +9,7 @@ import { action } from "./_generated/server";
 import { getUserId } from "./lib/auth";
 import { classifyRequest, MAX_TOKENS, modelsFor, nextTier, supportsServerFallback, type Tier, type Via } from "./lib/modelRouter";
 import type { z } from "zod";
+import { cleanPreferences, preferenceRules } from "./lib/interview";
 import { IMPROVE_SYSTEM_PROMPT, type ImproveResult, promptBriefSchema, toImproveResult } from "./lib/promptBrief";
 import { type GeneratedTrip, generatedTripSchema, replanSchema, toNewActivity, toTripTree } from "./lib/tripSchema";
 
@@ -140,8 +141,21 @@ export const generateTrip = action({
     prompt: v.string(),
     /** App language ("es", "ja", …). The itinerary is written in it. Defaults to English. */
     language: v.optional(v.string()),
+    /** Answers from the guided interview (lib/interview.ts), followed as exact rules. */
+    preferences: v.optional(
+      v.object({
+        destination: v.string(),
+        days: v.optional(v.number()),
+        month: v.optional(v.string()),
+        travelers: v.optional(v.string()),
+        budget: v.optional(v.string()),
+        pace: v.optional(v.string()),
+        interests: v.optional(v.array(v.string())),
+        notes: v.optional(v.string()),
+      }),
+    ),
   },
-  handler: async (ctx, { prompt, language }): Promise<Id<"trips">> => {
+  handler: async (ctx, { prompt, language, preferences }): Promise<Id<"trips">> => {
     const userId = await getUserId(ctx);
     const locale = toLocaleArg(language);
     const t = translator(locale);
@@ -155,11 +169,14 @@ export const generateTrip = action({
     const TRIP_SPEC = tripSpec(locale);
 
     const today = new Date().toISOString().slice(0, 10);
-    const content = `Today is ${today}.\n\nTrip request: ${request}`;
+    const prefs = preferences?.destination.trim() ? cleanPreferences(preferences) : null;
+    const content = prefs
+      ? `Today is ${today}.\n\nTrip request: ${request}\n\nThe traveler answered a short interview. Follow these exactly:\n${preferenceRules(prefs)}`
+      : `Today is ${today}.\n\nTrip request: ${request}`;
 
     // Start on the cheapest tier that fits the request; if its answer is cut off or
     // incomplete, retry once per tier upward instead of failing.
-    let tier: Tier | null = classifyRequest(request).tier;
+    let tier: Tier | null = classifyRequest(request, prefs?.days).tier;
     let lastError = t("errors.incomplete");
 
     while (tier) {

@@ -4,18 +4,25 @@ import { api } from "@trip/backend/api";
 import { appendAnswer, type ImproveQuestion, withTimeout } from "@trip/backend/promptAnswer";
 import { useAction } from "convex/react";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
 import { enterUp } from "@/lib/motion";
+import { TripInterview } from "./interview";
+import { Planning } from "./planning";
 
-const STATUS = ["status1", "status2", "status3", "status4", "status5"] as const;
 const IDEAS = ["idea1", "idea2", "idea3", "idea4"] as const;
 
+/** Plan with AI: the guided interview by default, with free text as a shortcut. */
 export function GenerateTrip() {
+  const [mode, setMode] = useState<"interview" | "text">("interview");
+  return mode === "interview" ? <TripInterview onTypeInstead={() => setMode("text")} /> : <FreeText onUseInterview={() => setMode("interview")} />;
+}
+
+function FreeText({ onUseInterview }: { onUseInterview: () => void }) {
   const router = useRouter();
   const generate = useAction(api.ai.generateTrip);
   const improve = useAction(api.ai.improvePrompt);
@@ -177,46 +184,12 @@ export function GenerateTrip() {
       {!loading && <Text className="-mt-2 text-center text-xs text-muted-foreground">{t("generate.writtenIn", { language: localeNames[locale] })}</Text>}
       {notice && <Text className="rounded-2xl bg-muted p-3 text-center text-sm text-muted-foreground">{notice}</Text>}
       {error && <Text className="text-center text-danger">{error}</Text>}
+      {!busy && (
+        <PressableScale onPress={onUseInterview} accessibilityRole="button" className="items-center py-2">
+          <Text className="text-sm font-semibold text-primary">{`💬 ${t("interview.useInterview")}`}</Text>
+        </PressableScale>
+      )}
     </ScrollView>
-  );
-}
-
-/** Shown while Claude plans: a breathing orb and rotating status lines. */
-function Planning() {
-  const [step, setStep] = useState(0);
-  const { t } = useI18n();
-  useEffect(() => {
-    const id = setInterval(() => setStep((s) => (s + 1) % STATUS.length), 2600);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <Animated.View entering={FadeIn.duration(250)} className="items-center gap-5 py-6">
-      <View className="h-28 w-28 items-center justify-center">
-        <Animated.View
-          className="absolute h-28 w-28 rounded-full bg-primary/20"
-          style={{
-            animationName: { from: { transform: [{ scale: 0.85 }], opacity: 0.9 }, to: { transform: [{ scale: 1.15 }], opacity: 0.3 } },
-            animationDuration: 1400,
-            animationIterationCount: "infinite",
-            animationDirection: "alternate",
-            animationTimingFunction: "ease-in-out",
-          }}
-        />
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-primary">
-          <Icon name="sparkles" size={28} colorVar="--color-primary-foreground" />
-        </View>
-      </View>
-      <Animated.Text
-        key={step}
-        entering={FadeIn.duration(300)}
-        exiting={FadeOut.duration(200)}
-        className="text-lg font-semibold text-foreground"
-      >
-        {t(`generate.${STATUS[step]!}`)}
-      </Animated.Text>
-      <Text className="text-sm text-muted-foreground">{t("generate.usuallyTakes")}</Text>
-    </Animated.View>
   );
 }
 
