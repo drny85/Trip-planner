@@ -44,6 +44,8 @@ export default defineSchema({
     inviteToken: v.optional(v.string()),
     /** Random token in the trip's "forward bookings here" email address. Absent means it's off. */
     importToken: v.optional(v.string()),
+    /** The shared trip this one was copied from with "Use this trip". */
+    copiedFromTripId: v.optional(v.id("trips")),
   })
     .index("by_userId", ["userId"])
     .index("by_userId_startDate", ["userId", "startDate"])
