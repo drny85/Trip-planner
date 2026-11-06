@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { flightAlerted, flightSnapshot } from "./lib/alerts";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
 import { activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
 
@@ -91,6 +92,71 @@ export default defineSchema({
   })
     .index("by_tripId", ["tripId"])
     .index("by_activityId", ["activityId"]),
+
+  /**
+   * A flight or hotel booking whose price we check once a day (see alerts.ts).
+   * Everyone on the trip hears when it drops below what was paid, or below the
+   * last price we told them about.
+   */
+  priceWatches: defineTable({
+    tripId: v.id("trips"),
+    bookingId: v.id("bookings"),
+    kind: v.union(v.literal("flight"), v.literal("hotel")),
+    createdBy: v.string(),
+    /** Flights: airport codes and the flight number we look for in the results. */
+    from: v.optional(v.string()),
+    to: v.optional(v.string()),
+    flightNumber: v.optional(v.string()),
+    /** Hotels: Google's id for the property, once we've found it. */
+    propertyToken: v.optional(v.string()),
+    adults: v.number(),
+    currency: v.string(),
+    /** All prices are the whole booking, in cents of `currency`. */
+    paidCents: v.optional(v.number()),
+    firstCents: v.optional(v.number()),
+    lastCents: v.optional(v.number()),
+    lowestCents: v.optional(v.number()),
+    alertedCents: v.optional(v.number()),
+    /** The last price was our exact flight or hotel, not the cheapest on the route. */
+    matched: v.optional(v.boolean()),
+    history: v.array(v.object({ at: v.number(), cents: v.number() })),
+    checks: v.number(),
+    lastCheckedAt: v.optional(v.number()),
+    /** Why the last check found nothing ("noResults") or failed ("failed"). */
+    error: v.optional(v.string()),
+    /** "ended" once the date has passed. */
+    status: v.union(v.literal("active"), v.literal("ended")),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_bookingId", ["bookingId"])
+    .index("by_status_lastCheckedAt", ["status", "lastCheckedAt"]),
+
+  /**
+   * Live status for a flight booking with a flight number, checked more often as
+   * departure nears. Everyone on the trip hears about delays, gate changes and
+   * cancellations.
+   */
+  flightTracks: defineTable({
+    tripId: v.id("trips"),
+    bookingId: v.id("bookings"),
+    flightNumber: v.string(),
+    /** Local departure date and time from the booking. */
+    date: v.string(),
+    time: v.optional(v.string()),
+    from: v.optional(v.string()),
+    /** Turned off by someone on the trip: no checks, no alerts. */
+    muted: v.boolean(),
+    /** Absent once the flight has left, was canceled, or is muted. */
+    nextCheckAt: v.optional(v.number()),
+    lastCheckedAt: v.optional(v.number()),
+    checks: v.number(),
+    snapshot: v.optional(flightSnapshot),
+    alerted: flightAlerted,
+    error: v.optional(v.string()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_bookingId", ["bookingId"])
+    .index("by_nextCheckAt", ["nextCheckAt"]),
 
   /**
    * Everyone going on a trip. The owner (`trips.userId`) has a row too, so votes
@@ -221,6 +287,10 @@ export default defineSchema({
       v.literal("expense"),
       v.literal("settled"),
       v.literal("groupPlan"),
+      v.literal("priceDrop"),
+      v.literal("flightDelay"),
+      v.literal("flightGate"),
+      v.literal("flightCanceled"),
     ),
     /** Rendered in the recipient's language when sent; the apps re-render `params` in the reader's current one. */
     text: v.string(),
@@ -231,7 +301,9 @@ export default defineSchema({
         item: v.optional(v.string()),
         count: v.optional(v.number()),
         amountCents: v.optional(v.number()),
+        wasCents: v.optional(v.number()),
         currency: v.optional(v.string()),
+        time: v.optional(v.string()),
       }),
     ),
     isRead: v.boolean(),

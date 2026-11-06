@@ -13,6 +13,7 @@ import { Button } from "@/components/button";
 import { useCachedQuery } from "@/hooks/use-cached-query";
 import { EASE_IN_OUT, EASE_OUT } from "@/lib/motion";
 import { openInAppBrowser } from "@/lib/open";
+import { BookingAlerts, type AlertsData } from "./booking-alerts";
 
 /**
  * Bookings on the trip page: imports waiting for review, and the confirmations
@@ -56,6 +57,7 @@ const when = (f: I18n["f"], b: { startDate?: string; startTime?: string }) => [b
 export function BookingsSection({ tripId, days }: { tripId: Id<"trips">; days: Day[] }) {
   const { t } = useI18n();
   const { data } = useContext(Ctx);
+  const alerts = useCachedQuery(api.alerts.forTrip, { tripId }).data;
   const router = useRouter();
   const [showAll, setShowAll] = useState(false);
   if (!data) return null;
@@ -86,7 +88,7 @@ export function BookingsSection({ tripId, days }: { tripId: Id<"trips">; days: D
       {bookings.length > 0 && (
         <View className="rounded-3xl bg-card px-4 py-1 shadow-sm shadow-black/5">
           {shown.map((b) => (
-            <SavedBooking key={b._id} booking={b} />
+            <SavedBooking key={b._id} booking={b} alerts={alerts ?? undefined} />
           ))}
           {bookings.length > 4 && (
             <Pressable onPress={() => setShowAll((s) => !s)} className="py-3">
@@ -99,7 +101,7 @@ export function BookingsSection({ tripId, days }: { tripId: Id<"trips">; days: D
   );
 }
 
-function SavedBooking({ booking: b }: { booking: Booking }) {
+function SavedBooking({ booking: b, alerts }: { booking: Booking; alerts?: AlertsData }) {
   const { t, f } = useI18n();
   const remove = useMutation(api.bookings.remove);
   const onLongPress = () =>
@@ -109,23 +111,26 @@ function SavedBooking({ booking: b }: { booking: Booking }) {
       { text: t("common.cancel"), style: "cancel" as const },
     ]);
   return (
-    <Pressable onLongPress={onLongPress} onPress={b.bookingUrl ? () => void openInAppBrowser(b.bookingUrl!) : undefined} className="flex-row items-center gap-3 border-b border-border/60 py-3">
-      <Text className="text-xl">{KIND_EMOJI[b.kind]}</Text>
-      <View className="flex-1">
-        <Text className="font-semibold text-foreground" numberOfLines={1}>
-          {b.title}
-        </Text>
-        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-          {[when(f, b), b.provider, b.details].filter(Boolean).join(" · ")}
-        </Text>
-      </View>
-      {b.confirmationCode && (
-        // Selectable, so a long press copies the code.
-        <Text selectable className="rounded-lg bg-muted px-2 py-1 font-mono text-xs font-semibold text-foreground">
-          {b.confirmationCode}
-        </Text>
-      )}
-    </Pressable>
+    <View className="border-b border-border/60">
+      <Pressable onLongPress={onLongPress} onPress={b.bookingUrl ? () => void openInAppBrowser(b.bookingUrl!) : undefined} className="flex-row items-center gap-3 py-3">
+        <Text className="text-xl">{KIND_EMOJI[b.kind]}</Text>
+        <View className="flex-1">
+          <Text className="font-semibold text-foreground" numberOfLines={1}>
+            {b.title}
+          </Text>
+          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+            {[when(f, b), b.provider, b.details].filter(Boolean).join(" · ")}
+          </Text>
+        </View>
+        {b.confirmationCode && (
+          // Selectable, so a long press copies the code.
+          <Text selectable className="rounded-lg bg-muted px-2 py-1 font-mono text-xs font-semibold text-foreground">
+            {b.confirmationCode}
+          </Text>
+        )}
+      </Pressable>
+      {alerts && <BookingAlerts booking={b} alerts={alerts} />}
+    </View>
   );
 }
 
