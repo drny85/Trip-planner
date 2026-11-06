@@ -1380,4 +1380,13 @@ export const ja: Shape<typeof en> = {
     errMoveFar: "一度に移動できるのは14日までです。",
     errHasBookings: "この旅行には予約があります。先に予約を変更してから日程を移動してください。",
   },
+  offline: {
+    waiting: { other: "📴 オフライン · {count}件のチェックは再接続時に同期されます" },
+    syncing: { other: "{count}件のチェックを同期しています…" },
+    synced: { other: "✓ オンラインに戻りました · {count}件のチェックを同期しました" },
+    notSaved: { other: "{count}件のチェックを保存できませんでした" },
+    needsConnection: "オフラインです",
+    needsConnectionBody: "この操作にはインターネット接続が必要です。旅程、予約、持ち物リストはオフラインでも使えます。",
+    mapOffline: "📴 地図の表示には接続が必要です。スポット、住所、経路は保存されています。",
+  },
 };

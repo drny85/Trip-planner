@@ -1379,4 +1379,13 @@ export const en = {
     errMoveFar: "A trip can move up to 14 days at a time.",
     errHasBookings: "This trip has bookings. Change them first, then move the dates.",
   },
+  offline: {
+    waiting: { one: "📴 Offline · {count} check-off will sync when you're back", other: "📴 Offline · {count} check-offs will sync when you're back" },
+    syncing: { one: "Syncing {count} check-off…", other: "Syncing {count} check-offs…" },
+    synced: { one: "✓ Back online · {count} check-off synced", other: "✓ Back online · {count} check-offs synced" },
+    notSaved: { one: "{count} check-off couldn't be saved", other: "{count} check-offs couldn't be saved" },
+    needsConnection: "You're offline",
+    needsConnectionBody: "This needs an internet connection. Your trip, bookings and packing list still work offline.",
+    mapOffline: "📴 The map needs a connection. Stops, addresses and directions are saved.",
+  },
 };

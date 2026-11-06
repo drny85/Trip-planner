@@ -1381,4 +1381,13 @@ export const fr: Shape<typeof en> = {
     errMoveFar: "Un voyage peut être déplacé de 14 jours au plus à la fois.",
     errHasBookings: "Ce voyage a des réservations. Modifiez-les d'abord, puis déplacez les dates.",
   },
+  offline: {
+    waiting: { one: "📴 Hors ligne · {count} élément coché se synchronisera à ton retour", other: "📴 Hors ligne · {count} éléments cochés se synchroniseront à ton retour" },
+    syncing: { one: "Synchronisation de {count} élément coché…", other: "Synchronisation de {count} éléments cochés…" },
+    synced: { one: "✓ De retour en ligne · {count} élément coché synchronisé", other: "✓ De retour en ligne · {count} éléments cochés synchronisés" },
+    notSaved: { one: "{count} élément coché n'a pas pu être enregistré", other: "{count} éléments cochés n'ont pas pu être enregistrés" },
+    needsConnection: "Tu es hors ligne",
+    needsConnectionBody: "Il faut une connexion internet pour ça. Ton voyage, tes réservations et ta liste de bagages restent disponibles hors ligne.",
+    mapOffline: "📴 La carte a besoin d'une connexion. Les étapes, adresses et itinéraires sont enregistrés.",
+  },
 };

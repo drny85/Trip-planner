@@ -3,13 +3,15 @@ import type { Id } from "@trip/backend/dataModel";
 import { optimisticSetCompleted } from "@trip/backend/optimistic";
 import { useI18n } from "@trip/i18n/react";
 import { TRAVELER_PRICE } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexConnectionState, useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import Animated, { Easing, FadeInDown, FadeOutDown, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCachedQuery, useIsOffline } from "@/hooks/use-cached-query";
 import { EASE_OUT } from "@/lib/motion";
+import { outbox } from "@/lib/outbox";
 import { useSubscribe } from "./billing";
 
 /**
@@ -86,13 +88,28 @@ function ToastView({ message, onUndo }: { message: string; onUndo: () => void })
   );
 }
 
-/** Toggles done with the optimistic update, and offers Undo after marking something done. */
+/**
+ * True when a change should wait in the outbox instead of going straight to the
+ * server: no signal, or the app isn't connected to the backend yet.
+ */
+export function useShouldQueue() {
+  const offline = useIsOffline();
+  const { isWebSocketConnected } = useConvexConnectionState();
+  return offline || !isWebSocketConnected;
+}
+
+/**
+ * Toggles done with the optimistic update, and offers Undo after marking something done.
+ * With no connection the tap goes in the outbox (shown on the saved trip at once) and syncs later.
+ */
 export function useToggleDone() {
   const setCompleted = useMutation(api.activities.setCompleted).withOptimisticUpdate(optimisticSetCompleted);
   const restore = useMutation(api.activities.restoreCompleted);
   const show = useContext(UndoContext);
   const { subscribe } = useSubscribe();
-  const locked = useQuery(api.billing.lockedTrips, {});
+  // Saved on the phone, so a locked trip is still explained offline instead of queuing taps the server will refuse.
+  const locked = useCachedQuery(api.billing.lockedTrips, {}).data;
+  const queueIt = useShouldQueue();
   const { t } = useI18n();
   // Explained here, before the server is asked: a refused mutation still logs a red error in dev.
   const explainLock = useCallback(
@@ -110,6 +127,14 @@ export function useToggleDone() {
     async (activity: { _id: Id<"activities">; tripId: Id<"trips">; title: string }, isCompleted: boolean) => {
       const lock = locked?.find((l) => l.tripId === activity.tripId);
       if (lock) return explainLock(lock.isOwner);
+      const key = `activity:${activity._id}`;
+      // Offline, or an earlier offline tap on it hasn't synced yet (so the two can't arrive out of order).
+      if (queueIt || outbox.has(key)) {
+        void Haptics.selectionAsync();
+        outbox.add({ kind: "activity", tripId: activity.tripId, activityId: activity._id, isCompleted, at: Date.now() });
+        if (isCompleted) show(t("undo.done", { title: activity.title }), () => void outbox.cancel(key));
+        return;
+      }
       let changed: Id<"activities">[];
       try {
         changed = await setCompleted({ activityId: activity._id, isCompleted });
@@ -125,7 +150,7 @@ export function useToggleDone() {
         show(steps > 0 ? t("undo.doneWithSteps", { title: activity.title, count: steps }) : t("undo.done", { title: activity.title }), () => void restore({ activityIds: changed, isCompleted: false }));
       }
     },
-    [locked, explainLock, setCompleted, restore, show, t],
+    [locked, explainLock, queueIt, setCompleted, restore, show, t],
   );
 }
 

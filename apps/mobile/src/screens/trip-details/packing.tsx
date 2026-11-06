@@ -1,6 +1,7 @@
 import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
+import { optimisticTogglePacked } from "@trip/backend/optimistic";
 import { groupPacking, PACKING_EMOJI } from "@trip/backend/packing";
 import { cn } from "@trip/ui";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -9,8 +10,11 @@ import { useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
+import { useShouldQueue } from "@/components/undo-toast";
 import { useCachedQuery } from "@/hooks/use-cached-query";
+import { outbox } from "@/lib/outbox";
 import { CSS_EASE_OUT, EASE_IN_OUT, EASE_OUT } from "@/lib/motion";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 type AiState = { status: "idle" } | { status: "working" } | { status: "done"; added: number } | { status: "error"; message: string };
 
@@ -22,7 +26,8 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
   const [ai, setAi] = useState<AiState>({ status: "idle" });
   const add = useMutation(api.packing.add);
   const addEssentials = useMutation(api.packing.addEssentials);
-  const toggle = useMutation(api.packing.toggle);
+  const toggle = useTogglePacked(tripId);
+  const blockedOffline = useOfflineGuard();
   const claim = useMutation(api.packing.claim);
   const remove = useMutation(api.packing.remove);
   const [text, setText] = useState("");
@@ -57,6 +62,7 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
             : t("packing.aiHint");
 
   const packWithAi = async () => {
+    if (blockedOffline()) return;
     setAi({ status: "working" });
     try {
       const result = await generate({ tripId, language: locale });
@@ -126,7 +132,7 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
                 <Pressable
                   onPress={() => {
                     void Haptics.selectionAsync();
-                    void toggle({ itemId: item._id, isPacked: !item.isPacked });
+                    toggle(item._id, !item.isPacked);
                   }}
                   onLongPress={() =>
                     Alert.alert(item.text, item.reason, [
@@ -188,4 +194,14 @@ export function PackingSection({ tripId }: { tripId: Id<"trips"> }) {
       </View>
     </View>
   );
+}
+
+/** Ticks an item packed; with no connection it waits in the outbox and syncs later. */
+function useTogglePacked(tripId: Id<"trips">) {
+  const toggle = useMutation(api.packing.toggle).withOptimisticUpdate(optimisticTogglePacked);
+  const queueIt = useShouldQueue();
+  return (itemId: Id<"packingItems">, isPacked: boolean) => {
+    if (queueIt || outbox.has(`packing:${itemId}`)) return outbox.add({ kind: "packing", tripId, itemId, isPacked, at: Date.now() });
+    void toggle({ itemId, isPacked }).catch(() => undefined);
+  };
 }

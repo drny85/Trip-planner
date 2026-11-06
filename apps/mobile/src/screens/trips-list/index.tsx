@@ -1,10 +1,11 @@
 import { api } from "@trip/backend/api";
+import { tripPhotoUrls } from "@trip/backend/offline";
 import type { Trip } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
 import { localToday, tripLength } from "@trip/ui";
 import { useMutation } from "convex/react";
 import { Link, Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, useColorScheme, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { SignOutButton } from "@/components/auth-gate";
@@ -18,6 +19,7 @@ import { enterUp } from "@/lib/motion";
 import { BellButton } from "@/screens/notifications";
 import { OfflineBanner } from "@/components/offline-banner";
 import { useCachedQuery } from "@/hooks/use-cached-query";
+import { Image } from "expo-image";
 import { UpNext } from "./up-next";
 
 export function TripsList() {
@@ -181,6 +183,7 @@ function EmptyState() {
  */
 function PrefetchTrips({ trips }: { trips: { _id: Trip["_id"]; endDate: string }[] }) {
   const today = localToday();
+  useCachedQuery(api.billing.lockedTrips, {});
   return (
     <>
       {trips
@@ -194,7 +197,18 @@ function PrefetchTrips({ trips }: { trips: { _id: Trip["_id"]; endDate: string }
 }
 
 function PrefetchTrip({ tripId }: { tripId: Trip["_id"] }) {
-  useCachedQuery(api.trips.get, { tripId });
+  const trip = useCachedQuery(api.trips.get, { tripId }).data;
   useCachedQuery(api.packing.list, { tripId });
+  useCachedQuery(api.bookings.forTrip, { tripId });
+  useCachedQuery(api.fares.forTrip, { tripId });
+  useCachedQuery(api.alerts.forTrip, { tripId });
+  useCachedQuery(api.billing.tripLocked, { tripId });
+  useCachedQuery(api.expenses.forTrip, { tripId });
+  useCachedQuery(api.members.forTrip, { tripId });
+  // Photos go in expo-image's disk cache, so the cover and stop photos show with no signal too.
+  const photos = trip ? tripPhotoUrls(trip).join("\n") : "";
+  useEffect(() => {
+    if (photos) void Image.prefetch(photos.split("\n"), "disk").catch(() => false);
+  }, [photos]);
   return null;
 }
