@@ -75,8 +75,9 @@ export function countPlaceSignals(request: string): number {
   return signals;
 }
 
-export function classifyRequest(request: string): { tier: Tier; days: number | null; placeSignals: number } {
-  const days = estimateDays(request);
+/** `knownDays` is the length picked in the trip interview, when there is one. */
+export function classifyRequest(request: string, knownDays?: number): { tier: Tier; days: number | null; placeSignals: number } {
+  const days = knownDays ?? estimateDays(request);
   const placeSignals = countPlaceSignals(request);
   const long = request.length > 600;
 

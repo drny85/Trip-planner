@@ -92,3 +92,7 @@ export const tripTreeInput = v.object({
 export type ActivityInput = Infer<typeof activityInput>;
 export type SubTripInput = Infer<typeof subTripInput>;
 export type TripTreeInput = Infer<typeof tripTreeInput>;
+
+/** How an expense is divided. See SplitMode in lib/settle.ts. */
+export const splitMode = v.union(v.literal("equal"), v.literal("exact"), v.literal("shares"), v.literal("percent"));
+export const splitInput = v.object({ mode: splitMode, people: v.array(v.string()), values: v.optional(v.array(v.number())) });
