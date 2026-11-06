@@ -9,6 +9,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { TripLockedBanner } from "@/components/billing";
 import { Button } from "@/components/button";
 import { PressableScale } from "@/components/pressable-scale";
 import { EASE_OUT } from "@/lib/motion";
@@ -33,7 +34,17 @@ export function LocalPick({ tripId, subTripId }: { tripId: Id<"trips">; subTripI
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [proposal, setProposal] = useState<LocalPickProposal | null>(null);
+  const lock = useQuery(api.billing.tripLocked, { tripId });
   if (!day) return <ActivityIndicator className="mt-10" />;
+  // Swaps and tips are part of a started trip: explain the lock instead of a refused request.
+  if (lock?.locked)
+    return (
+      <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-4 p-5 pb-12">
+        <Text className="text-lg font-bold text-foreground">{`💎 ${t("local.title", { day: day.dayNumber })}`}</Text>
+        <Text className="-mt-2 text-sm leading-5 text-muted-foreground">{t("local.intro")}</Text>
+        <TripLockedBanner tripId={tripId} />
+      </ScrollView>
+    );
 
   const on = Boolean(day.localPickAt);
   const missingTips = day.activities.some((a) => !a.localTips?.length);

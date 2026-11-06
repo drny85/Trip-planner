@@ -16,6 +16,7 @@ import { EASE_OUT, layoutSpring, rise, useParallax } from "@/lib/motion";
 import { ScrollProgress } from "@/components/marketing/sections";
 import { ActivityItem } from "./activity-item";
 import { BookingsProvider, Bookings } from "./bookings";
+import { Flights } from "./flights";
 import { BudgetCard } from "./budget-card";
 import { Crew, LeaveTrip } from "./crew";
 import { CalendarButton } from "./calendar-button";
@@ -31,6 +32,7 @@ import { PdfButton } from "./pdf-button";
 import { ShareButton } from "./share-button";
 import { UseTripButton } from "./use-trip";
 import { TodayBanner } from "@/components/today/today-banner";
+import { TripLockedBanner } from "@/components/billing";
 
 export function TripView({ tripId }: { tripId: Id<"trips"> }) {
   const trip = useQuery(api.trips.get, { tripId });
@@ -137,10 +139,12 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
 
       <div className="mx-auto max-w-4xl px-4">
         <Stats trip={trip} readOnly={readOnly} />
+        {mode !== "public" && <TripLockedBanner tripId={trip._id} />}
         {mode !== "public" && <TodayBanner trip={trip} />}
         <BudgetCard trip={trip} />
         {mode !== "public" && <Crew tripId={trip._id} />}
         {storyToken && <StoryBanner token={storyToken} />}
+        {mode !== "public" && <Flights tripId={trip._id} days={trip.subTrips} />}
         {mode !== "public" && <Bookings tripId={trip._id} days={trip.subTrips} />}
         {mode !== "public" && <GroupVotes tripId={trip._id} subTrips={trip.subTrips} />}
         {mode === "public" && (

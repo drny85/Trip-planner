@@ -5,6 +5,7 @@ import { internalAction, internalMutation, internalQuery, mutation, query, type 
 import { isLocale, translator, type MessageKey, type Messages } from "@trip/i18n";
 import { aiVia, generateViaAnthropic, generateViaGateway, languageInstruction } from "./ai";
 import { findMembership, getMemberActivity, getMemberTrip, getOptionalUserId, getOwnedTrip } from "./lib/auth";
+import { requireStarted } from "./lib/billing";
 import { listMembers } from "./lib/members";
 import { languageOf } from "./lib/notify";
 import { modelsFor, nextTier, type Tier } from "./lib/modelRouter";
@@ -248,7 +249,8 @@ export const writeStory = mutation({
   /** `language`: the app language of whoever asked; the story is written in it. */
   args: { tripId: v.id("trips"), language: v.optional(v.string()) },
   handler: async (ctx, { tripId, language }) => {
-    const { userId } = await getMemberTrip(ctx, tripId);
+    const { userId, trip } = await getMemberTrip(ctx, tripId);
+    await requireStarted(ctx, trip, userId);
     const t = translator(await languageOf(ctx, userId));
     const done = await ctx.db
       .query("activities")

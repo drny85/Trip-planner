@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { useSyncExternalStore } from "react";
-import { Platform } from "react-native";
+import { Appearance, Platform } from "react-native";
 import { Uniwind } from "uniwind";
 
 /**
@@ -21,6 +21,12 @@ function readSaved(): ThemeChoice {
     return "system";
   }
 }
+
+/**
+ * The phone's own light/dark setting at launch, read before a saved choice overrides
+ * Appearance. The native splash follows the phone, so the animated splash starts from it.
+ */
+export const launchSystemScheme = Appearance.getColorScheme() === "dark" ? "dark" : "light";
 
 let current: ThemeChoice = readSaved();
 const listeners = new Set<() => void>();

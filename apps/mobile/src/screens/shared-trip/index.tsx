@@ -1,7 +1,7 @@
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { api } from "@trip/backend/api";
 import { useI18n } from "@trip/i18n/react";
-import { copyEnd, dayTitle, localToday, suggestedCopyStart } from "@trip/ui";
+import { copyEnd, dayTitle, localToday, suggestedCopyStart, TRAVELER_PRICE } from "@trip/ui";
 import { useMutation, useQuery } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -10,6 +10,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, Text, useColorSchem
 import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCSSVariable } from "uniwind";
+import { useSubscribe } from "@/components/billing";
 import { Button } from "@/components/button";
 import { LinearGradient } from "@/components/gradient";
 import { Icon } from "@/components/icon";
@@ -37,6 +38,9 @@ export function SharedTrip({ token }: { token: string }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A copy counts as planning a trip, so the plan's limits apply (checked again on the server).
+  const plan = useQuery(api.billing.status, {});
+  const { subscribe, busy: subscribing } = useSubscribe();
 
   if (trip === undefined) return <ActivityIndicator className="mt-16" />;
   if (trip === null)
@@ -58,8 +62,8 @@ export function SharedTrip({ token }: { token: string }) {
       const tripId = await copyShared({ token, startDate });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace({ pathname: "/trips/[tripId]", params: { tripId } });
-    } catch {
-      setError(t("copyTrip.failed"));
+    } catch (e) {
+      setError((e instanceof Error && e.message.match(/Uncaught Error: (.*?)(\n|$)/)?.[1]) || t("copyTrip.failed"));
       setBusy(false);
     }
   };
@@ -123,10 +127,25 @@ export function SharedTrip({ token }: { token: string }) {
             <Text className="text-sm text-muted-foreground">🧹 {t("copyTrip.staysBehind")}</Text>
           </View>
 
-          {error && <Text className="text-sm font-medium text-danger">{error}</Text>}
-          <Button icon="plus" onPress={() => void onCopy()} loading={busy}>
-            {busy ? t("copyTrip.copying") : t("copyTrip.copy")}
-          </Button>
+          {plan?.blocked ? (
+            <>
+              <Text className="text-sm font-medium text-muted-foreground">
+                {t(plan.blocked === "subscribe" ? "errors.subscribeForMore" : "errors.tooManyUpcoming", { max: plan.maxUpcoming })}
+              </Text>
+              {plan.blocked === "subscribe" && (
+                <Button icon="sparkles" onPress={() => void subscribe()} loading={subscribing}>
+                  {t("billing.subscribe", { price: TRAVELER_PRICE })}
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              {error && <Text className="text-sm font-medium text-danger">{error}</Text>}
+              <Button icon="plus" onPress={() => void onCopy()} loading={busy}>
+                {busy ? t("copyTrip.copying") : t("copyTrip.copy")}
+              </Button>
+            </>
+          )}
         </View>
       </Animated.View>
 
