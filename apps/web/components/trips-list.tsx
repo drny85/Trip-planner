@@ -11,9 +11,11 @@ import { useState } from "react";
 import { EASE_OUT, useTilt } from "@/lib/motion";
 import { SmartImage } from "./smart-image";
 import { UpNext } from "./up-next";
+import { UnreadChatBadge } from "./trip/trip-chat";
 
 export function TripsList() {
   const trips = useQuery(api.trips.list);
+  const unreadChat = useQuery(api.chat.unreadByTrip);
   const { t, f } = useI18n();
 
   return (
@@ -82,9 +84,12 @@ export function TripsList() {
                   imgClassName="transition-transform duration-700 ease-out group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
-                  <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">
-                    {t("time.days", { count: tripLength(trip.startDate, trip.endDate) })}
+                <div className="absolute left-4 right-4 top-4 flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">
+                      {t("time.days", { count: tripLength(trip.startDate, trip.endDate) })}
+                    </span>
+                    <UnreadChatBadge count={unreadChat?.[trip._id]} />
                   </span>
                   {!trip.isOwner ? (
                     <span className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">👥 {t("trips.joined")}</span>

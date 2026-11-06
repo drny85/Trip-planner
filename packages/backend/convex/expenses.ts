@@ -5,7 +5,8 @@ import { findMembership, getCallerProfile, getMemberTrip, getOptionalUserId } fr
 import { listMembers } from "./lib/members";
 import { notify } from "./lib/notify";
 import { checkSplit, ledger, maxPayment, settleUp, shares, type Expense, type Payment, type Split, type SplitError, type SplitMode, toGroupCurrency } from "./lib/settle";
-import { splitInput } from "./lib/validators";
+import { activityCategory, splitInput } from "./lib/validators";
+import { guessCategory } from "./lib/budgetOverview";
 
 /**
  * Shared costs on a trip: expenses (who paid, and how it's split) and payments
@@ -113,6 +114,8 @@ export const forTrip = query({
           amountCents: e.amountCents,
           currency: currencyOf(e, trip),
           rate: e.rate ?? 1,
+          /** What it was for; guessed from the description on rows logged before categories. */
+          category: e.category ?? guessCategory(e.description),
           /** The same amount in the group currency. */
           groupCents: group.amountCents,
           paidBy: e.paidBy,
@@ -162,6 +165,8 @@ const expenseArgs = {
   currency: v.optional(v.string()),
   /** 1 unit of `currency` in the group currency. Required when they differ. */
   rate: v.optional(v.number()),
+  /** What kind of cost it was (food, transport, …), for the budget overview. */
+  category: v.optional(activityCategory),
 };
 
 /** Fixes the trip's group currency the first time it's needed, so later rates stay valid. */
@@ -174,7 +179,7 @@ async function pinGroupCurrency(ctx: MutationCtx, trip: Doc<"trips">) {
 }
 
 /** Checks an expense against the trip's members and returns the cleaned-up fields. */
-async function validate(ctx: MutationCtx, trip: Doc<"trips">, input: { description: string; amountCents: number; paidBy: string; split: Split; currency?: string; rate?: number }) {
+async function validate(ctx: MutationCtx, trip: Doc<"trips">, input: { description: string; amountCents: number; paidBy: string; split: Split; currency?: string; rate?: number; category?: Doc<"expenses">["category"] }) {
   const cents = Math.round(input.amountCents);
   if (!Number.isFinite(cents) || cents <= 0 || cents > MAX_CENTS) fail("badAmount");
   const members = new Set((await listMembers(ctx, trip)).map((m) => m.userId));
@@ -198,6 +203,7 @@ async function validate(ctx: MutationCtx, trip: Doc<"trips">, input: { descripti
     splitAmong: people,
     splitMode: mode,
     splitValues: values,
+    category: input.category,
   };
 }
 

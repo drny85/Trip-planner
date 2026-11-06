@@ -46,11 +46,20 @@ export async function getOwnedActivity(
   return activity;
 }
 
-/** Display name for the caller, from their sign-in identity. */
-export async function getCallerProfile(ctx: Pick<QueryCtx | MutationCtx, "auth">) {
+/** Display name and photo for the caller, from their sign-in identity, then their saved profile. */
+export async function getCallerProfile(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
-  const name = identity?.name ?? identity?.givenName ?? identity?.nickname ?? identity?.email?.split("@")[0];
-  return { name: name ?? "Traveler", imageUrl: identity?.pictureUrl };
+  let name = identity?.name ?? identity?.givenName ?? identity?.nickname;
+  let imageUrl = identity?.pictureUrl;
+  if (identity && (!name || !imageUrl)) {
+    const profile = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+    name ??= profile?.name;
+    imageUrl ??= profile?.imageUrl;
+  }
+  return { name: name ?? identity?.email?.split("@")[0] ?? "Traveler", imageUrl };
 }
 
 /** The caller's membership row for a trip, or null. The owner always counts as a member. */

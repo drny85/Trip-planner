@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { flightAlerted, flightSnapshot } from "./lib/alerts";
 import { fareInsights, fareOffer, flexCell } from "./lib/fares";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
-import { activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
+import { activityCategory, activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
 
 export default defineSchema({
   /** One row per Clerk user. `clerkId` is the JWT `subject`. */
@@ -335,6 +335,8 @@ export default defineSchema({
     currency: v.optional(v.string()),
     /** 1 unit of `currency` in the trip's groupCurrency, fixed when it was logged. Missing means 1. */
     rate: v.optional(v.number()),
+    /** What kind of cost it was, for the budget overview. Missing on old rows: guessed from the description. */
+    category: v.optional(activityCategory),
     createdBy: v.string(),
     /** @deprecated Payments now live in `settlements`; run expenses:migrateLegacySettlements once. */
     isSettlement: v.optional(v.boolean()),
@@ -348,6 +350,35 @@ export default defineSchema({
     amountCents: v.number(),
     createdBy: v.string(),
   }).index("by_tripId", ["tripId"]),
+
+  /**
+   * The trip's group chat. Only people on the trip can read or write it. A message
+   * can point at a stop on the itinerary or an idea up for a vote.
+   */
+  chatMessages: defineTable({
+    tripId: v.id("trips"),
+    authorId: v.string(),
+    /** The author's name when they wrote it, for people who have since left the trip. */
+    authorName: v.string(),
+    text: v.string(),
+    activityId: v.optional(v.id("activities")),
+    suggestionId: v.optional(v.id("suggestions")),
+    /** Set when the author takes it back; the text is cleared. */
+    deletedAt: v.optional(v.number()),
+  }).index("by_tripId", ["tripId"]),
+
+  /** Per person per trip: how far they've read the chat, and whether its pushes are muted. */
+  chatReads: defineTable({
+    tripId: v.id("trips"),
+    userId: v.string(),
+    lastReadAt: v.number(),
+    /** When we last sent them a chat push for this trip, so a busy chat doesn't buzz on every line. */
+    lastPushAt: v.optional(v.number()),
+    muted: v.optional(v.boolean()),
+  })
+    .index("by_tripId", ["tripId"])
+    .index("by_tripId_userId", ["tripId", "userId"])
+    .index("by_userId", ["userId"]),
 
   /** In-app notifications, one row per recipient. */
   notifications: defineTable({

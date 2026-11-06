@@ -1,5 +1,6 @@
 "use client";
 
+import { fileSlug } from "@trip/i18n/itinerary";
 import { useI18n } from "@trip/i18n/react";
 import { toICS } from "@trip/ui";
 
@@ -11,7 +12,7 @@ export function CalendarButton({ trip }: { trip: Trip }) {
   const download = () => {
     const blob = new Blob([toICS(trip)], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), { href: url, download: `${trip.title.replace(/[^\w-]+/g, "-").toLowerCase()}.ics` });
+    const a = Object.assign(document.createElement("a"), { href: url, download: `${fileSlug(trip.title)}.ics` });
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };

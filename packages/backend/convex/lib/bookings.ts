@@ -35,6 +35,9 @@ export const bookingFields = {
   bookingUrl: v.optional(v.string()),
   /** Short extras: seat, terminal, room type, party size. */
   details: v.optional(v.string()),
+  /** What the whole booking cost, in cents of `priceCurrency`, when the confirmation says. */
+  priceCents: v.optional(v.number()),
+  priceCurrency: v.optional(v.string()),
 };
 export const bookingObject = v.object(bookingFields);
 export type Booking = Infer<typeof bookingObject>;
@@ -66,6 +69,8 @@ export const extractedBookingsSchema = z.object({
         phone: z.string().optional().describe("Phone number exactly as written in the confirmation"),
         bookingUrl: z.string().optional().describe("Link to view or manage the booking, only if it appears in the confirmation"),
         details: z.string().optional().describe("Short extras on one line: seat, terminal, gate, room type, guests, party size"),
+        totalPrice: z.number().optional().describe("Total paid or due for this booking, as a plain number (e.g. 1234.5), only if the confirmation states it. For a round trip priced together, put it on the first leg only"),
+        currency: z.string().optional().describe("ISO 4217 code of totalPrice, e.g. USD, EUR, JPY"),
         matchActivityId: z.string().optional().describe("Id of the existing itinerary activity this booking is for, if one clearly is"),
       }),
     )
@@ -91,6 +96,13 @@ const hhmm = (s?: string) => {
   return `${String(hour).padStart(2, "0")}:${ampm[2] ?? "00"}`;
 };
 const url = (s?: string) => (s && /^https?:\/\//i.test(s.trim()) ? s.trim().slice(0, 2000) : undefined);
+
+/** A stated total and its currency, both or neither. */
+const price = (total?: number, currency?: string): { priceCents?: number; priceCurrency?: string } => {
+  const code = currency?.trim().toUpperCase();
+  if (typeof total !== "number" || !Number.isFinite(total) || total <= 0 || total > 1_000_000 || !code || !/^[A-Z]{3}$/.test(code)) return {};
+  return { priceCents: Math.round(total * 100), priceCurrency: code };
+};
 
 const toKind = (value: string): BookingKind => {
   const k = value.trim().toLowerCase();
@@ -119,6 +131,7 @@ export function normalizeBooking(b: Extracted): Booking & { matchActivityId?: st
     phone: clean(b.phone, 40),
     bookingUrl: url(b.bookingUrl),
     details: clean(b.details, 300),
+    ...price(b.totalPrice, b.currency),
     matchActivityId: b.matchActivityId?.trim() || undefined,
   };
 }

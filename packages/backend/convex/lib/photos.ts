@@ -26,9 +26,8 @@ const POOLS = {
   food: [
     "1504674900247-0877df9cc836",
     "1414235077428-338989a2e8c0",
-    "1555939594-58d7cb561ad1",
+    "1517248135467-4c7edcad34c4",
     "1540189549336-e6e99c3679fe",
-    "1565299624946-b28f40a0ae38",
   ],
   nature: [
     "1501785888041-af3ef285b470",
@@ -49,6 +48,30 @@ const POOLS = {
 
 export type PhotoPool = keyof typeof POOLS;
 
+/**
+ * Narrower pools for subcategories whose look differs from the rest of their
+ * category, so a car transfer doesn't get a train and a fish lunch doesn't get a
+ * pizza. Food photos stay generic (tables, rooms, coffee) because the model
+ * doesn't tell us the cuisine reliably.
+ */
+const SUB_POOLS: Partial<Record<`${PhotoPool}:${string}`, readonly string[]>> = {
+  "transport:flight": ["1436491865332-7a61a109cc05"],
+  "transport:train": ["1474487548417-781cb71495f3"],
+  "transport:car": ["1449965408869-eaa3f722e40d", "1502877338535-766e1452684a"],
+  "transport:taxi": ["1556122071-e404eaedb77f"],
+  "transport:bus": ["1544620347-c4fd4a3d5957", "1570125909232-eb263c188f7e"],
+  "transport:ferry": ["1548574505-5e239809ee19", "1567899378494-47b22a2ae96a"],
+  "transport:walk": ["1476480862126-209bfaa8edc8"],
+  "food:breakfast": ["1525351484163-7529414344d8", "1533089860892-a7c6f0a88666"],
+  "food:brunch": ["1525351484163-7529414344d8", "1533089860892-a7c6f0a88666"],
+  "food:cafe": ["1495474472287-4d71bcdd2085", "1509042239860-f550ce710b93"],
+  "food:drinks": ["1514362545857-3bc16c4c7d1b"],
+};
+
+/** The photos to choose from for a category, narrowed by subcategory when there's a pool for it. */
+export const poolIds = (pool: PhotoPool, subcategory?: string): readonly string[] =>
+  (subcategory && SUB_POOLS[`${pool}:${subcategory}`]) || POOLS[pool];
+
 /** Small stable hash so the same activity always gets the same photo. */
 function hash(text: string) {
   let h = 0;
@@ -56,8 +79,8 @@ function hash(text: string) {
   return Math.abs(h);
 }
 
-export function photoFor(pool: PhotoPool, seed: string, width?: number) {
-  const ids = POOLS[pool];
+export function photoFor(pool: PhotoPool, seed: string, width?: number, subcategory?: string) {
+  const ids = poolIds(pool, subcategory);
   return unsplash(ids[hash(seed) % ids.length]!, width);
 }
 
@@ -69,8 +92,8 @@ export { unsplash };
  */
 export function photoPicker() {
   const used = new Set<string>();
-  return (pool: PhotoPool, seed: string, width?: number) => {
-    const ids = POOLS[pool];
+  return (pool: PhotoPool, seed: string, width?: number, subcategory?: string) => {
+    const ids = poolIds(pool, subcategory);
     const start = hash(seed) % ids.length;
     for (let i = 0; i < ids.length; i++) {
       const id = ids[(start + i) % ids.length]!;

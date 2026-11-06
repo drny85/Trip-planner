@@ -13,6 +13,7 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Button } from "@/components/button";
 import { EASE_OUT } from "@/lib/motion";
 import { useDayWeather } from "@/screens/trip-details/day-weather";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
 
 type Proposal = FunctionReturnType<typeof api.ai.replanDay>;
 
@@ -38,9 +39,11 @@ export function ReplanDay({ tripId, subTripId, initialReason, now }: { tripId: I
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const { t, f, locale, category } = useI18n();
+  const blockedOffline = useOfflineGuard();
   const rainy = (weather?.rainChance ?? 0) >= 50;
   const why = reason ?? (rainy ? t(REASONS[0].text) : "");
   const ask = async (text = why) => {
+    if (blockedOffline()) return;
     setBusy("thinking");
     setError(null);
     try {

@@ -2,15 +2,19 @@ import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Alert, Pressable, Share, Text, View } from "react-native";
 import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
+import { PressableScale } from "@/components/pressable-scale";
 import { webUrl } from "@/lib/open";
 import { CSS_EASE_OUT, EASE_IN_OUT, EASE_OUT, enterUp } from "@/lib/motion";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 const AVATAR_COLORS = ["#0e7c66", "#6366f1", "#f97316", "#ec4899", "#0ea5e9", "#8b5cf6", "#16a34a", "#e11d48"];
 const colorFor = (id: string) => AVATAR_COLORS[[...id].reduce((h, c) => h + c.charCodeAt(0), 0) % AVATAR_COLORS.length]!;
@@ -22,22 +26,26 @@ const initials = (name: string) =>
     .map((w) => w[0]!.toUpperCase())
     .join("") || "?";
 
-function Avatar({ name, userId, size = 34 }: { name: string; userId: string; size?: number }) {
+function Avatar({ name, userId, imageUrl, size = 34 }: { name: string; userId: string; imageUrl?: string; size?: number }) {
   return (
     <View
-      className="items-center justify-center rounded-full border-2 border-card"
+      className="items-center justify-center overflow-hidden rounded-full border-2 border-card"
       style={{ width: size, height: size, backgroundColor: colorFor(userId) }}
     >
-      <Text className="font-bold text-white" style={{ fontSize: size * 0.36 }}>
-        {initials(name)}
-      </Text>
+      {imageUrl ? (
+        <Image source={imageUrl} style={{ width: "100%", height: "100%" }} contentFit="cover" accessibilityIgnoresInvertColors />
+      ) : (
+        <Text className="font-bold text-white" style={{ fontSize: size * 0.36 }}>
+          {initials(name)}
+        </Text>
+      )}
     </View>
   );
 }
 
 /** Who's going, plus the invite link (organizer) or a Leave button (member). */
 export function Crew({ tripId }: { tripId: Id<"trips"> }) {
-  const data = useQuery(api.members.forTrip, { tripId });
+  const data = useCachedQuery(api.members.forTrip, { tripId }).data;
   const createInvite = useMutation(api.members.createInvite);
   const revokeInvite = useMutation(api.members.revokeInvite);
   const removeMember = useMutation(api.members.remove);
@@ -65,7 +73,7 @@ export function Crew({ tripId }: { tripId: Id<"trips"> }) {
         <View className="flex-row">
           {data.members.slice(0, 5).map((m, i) => (
             <Pressable key={m.userId} onPress={() => manage(m)} style={{ marginLeft: i === 0 ? 0 : -10 }} accessibilityLabel={m.name}>
-              <Avatar name={m.name} userId={m.userId} />
+              <Avatar name={m.name} userId={m.userId} imageUrl={m.imageUrl} />
             </Pressable>
           ))}
         </View>
@@ -97,7 +105,7 @@ type Day = { _id: Id<"subTrips">; dayNumber: number };
 
 /** Group ideas with yes/no voting. An idea joins the plan when more than half vote yes. */
 export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTrips: Day[] }) {
-  const data = useQuery(api.suggestions.forTrip, { tripId });
+  const data = useCachedQuery(api.suggestions.forTrip, { tripId }).data;
   const router = useRouter();
   const { t } = useI18n();
   if (!data) return null;
@@ -157,6 +165,7 @@ export function IdeasSection({ tripId, subTrips }: { tripId: Id<"trips">; subTri
 function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: string }) {
   const vote = useMutation(api.suggestions.vote);
   const withdraw = useMutation(api.suggestions.withdraw);
+  const router = useRouter();
   const { t, f, category } = useI18n();
   const badge = category(idea.category, idea.subcategory);
   const { yes, no, members } = idea.tally;
@@ -215,6 +224,14 @@ function IdeaCard({ idea, dayName }: { idea: Ideas["open"][number]; dayName: str
             </Button>
           );
         })}
+        <PressableScale
+          accessibilityRole="button"
+          accessibilityLabel={t("chat.discuss")}
+          onPress={() => router.push({ pathname: "/trips/[tripId]/chat", params: { tripId: idea.tripId, suggestionId: idea._id } })}
+          className="h-8 w-8 items-center justify-center rounded-full bg-muted"
+        >
+          <Icon name="chat" size={14} />
+        </PressableScale>
         {idea.isMine && (
           <Button size="sm" variant="ghost" onPress={() => void withdraw({ suggestionId: idea._id })}>
             {t("ideas.withdraw")}

@@ -31,6 +31,10 @@ const icons = {
   bell: { ios: "bell.fill", android: "notifications", web: "notifications" },
   lockScreen: { ios: "iphone.badge.play", android: "smartphone", web: "smartphone" },
   undo: { ios: "arrow.uturn.backward", android: "undo", web: "undo" },
+  chat: { ios: "bubble.left.and.bubble.right.fill", android: "forum", web: "forum" },
+  paperclip: { ios: "paperclip", android: "attach_file", web: "attach_file" },
+  bellSlash: { ios: "bell.slash.fill", android: "notifications_off", web: "notifications_off" },
+  send: { ios: "arrow.up", android: "send", web: "send" },
   /** Points right on iOS and up on Android/web (the planning screen turns it with PLANE_HEADING). */
   airplane: { ios: "airplane", android: "flight", web: "flight" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;

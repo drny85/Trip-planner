@@ -3,7 +3,7 @@ import type { Id } from "@trip/backend/dataModel";
 import { toLocalPickArgs, type LocalPickProposal } from "@trip/backend/localPick";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -13,6 +13,8 @@ import { TripLockedBanner } from "@/components/billing";
 import { Button } from "@/components/button";
 import { PressableScale } from "@/components/pressable-scale";
 import { EASE_OUT } from "@/lib/motion";
+import { useOfflineGuard } from "@/hooks/use-offline-guard";
+import { useCachedQuery } from "@/hooks/use-cached-query";
 
 const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.message.replace(/^.*Uncaught Error: /, "").split("\n")[0]! : fallback);
 
@@ -22,7 +24,7 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
  * it can be switched back to the original plan. Also adds tips without swapping.
  */
 export function LocalPick({ tripId, subTripId }: { tripId: Id<"trips">; subTripId: Id<"subTrips"> }) {
-  const trip = useQuery(api.trips.get, { tripId });
+  const trip = useCachedQuery(api.trips.get, { tripId }).data;
   const day = trip?.subTrips.find((d) => d._id === subTripId);
   const pick = useAction(api.ai.localPickDay);
   const addTips = useAction(api.ai.addLocalTips);
@@ -34,7 +36,8 @@ export function LocalPick({ tripId, subTripId }: { tripId: Id<"trips">; subTripI
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [proposal, setProposal] = useState<LocalPickProposal | null>(null);
-  const lock = useQuery(api.billing.tripLocked, { tripId });
+  const lock = useCachedQuery(api.billing.tripLocked, { tripId }).data;
+  const blockedOffline = useOfflineGuard();
   if (!day) return <ActivityIndicator className="mt-10" />;
   // Swaps and tips are part of a started trip: explain the lock instead of a refused request.
   if (lock?.locked)
@@ -49,6 +52,7 @@ export function LocalPick({ tripId, subTripId }: { tripId: Id<"trips">; subTripI
   const on = Boolean(day.localPickAt);
   const missingTips = day.activities.some((a) => !a.localTips?.length);
   const run = async <T,>(kind: NonNullable<typeof busy>, task: () => Promise<T>) => {
+    if (blockedOffline()) return;
     setBusy(kind);
     setError(null);
     setNotice(null);

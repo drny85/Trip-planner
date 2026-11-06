@@ -10,17 +10,20 @@
     "./categories": "./convex/lib/categories.ts",
     "./tree": "./convex/lib/tree.ts",
     "./budget": "./convex/lib/budget.ts",
+    "./budgetOverview": "./convex/lib/budgetOverview.ts",
     "./settle": "./convex/lib/settle.ts",
     "./splitDraft": "./convex/lib/splitDraft.ts",
     "./upNext": "./convex/lib/upNext.ts",
     "./optimistic": "./src/optimistic.ts",
+    "./offline": "./src/offline.ts",
     "./schemas": "./src/tripSchema.ts",
     "./replan": "./convex/lib/replan.ts",
     "./packing": "./convex/lib/packingCategories.ts",
     "./promptAnswer": "./convex/lib/promptAnswer.ts",
     "./interview": "./convex/lib/interview.ts",
     "./sample": "./convex/lib/fakeData.ts",
-    "./localPick": "./convex/lib/localPick.ts"
+    "./localPick": "./convex/lib/localPick.ts",
+    "./chat": "./convex/lib/chat.ts"
   },
   "scripts": {
     "dev": "convex dev",

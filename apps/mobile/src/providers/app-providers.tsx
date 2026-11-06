@@ -1,4 +1,4 @@
-import { ClerkProvider, useAuth } from "@clerk/expo";
+import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { api } from "@trip/backend/api";
 import { useI18n } from "@trip/i18n/react";
@@ -7,6 +7,7 @@ import { getLocales } from "expo-localization";
 import { ConvexProvider, ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useEffect, type ReactNode } from "react";
+import { OfflineSync, OfflineSyncWhenSignedIn } from "@/components/offline-sync";
 import { Text, View } from "react-native";
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
@@ -24,6 +25,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     return (
       <ConvexProvider client={convex}>
         <SyncLanguage ready />
+        <OfflineSync ready />
         {children}
       </ConvexProvider>
     );
@@ -34,6 +36,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <SyncUser />
         <SyncLanguageWhenSignedIn />
+        <OfflineSyncWhenSignedIn />
         {children}
       </ConvexProviderWithClerk>
     </ClerkProvider>
@@ -44,9 +47,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
 function SyncUser() {
   const { isAuthenticated } = useConvexAuth();
   const store = useMutation(api.users.store);
+  const { user } = useUser();
+  const name = user?.fullName ?? user?.username ?? undefined;
+  const imageUrl = user?.hasImage ? user.imageUrl : undefined;
   useEffect(() => {
-    if (isAuthenticated) void store();
-  }, [isAuthenticated, store]);
+    if (isAuthenticated) void store({ name, imageUrl });
+  }, [isAuthenticated, store, name, imageUrl]);
   return null;
 }
 

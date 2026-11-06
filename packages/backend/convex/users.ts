@@ -3,18 +3,24 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getOptionalUserId } from "./lib/auth";
 
-/** Creates or refreshes the caller's `users` row from their Clerk identity. Call after sign-in. */
+/**
+ * Creates or refreshes the caller's `users` row from their Clerk identity. Call after sign-in.
+ * The Convex token may carry no name or picture, so the apps also pass what Clerk shows them;
+ * the token's values win when present.
+ */
 export const store = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { name: v.optional(v.string()), imageUrl: v.optional(v.string()) },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
+    const name = identity.name ?? (args.name?.trim().slice(0, 80) || undefined);
+    const imageUrl = identity.pictureUrl ?? (args.imageUrl?.startsWith("https://") ? args.imageUrl.slice(0, 2000) : undefined);
     const fields = {
       clerkId: identity.subject,
-      name: identity.name,
+      name,
       email: identity.email,
-      imageUrl: identity.pictureUrl,
+      imageUrl,
     };
     const existing = await ctx.db
       .query("users")
