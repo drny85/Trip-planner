@@ -86,7 +86,7 @@ function WatchCard({ data, watch, tripId, onEdit }: { data: Data; watch: Watch; 
   const actions = (
     <View className="flex-row flex-wrap items-center gap-3">
       <Button size="sm" icon="airplane" onPress={book}>
-        {t("fares.book")}
+        {t("fares.book", { site: watch.bookSite })}
       </Button>
       <Text onPress={onEdit} className="text-sm font-semibold text-primary">
         {t("fares.edit")}
@@ -128,6 +128,7 @@ function WatchCard({ data, watch, tripId, onEdit }: { data: Data; watch: Watch; 
     ins?.typicalLowCents !== undefined && ins.typicalHighCents !== undefined && t("fares.usually", { low: money(ins.typicalLowCents), high: money(ins.typicalHighCents) }),
     watch.lowestCents !== undefined && watch.lowestCents < watch.lastCents && t("fares.lowest", { amount: money(watch.lowestCents) }),
     watch.targetCents !== undefined && t("fares.targetLabel", { amount: money(watch.targetCents) }),
+    watch.source === "travelpayouts" && t("fares.recentFares"),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -169,8 +170,9 @@ function WatchCard({ data, watch, tripId, onEdit }: { data: Data; watch: Watch; 
               {o.logo ? <Image source={{ uri: o.logo }} style={{ width: 24, height: 24 }} contentFit="contain" /> : <Text className="w-6 text-center">✈️</Text>}
               <View className="flex-1">
                 <Text className="font-semibold text-foreground" numberOfLines={1}>
-                  {f.time(o.depTime)} → {f.time(o.arrTime)}
-                  {o.arrDate > o.depDate ? ` +${daysUntil(o.arrDate, o.depDate)}` : ""}
+                  {f.time(o.depTime)}
+                  {o.arrTime ? ` → ${f.time(o.arrTime)}` : ""}
+                  {o.arrDate && o.arrDate > o.depDate ? ` +${daysUntil(o.arrDate, o.depDate)}` : ""}
                 </Text>
                 <Text className="text-xs text-muted-foreground" numberOfLines={1}>
                   {[o.airline, o.stops === 0 ? t("fares.nonstop") : t("fares.stops", { count: o.stops }), o.durationMinutes ? f.duration(o.durationMinutes) : null].filter(Boolean).join(" · ")}

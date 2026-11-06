@@ -176,7 +176,7 @@ function WatchView({ data, watch, tripId }: { data: Data; watch: Watch; tripId: 
         onClick={() => void bookStarted({ tripId })}
         className="rounded-full bg-primary px-4 py-2 font-semibold text-primary-foreground shadow-md shadow-primary/25 transition hover:opacity-90 active:scale-[0.97]"
       >
-        {t("fares.book")} ↗
+        {t("fares.book", { site: watch.bookSite })} ↗
       </a>
       <button onClick={() => setEditing(true)} className="font-semibold text-primary hover:underline">
         {t("fares.edit")}
@@ -242,6 +242,7 @@ function WatchView({ data, watch, tripId }: { data: Data; watch: Watch; tripId: 
             ins?.typicalLowCents !== undefined && ins.typicalHighCents !== undefined && t("fares.usually", { low: money(ins.typicalLowCents), high: money(ins.typicalHighCents) }),
             watch.lowestCents !== undefined && watch.lowestCents < watch.lastCents && t("fares.lowest", { amount: money(watch.lowestCents) }),
             watch.targetCents !== undefined && t("fares.targetLabel", { amount: money(watch.targetCents) }),
+            watch.source === "travelpayouts" && t("fares.recentFares"),
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -264,8 +265,9 @@ function WatchView({ data, watch, tripId }: { data: Data; watch: Watch; tripId: 
                 {o.logo ? <img src={o.logo} alt="" className="h-6 w-6 shrink-0 rounded object-contain" /> : <span className="w-6 text-center">✈️</span>}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold tabular-nums">
-                    {f.time(o.depTime)} → {f.time(o.arrTime)}
-                    {o.arrDate > o.depDate && <sup className="ml-0.5 text-[10px] text-muted-foreground">+{daysUntil(o.arrDate, o.depDate)}</sup>}
+                    {f.time(o.depTime)}
+                    {o.arrTime && ` → ${f.time(o.arrTime)}`}
+                    {o.arrDate && o.arrDate > o.depDate && <sup className="ml-0.5 text-[10px] text-muted-foreground">+{daysUntil(o.arrDate, o.depDate)}</sup>}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {[o.airline, o.stops === 0 ? t("fares.nonstop") : t("fares.stops", { count: o.stops }), o.durationMinutes ? f.duration(o.durationMinutes) : null].filter(Boolean).join(" · ")}

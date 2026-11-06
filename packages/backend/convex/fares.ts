@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { defaultLocale, isLocale, translator } from "@trip/i18n";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { type ActionCtx, internalAction, internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { HOUR, isAirportCode, isoDay } from "./lib/alerts";
 import { findMembership, getMemberTrip, getOptionalUserId, getOwnedTrip } from "./lib/auth";
 import {
@@ -24,6 +24,7 @@ import {
   shiftDate,
 } from "./lib/fares";
 import { listMembers } from "./lib/members";
+import { affiliateUrl, aviasalesUrl, insightsFromGrid, parseTp, TP_API, tpParams, type TpResponse } from "./lib/travelpayouts";
 import { notify } from "./lib/notify";
 
 /**
@@ -31,24 +32,44 @@ import { notify } from "./lib/notify";
  *
  * 1. They pick their home airport (remembered) and the destination airport
  *    (guessed from the trip). We look up the cheapest fare for the trip's dates
- *    right away, then once a day (crons.ts), with Google's price level, typical
- *    range and price history, so the apps can say whether it's a good time to book.
+ *    right away, then once a day (crons.ts), so the apps can say whether it's a
+ *    good time to book.
  * 2. Only they get a push when the fare drops, or reaches the price they set.
- * 3. "Nearby dates" checks the same trip moved by up to 3 days either way, and
- *    the organizer can move the whole trip to a cheaper window.
- * 4. "Book" opens Google Flights. Once their flight booking is added (booking
- *    import), the watch is done and live flight tracking (alerts.ts) takes over.
+ * 3. "Nearby dates": the same trip moved by up to 3 days either way, and the
+ *    organizer can move the whole trip to a cheaper window.
+ * 4. "Book" opens Aviasales (an affiliate link) or Google Flights. Once their
+ *    flight booking is added (booking import), the watch is done and live
+ *    flight tracking (alerts.ts) takes over.
  *
- * SerpApi's free plan is 250 searches a month, shared with booking price watches:
- * FARE_CHECKS_PER_DAY (default 3) daily checks, and a nearby-dates check is 6
- * searches, at most once a day per watch. ALERTS_DEMO=true makes up fares.
+ * Where prices come from, first configured wins:
+ * - TRAVELPAYOUTS_TOKEN: Travelpayouts' free Aviasales Data API (fares Aviasales
+ *   users found in the last 48 hours). Every search is cached in `fareCache`
+ *   and shared by everyone watching the same route and dates, so each runs at
+ *   most once a day, and the nearby-dates grid comes with the daily check.
+ *   TRAVELPAYOUTS_MARKER makes the Book link an affiliate link.
+ * - SERPAPI_API_KEY alone: Google Flights through SerpApi, as before
+ *   (FARE_CHECKS_PER_DAY, default 3; the nearby-dates grid costs 6 searches).
+ * With Travelpayouts on, SerpApi is used only for one live Google Flights check
+ * when someone taps Book, at most LIVE_FARE_CHECKS_PER_DAY (default 2) a day.
+ * ALERTS_DEMO=true makes up fares.
  */
 
+type Provider = "travelpayouts" | "google" | "demo";
 const serpKey = () => process.env.SERPAPI_API_KEY;
+const tpToken = () => process.env.TRAVELPAYOUTS_TOKEN;
 const isDemo = () => process.env.ALERTS_DEMO === "true";
-const faresOn = () => Boolean(serpKey()) || isDemo();
-const checksPerDay = () => Math.max(1, Number(process.env.FARE_CHECKS_PER_DAY) || 3);
+const provider = (): Provider | null => (tpToken() ? "travelpayouts" : serpKey() ? "google" : isDemo() ? "demo" : null);
+const faresOn = () => provider() !== null;
+const checksPerDay = () => Math.max(1, Number(process.env.FARE_CHECKS_PER_DAY) || (provider() === "travelpayouts" ? 200 : 3));
+const liveChecksPerDay = () => Math.max(0, Number(process.env.LIVE_FARE_CHECKS_PER_DAY ?? 2) || 0);
 const FLEX_EVERY = 20 * HOUR;
+const CACHE_FOR = 20 * HOUR;
+
+/** Where "Book" goes for a watch. */
+function bookLink(w: Pick<Doc<"fareWatches">, "from" | "to" | "outboundDate" | "returnDate" | "adults" | "currency" | "googleUrl">) {
+  if (tpToken()) return { site: "Aviasales", url: affiliateUrl(aviasalesUrl(w.from, w.to, w.outboundDate, w.returnDate, w.adults), process.env.TRAVELPAYOUTS_MARKER) };
+  return { site: "Google Flights", url: w.googleUrl ?? googleFlightsUrl(w.from, w.to, w.outboundDate, w.returnDate, w.adults, w.currency) };
+}
 
 type Key = Parameters<ReturnType<typeof translator>>[0];
 const failIn = (language?: string) => (key: Key, vars?: Record<string, string | number>) =>
@@ -95,7 +116,10 @@ export const forTrip = query({
       /** Bookings with dates stop the trip from being moved to other dates. */
       hasBookings: bookings.length > 0,
       flights: flights.map((b) => ({ _id: b._id, title: b.title, startDate: b.startDate, startTime: b.startTime, endDate: b.endDate, endTime: b.endTime })),
-      watch: watch && (({ _creationTime, ...w }) => ({ ...w, history: w.history.slice(-30), bookUrl: w.googleUrl ?? googleFlightsUrl(w.from, w.to, w.outboundDate, w.returnDate, w.adults, w.currency) }))(watch),
+      watch: watch && (({ _creationTime, ...w }) => {
+        const book = bookLink(w);
+        return { ...w, history: w.history.slice(-30), bookUrl: book.url, bookSite: book.site };
+      })(watch),
     };
   },
 });
@@ -189,7 +213,19 @@ export const bookStarted = mutation({
   handler: async (ctx, { tripId }) => {
     const { userId } = await getMemberTrip(ctx, tripId);
     const watch = await myWatch(ctx, tripId, userId);
-    if (watch) await ctx.db.patch("fareWatches", watch._id, { bookStartedAt: Date.now() });
+    if (!watch) return;
+    const now = Date.now();
+    await ctx.db.patch("fareWatches", watch._id, { bookStartedAt: now });
+    // Cached fares can be hours old: one live look while they book, when the budget allows.
+    if (provider() !== "travelpayouts" || !serpKey() || watch.status !== "active") return;
+    if (watch.liveCheckedAt && now - watch.liveCheckedAt < 24 * HOUR) return;
+    const today = await ctx.db
+      .query("fareWatches")
+      .withIndex("by_liveCheckedAt", (q) => q.gt("liveCheckedAt", now - 24 * HOUR))
+      .take(liveChecksPerDay());
+    if (today.length >= liveChecksPerDay()) return;
+    await ctx.db.patch("fareWatches", watch._id, { liveCheckedAt: now });
+    await ctx.scheduler.runAfter(0, internal.fares.liveCheck, { watchId: watch._id });
   },
 });
 
@@ -228,7 +264,8 @@ export const checkNearbyDates = mutation({
     if (watch.flexStatus === "checking") return;
     if (watch.flex && watch.flex.outboundDate === watch.outboundDate && Date.now() - watch.flex.checkedAt < FLEX_EVERY) return;
     await ctx.db.patch("fareWatches", watch._id, { flexStatus: "checking" });
-    await ctx.scheduler.runAfter(0, internal.fares.checkFlex, { watchId: watch._id });
+    // With Travelpayouts the grid comes with the regular (cached) check.
+    await ctx.scheduler.runAfter(0, provider() === "travelpayouts" ? internal.fares.checkFare : internal.fares.checkFlex, { watchId: watch._id });
   },
 });
 
@@ -355,16 +392,120 @@ export const checkFare = internalAction({
       await ctx.runMutation(internal.fares.recordFare, { watchId, now, ended: true });
       return;
     }
+    if (provider() === "travelpayouts") return await checkViaTravelpayouts(ctx, watch, now);
     try {
       let found: Awaited<ReturnType<typeof searchFares>>;
-      if (isDemo()) {
+      if (provider() === "demo") {
         const cents = demoFare(watch._id, watch.checks);
         found = { cents, offers: demoOffers(cents, watch.from, watch.to, watch.outboundDate), insights: demoInsights(cents, now) };
       } else found = await searchFares(watch);
-      await ctx.runMutation(internal.fares.recordFare, { watchId, now, ...(found ?? { error: "noResults" }) });
+      await ctx.runMutation(internal.fares.recordFare, { watchId, now, source: provider() === "demo" ? "demo" : "google", ...(found ?? { error: "noResults" }) });
     } catch (error) {
       console.warn("Fare check failed", error);
       await ctx.runMutation(internal.fares.recordFare, { watchId, now, error: "failed" });
+    }
+  },
+});
+
+// ---------- Travelpayouts, with the shared cache ----------
+
+const cacheKey = (from: string, to: string, outboundDate: string, returnDate: string | undefined, currency: string) =>
+  `tp:${from}:${to}:${outboundDate}:${returnDate ?? "-"}:${currency}`;
+
+export const cachedFares = internalQuery({
+  args: { keys: v.array(v.string()), since: v.number() },
+  handler: async (ctx, { keys, since }) => {
+    const rows = await Promise.all(keys.map((key) => ctx.db.query("fareCache").withIndex("by_key", (q) => q.eq("key", key)).unique()));
+    return rows.filter((r) => r !== null && r.fetchedAt >= since).map((r) => ({ key: r!.key, cents: r!.cents, offers: r!.offers }));
+  },
+});
+
+export const storeFares = internalMutation({
+  args: { entries: v.array(v.object({ key: v.string(), cents: v.optional(v.number()), offers: v.array(fareOffer) })), now: v.number() },
+  handler: async (ctx, { entries, now }) => {
+    for (const e of entries) {
+      const row = await ctx.db.query("fareCache").withIndex("by_key", (q) => q.eq("key", e.key)).unique();
+      if (row) await ctx.db.patch("fareCache", row._id, { ...e, fetchedAt: now });
+      else await ctx.db.insert("fareCache", { ...e, fetchedAt: now });
+    }
+  },
+});
+
+/** Clears cache rows for dates that have passed (crons.ts, daily). */
+export const pruneFareCache = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const old = await ctx.db
+      .query("fareCache")
+      .filter((q) => q.lt(q.field("fetchedAt"), Date.now() - 3 * 24 * HOUR))
+      .take(500);
+    await Promise.all(old.map((r) => ctx.db.delete("fareCache", r._id)));
+  },
+});
+
+/**
+ * Today's fare and the ±3 day grid for one watch. Each of the 7 searches is
+ * read from the shared cache when someone looked it up in the last 20 hours,
+ * and fetched (free) otherwise. Prices are cached per passenger and scaled here.
+ */
+async function checkViaTravelpayouts(ctx: ActionCtx, watch: Doc<"fareWatches">, now: number) {
+  const today = isoDay(now);
+  const cells = FLEX_SHIFTS.map((shiftDays) => {
+    const outboundDate = shiftDate(watch.outboundDate, shiftDays);
+    const returnDate = watch.returnDate ? shiftDate(watch.returnDate, shiftDays) : undefined;
+    return { shiftDays, outboundDate, returnDate, key: cacheKey(watch.from, watch.to, outboundDate, returnDate, watch.currency), past: outboundDate <= today };
+  });
+  try {
+    const fresh: { key: string; cents?: number; offers: FareOffer[] }[] = await ctx.runQuery(internal.fares.cachedFares, { keys: cells.filter((c) => !c.past).map((c) => c.key), since: now - CACHE_FOR });
+    const byKey = new Map<string, { key: string; cents?: number; offers: FareOffer[] }>(fresh.map((e) => [e.key, e]));
+    const fetched: { key: string; cents?: number; offers: FareOffer[] }[] = [];
+    for (const c of cells) {
+      if (c.past || byKey.has(c.key)) continue;
+      const res = await fetch(`${TP_API}?${tpParams({ ...watch, outboundDate: c.outboundDate, returnDate: c.returnDate }, process.env.TRAVELPAYOUTS_MARKET ?? "us")}`, {
+        headers: { "X-Access-Token": tpToken()!, "Accept-Encoding": "gzip, deflate" },
+      });
+      if (!res.ok) throw new Error(`Travelpayouts ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      const found = parseTp((await res.json()) as TpResponse, { outboundDate: c.outboundDate, returnDate: c.returnDate, adults: 1 });
+      const entry = { key: c.key, cents: found?.cents, offers: found?.offers ?? [] };
+      fetched.push(entry);
+      byKey.set(c.key, entry);
+    }
+    if (fetched.length) await ctx.runMutation(internal.fares.storeFares, { entries: fetched, now });
+
+    const scale = (cents?: number) => (cents === undefined ? undefined : cents * watch.adults);
+    const flex = cells.map((c) => ({ shiftDays: c.shiftDays, outboundDate: c.outboundDate, returnDate: c.returnDate, cents: c.past ? undefined : scale(byKey.get(c.key)?.cents) }));
+    const mine = byKey.get(cells[3]!.key);
+    const cents = scale(mine?.cents);
+    await ctx.runMutation(internal.fares.recordFare, {
+      watchId: watch._id,
+      now,
+      source: "travelpayouts",
+      flex,
+      ...(cents === undefined
+        ? { error: "noResults" }
+        : {
+            cents,
+            offers: mine!.offers.map((o) => ({ ...o, cents: o.cents * watch.adults })),
+            insights: insightsFromGrid(cents, flex.filter((c) => c.shiftDays !== 0).map((c) => c.cents)),
+          }),
+    });
+  } catch (error) {
+    console.warn("Travelpayouts fare check failed", error);
+    await ctx.runMutation(internal.fares.recordFare, { watchId: watch._id, now, error: "failed" });
+  }
+}
+
+/** One live Google Flights look (SerpApi) while they book; quiet, it's only to show today's real price. */
+export const liveCheck = internalAction({
+  args: { watchId: v.id("fareWatches") },
+  handler: async (ctx, { watchId }): Promise<void> => {
+    const watch = await ctx.runQuery(internal.fares.fareJob, { watchId });
+    if (!watch) return;
+    try {
+      const found = await searchFares(watch);
+      if (found) await ctx.runMutation(internal.fares.recordFare, { watchId, now: Date.now(), source: "google", quiet: true, ...found });
+    } catch (error) {
+      console.warn("Live fare check failed", error);
     }
   },
 });
@@ -401,14 +542,20 @@ export const recordFare = internalMutation({
     googleUrl: v.optional(v.string()),
     error: v.optional(v.string()),
     ended: v.optional(v.boolean()),
+    source: v.optional(v.union(v.literal("travelpayouts"), v.literal("google"), v.literal("demo"))),
+    /** The ±3 day grid, when the check brought one (Travelpayouts). */
+    flex: v.optional(v.array(flexCell)),
+    /** Record the price without a push (the live check while they book). */
+    quiet: v.optional(v.boolean()),
   },
-  handler: async (ctx, { watchId, now, cents, offers, insights, googleUrl, error, ended }) => {
+  handler: async (ctx, { watchId, now, cents, offers, insights, googleUrl, error, ended, source, flex, quiet }) => {
     const watch = await ctx.db.get("fareWatches", watchId);
     if (!watch || watch.status !== "active") return;
     if (ended) return await ctx.db.patch("fareWatches", watchId, { status: "ended", lastCheckedAt: now });
-    if (cents === undefined) return await ctx.db.patch("fareWatches", watchId, { lastCheckedAt: now, checks: watch.checks + 1, error });
+    const grid = flex ? { flex: { checkedAt: now, outboundDate: watch.outboundDate, cells: flex }, flexStatus: undefined } : {};
+    if (cents === undefined) return await ctx.db.patch("fareWatches", watchId, { lastCheckedAt: now, checks: watch.checks + 1, error, ...grid, ...(flex ? {} : error === "failed" && watch.flexStatus === "checking" ? { flexStatus: "failed" as const } : {}) });
 
-    const alert = fareAlert(watch, cents);
+    const alert = quiet ? null : fareAlert(watch, cents);
     // Back above the target: the next time it gets there is news again.
     const forget = watch.targetCents !== undefined && cents > watch.targetCents;
     await ctx.db.patch("fareWatches", watchId, {
@@ -422,6 +569,8 @@ export const recordFare = internalMutation({
       offers: offers ?? watch.offers,
       insights: insights ?? watch.insights,
       googleUrl: googleUrl ?? watch.googleUrl,
+      source: source ?? watch.source,
+      ...grid,
       ...(alert ? { alertedCents: cents } : forget ? { alertedCents: undefined } : {}),
     });
     if (!alert) return;
