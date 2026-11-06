@@ -9,6 +9,7 @@ import {
   type InterviewStep,
   PACE_EMOJI,
   PACES,
+  summaryParts,
   summaryPrompt,
   TRAVELER_EMOJI,
   TRAVELERS,
@@ -97,7 +98,7 @@ export function TripInterview({ onTypeInstead }: { onTypeInstead: () => void }) 
   if (loading) {
     return (
       <ScrollView contentInsetAdjustmentBehavior="automatic" className="flex-1 bg-background" contentContainerClassName="gap-5 p-5">
-        <Planning />
+        <Planning prompt={summaryParts(answers, text).join(" · ")} />
       </ScrollView>
     );
   }
