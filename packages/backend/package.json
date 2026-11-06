@@ -16,6 +16,7 @@
     "./optimistic": "./src/optimistic.ts",
     "./schemas": "./src/tripSchema.ts",
     "./replan": "./convex/lib/replan.ts",
+    "./packing": "./convex/lib/packingCategories.ts",
     "./promptAnswer": "./convex/lib/promptAnswer.ts",
     "./interview": "./convex/lib/interview.ts",
     "./sample": "./convex/lib/fakeData.ts",

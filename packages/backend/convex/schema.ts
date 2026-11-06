@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { flightAlerted, flightSnapshot } from "./lib/alerts";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
-import { activityFields, splitMode } from "./lib/validators";
+import { activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
 
 export default defineSchema({
   /** One row per Clerk user. `clerkId` is the JWT `subject`. */
@@ -325,6 +325,24 @@ export default defineSchema({
     addedBy: v.string(),
     /** Who's bringing it, for shared things like a first-aid kit. */
     claimedBy: v.optional(v.string()),
+    /** Set on items the AI suggested (ai.generatePackingList). */
+    isAi: v.optional(v.boolean()),
+    category: v.optional(packingCategory),
+    /** How many per person, e.g. 5 pairs of socks. */
+    quantity: v.optional(v.number()),
+    /** Why the trip needs it: "Hike on day 3", "Rain on 2 days". In the language it was generated in. */
+    reason: v.optional(v.string()),
+    /** One per group (first-aid kit), so the apps nudge someone to claim it. */
+    isGroupItem: v.optional(v.boolean()),
+  }).index("by_tripId", ["tripId"]),
+
+  /** Each AI packing list generation, for the daily limit and the weather it used. */
+  packingRuns: defineTable({
+    tripId: v.id("trips"),
+    userId: v.string(),
+    model: v.string(),
+    added: v.number(),
+    weather: v.optional(tripWeather),
   }).index("by_tripId", ["tripId"]),
 
   votes: defineTable({
