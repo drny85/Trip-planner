@@ -45,12 +45,6 @@ describe("reading Google Flights", () => {
     expect(guessAirport("Tokyo & Kyoto, Japan")).toBe("HND");
     expect(guessAirport("Lisboa, Portugal")).toBe("LIS");
     expect(guessAirport("Somewhere quiet")).toBeUndefined();
-    // The country decides between look-alike names.
-    expect(guessAirport("Río San Juan, Dominican Republic")).toBe("POP");
-    expect(guessAirport("San Juan, Puerto Rico")).toBe("SJU");
-    expect(guessAirport("Santiago, Dominican Republic")).toBe("STI");
-    expect(guessAirport("Santiago, Chile")).toBe("SCL");
-    expect(guessAirport("Jarabacoa, Dominican Republic")).toBe("SDQ");
   });
 
   test("alerts on a real drop, or once at the target", () => {

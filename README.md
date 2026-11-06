@@ -193,7 +193,7 @@ Without keys nothing is called and the bookings list says alerts are off.
 
 ### Flights for travelers who haven't booked yet
 
-The trip page's **Flights** card (`convex/fares.ts`, `convex/lib/fares.ts`, `convex/lib/travelpayouts.ts`, advice in `packages/ui/src/fares.ts`) watches fares from the traveler's home airport (remembered on their profile) for the trip's dates. The destination airport is guessed from the trip's destination, with the country deciding between look-alike names (Río San Juan, DR is POP, not San Juan, PR).
+The trip page's **Flights** card (`convex/fares.ts`, `convex/lib/fares.ts`, `convex/lib/travelpayouts.ts`, advice in `packages/ui/src/fares.ts`) watches fares from the traveler's home airport (remembered on their profile) for the trip's dates.
 
 - **Fare watch:** today's cheapest fare, the 3 best options, a price level and usual range, and a price trend. The apps turn these into a "good time to book?" hint (book in the last 2 weeks or when it's low, wait when it's falling far out, and so on).
 - **Alerts:** only the watcher gets a push, on a real drop (same 5% / 10-unit rule) or once the fare reaches the target they set.

@@ -260,11 +260,8 @@ const CITY_AIRPORTS: [RegExp, string][] = [
   [/mexico city|ciudad de méxico|cdmx/i, "MEX"],
   [/cancun|cancún|tulum|playa del carmen/i, "CUN"],
   [/havana|la habana/i, "HAV"],
-  [/punta cana|bávaro|bavaro/i, "PUJ"],
+  [/punta cana/i, "PUJ"],
   [/santo domingo/i, "SDQ"],
-  [/puerto plata|sosúa|sosua|cabarete|r[ií]o san juan/i, "POP"],
-  [/saman[aá]|las terrenas|las galeras/i, "AZS"],
-  [/la romana|bayah[ií]be/i, "LRM"],
   [/san juan|puerto rico/i, "SJU"],
   [/bogotá|bogota/i, "BOG"],
   [/medellín|medellin/i, "MDE"],
@@ -274,62 +271,10 @@ const CITY_AIRPORTS: [RegExp, string][] = [
   [/são paulo|sao paulo/i, "GRU"],
   [/buenos aires/i, "EZE"],
   [/santiago/i, "SCL"],
-  // Santiago de los Caballeros, picked over Chile when the trip says Dominican Republic.
-  [/santiago/i, "STI"],
 ];
 
-/** Country of each airport above, so "Río San Juan, Dominican Republic" never lands on San Juan, Puerto Rico. */
-const AIRPORT_COUNTRY: Record<string, string> = {
-  HND: "JP", KIX: "JP", CTS: "JP", OKA: "JP", ICN: "KR", PUS: "KR", PEK: "CN", PVG: "CN", HKG: "HK", TPE: "TW",
-  BKK: "TH", HKT: "TH", CNX: "TH", SIN: "SG", DPS: "ID", HAN: "VN", SGN: "VN", MNL: "PH", KUL: "MY", DEL: "IN", BOM: "IN",
-  DXB: "AE", AUH: "AE", DOH: "QA", IST: "TR", CAI: "EG", RAK: "MA", CPT: "ZA", JNB: "ZA", NBO: "KE", SYD: "AU", MEL: "AU",
-  AKL: "NZ", ZQN: "NZ", LHR: "GB", EDI: "GB", CDG: "FR", FCO: "IT", MXP: "IT", VCE: "IT", FLR: "IT", NAP: "IT", MAD: "ES",
-  BCN: "ES", SVQ: "ES", LIS: "PT", OPO: "PT", AMS: "NL", BRU: "BE", BER: "DE", MUC: "DE", FRA: "DE", VIE: "AT", PRG: "CZ",
-  BUD: "HU", ZRH: "CH", GVA: "CH", CPH: "DK", ARN: "SE", OSL: "NO", HEL: "FI", KEF: "IS", DUB: "IE", ATH: "GR", JTR: "GR",
-  DBV: "HR", JFK: "US", LAX: "US", SFO: "US", LAS: "US", MIA: "US", MCO: "US", ORD: "US", BOS: "US", IAD: "US", SEA: "US",
-  HNL: "US", OGG: "US", MSY: "US", YYZ: "CA", YVR: "CA", YUL: "CA", MEX: "MX", CUN: "MX", HAV: "CU", PUJ: "DO", SDQ: "DO",
-  POP: "DO", AZS: "DO", LRM: "DO", STI: "DO", SJU: "PR", BOG: "CO", MDE: "CO", CTG: "CO", LIM: "PE", GIG: "BR", GRU: "BR",
-  EZE: "AR", SCL: "CL",
-};
-
-/** Countries a destination may name, with the airport to fall back on when no city matches. */
-const COUNTRIES: [RegExp, string, string][] = [
-  [/dominican republic|rep[uú]blica dominicana|r[eé]publique dominicaine|dominikanische/i, "DO", "SDQ"],
-  [/puerto rico/i, "PR", "SJU"],
-  [/japan|jap[oó]n|japon|日本/i, "JP", "HND"],
-  [/south korea|korea|corea|corée|korea|韓国/i, "KR", "ICN"],
-  [/thailand|tailandia|tha[iï]lande|タイ/i, "TH", "BKK"],
-  [/indonesia|indonésie|indonesien/i, "ID", "DPS"],
-  [/vietnam|viet nam/i, "VN", "SGN"],
-  [/italy|italia|italie|italien|イタリア/i, "IT", "FCO"],
-  [/spain|españa|espagne|spanien|espanha|スペイン/i, "ES", "MAD"],
-  [/portugal/i, "PT", "LIS"],
-  [/france|francia|frankreich|frança|フランス/i, "FR", "CDG"],
-  [/germany|alemania|allemagne|deutschland|alemanha|ドイツ/i, "DE", "FRA"],
-  [/united kingdom|england|scotland|reino unido|royaume-uni|großbritannien|イギリス/i, "GB", "LHR"],
-  [/greece|grecia|grèce|griechenland|grécia/i, "GR", "ATH"],
-  [/mexico|méxico|mexique|mexiko/i, "MX", "MEX"],
-  [/colombia|colombie|kolumbien|colômbia/i, "CO", "BOG"],
-  [/peru|perú|pérou/i, "PE", "LIM"],
-  [/brazil|brasil|brésil|brasilien/i, "BR", "GRU"],
-  [/argentina|argentine|argentinien/i, "AR", "EZE"],
-  [/chile|chili/i, "CL", "SCL"],
-  [/cuba|kuba/i, "CU", "HAV"],
-  [/canada|canadá|kanada/i, "CA", "YYZ"],
-  [/australia|australie|australien/i, "AU", "SYD"],
-  [/new zealand|nueva zelanda|nouvelle-zélande|neuseeland/i, "NZ", "AKL"],
-  [/united states|usa\b|estados unidos|états-unis|vereinigte staaten|アメリカ/i, "US", "JFK"],
-];
-
-/**
- * The destination's main airport, when we know it. The country, when the
- * destination names one, decides between look-alike cities (San Juan, Santiago).
- */
 export function guessAirport(destination: string): string | undefined {
-  const country = COUNTRIES.find(([re]) => re.test(destination));
-  const cities = CITY_AIRPORTS.filter(([re]) => re.test(destination)).map(([, code]) => code);
-  if (country) return cities.find((code) => AIRPORT_COUNTRY[code] === country[1]) ?? country[2];
-  return cities[0];
+  return CITY_AIRPORTS.find(([re]) => re.test(destination))?.[1];
 }
 
 // ---------- Demo provider (ALERTS_DEMO=true) ----------
