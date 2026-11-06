@@ -3,6 +3,8 @@
 import { useI18n } from "@trip/i18n/react";
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
+import { guessCategory } from "@trip/backend/budgetOverview";
+import { CATEGORIES, type Category } from "@trip/backend/categories";
 import { parseAmount, SPLIT_MODES, type SplitMode } from "@trip/backend/settle";
 import { amountText, draftFrom, errorCode, percentLabel, prefill, readDraft, type Draft } from "@trip/backend/splitDraft";
 import { cn, currencyChoices, currencyFromLocales, CURRENCIES } from "@trip/ui";
@@ -447,8 +449,12 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
   const add = useMutation(api.expenses.add);
   const update = useMutation(api.expenses.update);
   const { t, money, firstName } = useSplitText(data);
+  const { category: categoryMeta } = useI18n();
   const members = data.people.filter((p) => p.isMember);
   const [description, setDescription] = useState(expense?.description ?? "");
+  // Follows the description until they pick one.
+  const [picked, setPicked] = useState<Category | null>(expense?.category ?? null);
+  const category: Category = picked ?? guessCategory(description);
   const [amount, setAmount] = useState(expense ? amountText(expense.amountCents) : "");
   const [paidBy, setPaidBy] = useState(expense?.paidBy ?? data.me);
   const home = data.homeCurrency ?? (typeof navigator === "undefined" ? null : currencyFromLocales(navigator.languages ?? []));
@@ -485,7 +491,7 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
         if (!reading.split || cents == null) return;
         setError(null);
         if (rate.rate == null) return setError(t("split.errors.needRate"));
-        const fields = { description, amountCents: cents, paidBy, split: reading.split, currency, rate: rate.rate };
+        const fields = { description, amountCents: cents, paidBy, split: reading.split, currency, rate: rate.rate, category };
         try {
           if (expense) await update({ expenseId: expense._id, ...fields });
           else await add({ tripId, ...fields });
@@ -515,6 +521,19 @@ function ExpenseForm({ tripId, data, expense, onDone }: { tripId: Id<"trips">; d
           ))}
         </select>
       </label>
+      <fieldset className="flex flex-col gap-2 text-sm sm:col-span-2">
+        <legend className="font-semibold">{t("budgetOverview.expenseCategory")}</legend>
+        <div role="radiogroup" aria-label={t("budgetOverview.expenseCategory")} className="flex flex-wrap gap-2">
+          {CATEGORIES.map((c) => {
+            const meta = categoryMeta(c);
+            return (
+              <button type="button" key={c} role="radio" aria-checked={category === c} onClick={() => setPicked(c)} className={cn("rounded-full px-3 py-1.5 text-sm font-semibold transition-colors", category === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                {meta.emoji} {meta.text}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
       <fieldset role="radiogroup" className="flex flex-col gap-2 text-sm sm:col-span-2">
         <legend className="font-semibold">{t("split.currency")}</legend>
         <CurrencyPicker value={currency} onChange={setCurrency} home={home} local={data.localCurrency} group={data.currency} />

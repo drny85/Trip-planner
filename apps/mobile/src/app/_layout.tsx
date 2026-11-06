@@ -99,6 +99,7 @@ function AppStack() {
         options={{ title: t("fares.watchTitle"), presentation: "formSheet", sheetAllowedDetents: [0.8, 1], sheetGrabberVisible: true, headerLeft: cancel }}
       />
       <Stack.Screen name="trips/[tripId]/today" options={{ title: t("today.title") }} />
+      <Stack.Screen name="trips/[tripId]/budget" options={{ title: t("budgetOverview.title"), headerLargeTitle: true }} />
       <Stack.Screen
         name="trips/[tripId]/note/[activityId]"
         options={{ title: t("journal.yourNote"), presentation: "formSheet", sheetAllowedDetents: [0.6, 1], sheetGrabberVisible: true, headerLeft: cancel }}

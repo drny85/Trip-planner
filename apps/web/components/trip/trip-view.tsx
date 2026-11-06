@@ -141,7 +141,7 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
         <Stats trip={trip} readOnly={readOnly} />
         {mode !== "public" && <TripLockedBanner tripId={trip._id} />}
         {mode !== "public" && <TodayBanner trip={trip} />}
-        <BudgetCard trip={trip} />
+        <BudgetCard trip={trip} overviewHref={mode !== "public" ? `/trips/${trip._id}/budget` : undefined} />
         {mode !== "public" && <Crew tripId={trip._id} />}
         {storyToken && <StoryBanner token={storyToken} />}
         {mode !== "public" && <Flights tripId={trip._id} days={trip.subTrips} />}

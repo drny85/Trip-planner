@@ -41,6 +41,7 @@ const EXTRACT_PROMPT = `You read travel confirmation emails, PDFs and screenshot
 - Copy confirmation codes, times, addresses and phone numbers exactly as written. Never guess or invent one: leave a field out if it isn't there.
 - Dates and times are local to where the booking happens (a flight's departure time is local to the departure airport).
 - A round trip or a multi-leg flight is one booking per leg. A hotel stay is one booking from check-in to check-out.
+- Give the total price and its currency only when the confirmation states what was paid or is due.
 - Ignore ads, loyalty offers and anything that isn't a reservation.
 - When a booking is clearly for an activity already in the itinerary below (same hotel, restaurant or tour), give its id as matchActivityId.
 - If there are no bookings at all, return an empty list.`;
