@@ -23,6 +23,8 @@ export function createFormat(locale: Locale, formatTag: string) {
   const hourCycle = timeFmt.resolvedOptions().hourCycle;
   const padHour = locale !== "ja" && (hourCycle === "h23" || hourCycle === "h24");
   const numberFmt = new Intl.NumberFormat(formatTag);
+  const monthFmt = new Intl.DateTimeFormat(formatTag, { month: "long", year: "numeric", timeZone: "UTC" });
+  const monthShortFmt = new Intl.DateTimeFormat(formatTag, { month: "short", timeZone: "UTC" });
 
   const valid = (iso: string) => /^\d{4}-\d{2}-\d{2}/.test(iso);
 
@@ -32,6 +34,10 @@ export function createFormat(locale: Locale, formatTag: string) {
     day: (iso: string) => (valid(iso) ? dayFmt.format(utcDate(iso)) : iso),
     /** "2027-04-02" -> "Fri, Apr 2". */
     weekday: (iso: string) => (valid(iso) ? weekdayFmt.format(utcDate(iso)) : iso),
+    /** "2027-04" -> "April 2027". */
+    month: (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? monthFmt.format(utcDate(`${ym}-01`)) : ym),
+    /** "2027-04" -> "Apr". */
+    monthShort: (ym: string) => (/^\d{4}-\d{2}$/.test(ym) ? monthShortFmt.format(utcDate(`${ym}-01`)) : ym),
     /** "2027-04-02" -> "Friday, April 2". */
     longDay: (iso: string) => (valid(iso) ? longFmt.format(utcDate(iso)) : iso),
     /** "Apr 2 – Apr 6". */

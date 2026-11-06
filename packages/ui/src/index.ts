@@ -31,6 +31,7 @@ export {
   leaveBy,
   minutesNow,
   parseHourly,
+  projectDay,
   rainSoon,
   todayAlerts,
   todayStatus,
@@ -38,6 +39,7 @@ export {
   type Coords,
   type HourWeather,
   type LiveWeather,
+  type ProjectedStatus,
   type TodayAlert,
   type TodayStatus,
   type TodayStop,
@@ -53,3 +55,4 @@ export function googlePhotoCredit(activity: { photoUrl?: string; photoCredit?: s
   return activity.photoCredit ?? "";
 }
 export { flightTone, isUpcoming, priceSummary, sparkline, type FlightTone } from "./alerts";
+export { currencyChoices, currencyForRegion, currencyFromLocales, CURRENCIES, isCurrencyCode } from "./currency";

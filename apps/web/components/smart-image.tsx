@@ -38,6 +38,10 @@ export function SmartImage({ src, seed, alt = "", className, imgClassName, prior
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : "auto"}
           draggable={false}
+          // A server-rendered photo can finish loading before React hydrates, so onLoad never fires.
+          ref={(img) => {
+            if (img?.complete && img.naturalWidth > 0) setLoaded(true);
+          }}
           onLoad={() => setLoaded(true)}
           onError={() => {
             setLoaded(false);

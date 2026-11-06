@@ -89,7 +89,70 @@ body {
   animation: shimmer 1.6s linear infinite;
 }
 
+
+/* Headline accent: a slow sweep through the brand gradient */
+@keyframes gradient-pan {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+.text-gradient-animated {
+  background-image: linear-gradient(90deg, var(--primary), #10b981, #0ea5e9, #10b981, var(--primary));
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: gradient-pan 8s linear infinite;
+}
+
+/* Light sweep across primary buttons on hover */
+.shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.35) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+}
+.shine:hover::after { transform: translateX(120%); }
+
+/* Pointer spotlight on cards; --mx/--my are set from JS without re-rendering */
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, var(--primary) 16%, transparent), transparent 70%);
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.spotlight:hover::before { opacity: 1; }
+
+/* Spinning gradient border */
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes spin-angle { to { --angle: 360deg; } }
+.conic-border {
+  background: conic-gradient(from var(--angle), var(--primary), #0ea5e9, var(--accent), var(--primary));
+  animation: spin-angle 6s linear infinite;
+}
+
+/* Scroll hint dot and typing caret */
+@keyframes scroll-dot {
+  0% { transform: translateY(0); opacity: 1; }
+  80% { transform: translateY(12px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 0; }
+}
+.animate-scroll-dot { animation: scroll-dot 1.8s ease-in-out infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+.animate-caret { animation: caret 1s steps(1) infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .animate-kenburns, .animate-blob, .shimmer { animation: none; }
+  .animate-kenburns, .animate-blob, .shimmer, .text-gradient-animated, .conic-border, .animate-scroll-dot, .animate-caret { animation: none; }
+  .shine::after { display: none; }
 }
