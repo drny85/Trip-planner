@@ -5,6 +5,7 @@ import { applyPendingToPacking, applyPendingToTrip, enqueue, pendingKey, settle,
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { flatten } from "./lib/tree";
+import { pickUpNext } from "./lib/upNext";
 import type { TripDetails } from "./lib/types";
 import schema from "./schema";
 
@@ -68,6 +69,16 @@ describe("offline outbox", () => {
     const after = await get();
     expect(doneMap(predicted)).toEqual(doneMap(after));
     expect(predicted.progress).toEqual(after.progress);
+  });
+
+  test("up next moves past a stop checked off offline", async () => {
+    const { tripId, get } = await seeded();
+    const trip = await get();
+    const today = trip.startDate;
+    const first = pickUpNext(trip, today)!;
+    const after = pickUpNext(applyPendingToTrip(trip, [check(tripId, first.activity._id, true, 1)]), today)!;
+    expect(after.activity._id).not.toBe(first.activity._id);
+    expect(after.activity._id).toBe(first.later[0]!.activity._id);
   });
 
   test("check-offs for another trip leave this one alone", async () => {

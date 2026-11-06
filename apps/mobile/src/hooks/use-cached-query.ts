@@ -6,6 +6,9 @@ import { useEffect, useMemo } from "react";
 import { readCache, writeCache } from "@/lib/offline-cache";
 import { useOutbox } from "@/lib/outbox";
 
+/** Where a query's saved copy lives, so other code can read it with readCache. */
+export const cacheKey = <Q extends FunctionReference<"query">>(query: Q, args: FunctionArgs<Q>) => `${getFunctionName(query)}:${JSON.stringify(args)}`;
+
 /** Queries that show check-offs: they also show the ones still waiting to sync. */
 const withPending: Partial<Record<string, (value: never, queue: PendingCheck[]) => unknown>> = {
   "trips:get": applyPendingToTrip,
@@ -20,7 +23,7 @@ const withPending: Partial<Record<string, (value: never, queue: PendingCheck[]) 
  */
 export function useCachedQuery<Q extends FunctionReference<"query">>(query: Q, args: FunctionArgs<Q> | "skip") {
   const name = getFunctionName(query);
-  const key = args === "skip" ? null : `${name}:${JSON.stringify(args)}`;
+  const key = args === "skip" ? null : cacheKey(query, args);
   const live = useQuery(query, args);
   const cached = useMemo(() => (key ? readCache<FunctionReturnType<Q>>(key) : undefined), [key]);
 
