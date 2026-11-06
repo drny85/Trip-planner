@@ -167,7 +167,7 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
         <TripHero trip={trip} scrollY={scrollY} />
         <DayTabs subTrips={trip.subTrips} onSelect={jumpTo} />
         <OfflineBanner cached={isCached} />
-        <TripLockedBanner tripId={trip._id} />
+        <TripLockedBanner tripId={trip._id} className="mx-4 mt-4" />
         <TodayBanner trip={trip} />
         <BudgetCard trip={trip} />
         <Crew tripId={trip._id} />
