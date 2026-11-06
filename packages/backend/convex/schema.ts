@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { flightAlerted, flightSnapshot } from "./lib/alerts";
 import { fareInsights, fareOffer, flexCell } from "./lib/fares";
 import { bookingFields, bookingObject, placementObject } from "./lib/bookings";
-import { activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
+import { activityCategory, activityFields, packingCategory, splitMode, tripWeather } from "./lib/validators";
 
 export default defineSchema({
   /** One row per Clerk user. `clerkId` is the JWT `subject`. */
@@ -318,6 +318,8 @@ export default defineSchema({
     currency: v.optional(v.string()),
     /** 1 unit of `currency` in the trip's groupCurrency, fixed when it was logged. Missing means 1. */
     rate: v.optional(v.number()),
+    /** What kind of cost it was, for the budget overview. Missing on old rows: guessed from the description. */
+    category: v.optional(activityCategory),
     createdBy: v.string(),
     /** @deprecated Payments now live in `settlements`; run expenses:migrateLegacySettlements once. */
     isSettlement: v.optional(v.boolean()),

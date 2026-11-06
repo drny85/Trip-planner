@@ -5,6 +5,7 @@ import type { PublicTripDetails } from "@trip/backend/types";
 import { useI18n } from "@trip/i18n/react";
 import { cn } from "@trip/ui";
 import { AnimatePresence, motion } from "motion/react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EASE_OUT, rise } from "@/lib/motion";
 
@@ -13,14 +14,26 @@ import { EASE_OUT, rise } from "@/lib/motion";
  * far. "Spent" counts entered actual costs, plus the estimate of anything already
  * checked off without one.
  */
-export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
+export function BudgetCard({ trip, overviewHref }: { trip: PublicTripDetails; overviewHref?: string }) {
   const budget = useMemo(() => budgetSummary(trip), [trip]);
   const [view, setView] = useState<"category" | "day">("category");
   const currency = trip.currency ?? "USD";
   const { t, f, category } = useI18n();
   const money = (n: number) => f.money(n, currency);
   const { estimated, actual } = budget.total;
-  if (estimated === 0 && actual === 0) return null;
+  const overviewLink = overviewHref && (
+    <Link href={overviewHref} className="text-sm font-semibold text-primary hover:underline">
+      {t("budgetOverview.seeOverview")} →
+    </Link>
+  );
+  // No estimates yet, but bookings or shared costs may still add up on the overview.
+  if (estimated === 0 && actual === 0)
+    return overviewLink ? (
+      <motion.div {...rise(1)} className="mt-6 flex flex-wrap items-center justify-between gap-2 rounded-3xl border border-border/70 bg-card px-5 py-4 shadow-sm">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("budgetOverview.title")}</span>
+        {overviewLink}
+      </motion.div>
+    ) : null;
 
   const spentPct = estimated ? Math.min(100, Math.round((actual / estimated) * 100)) : 0;
   const over = actual > estimated;
@@ -104,6 +117,7 @@ export function BudgetCard({ trip }: { trip: PublicTripDetails }) {
           ))}
         </motion.ul>
       </AnimatePresence>
+      {overviewLink && <div className="mt-5 flex justify-end">{overviewLink}</div>}
     </motion.section>
   );
 }

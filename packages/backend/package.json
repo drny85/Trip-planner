@@ -10,6 +10,7 @@
     "./categories": "./convex/lib/categories.ts",
     "./tree": "./convex/lib/tree.ts",
     "./budget": "./convex/lib/budget.ts",
+    "./budgetOverview": "./convex/lib/budgetOverview.ts",
     "./settle": "./convex/lib/settle.ts",
     "./splitDraft": "./convex/lib/splitDraft.ts",
     "./upNext": "./convex/lib/upNext.ts",

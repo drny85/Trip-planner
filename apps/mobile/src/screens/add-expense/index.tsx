@@ -1,5 +1,8 @@
 import { api } from "@trip/backend/api";
 import type { Id } from "@trip/backend/dataModel";
+import { guessCategory } from "@trip/backend/budgetOverview";
+import { CATEGORIES, type Category } from "@trip/backend/categories";
+import { useI18n } from "@trip/i18n/react";
 import { parseAmount, SPLIT_MODES, type SplitMode } from "@trip/backend/settle";
 import { amountText, draftFrom, percentLabel, prefill, readDraft, type Draft } from "@trip/backend/splitDraft";
 import { cn, currencyChoices, currencyFromLocales, CURRENCIES } from "@trip/ui";
@@ -32,6 +35,10 @@ function ExpenseForm({ tripId, data, expense }: { tripId: Id<"trips">; data: Spl
   const { t, money, firstName } = useSplitText(data);
   const members = data.people.filter((p) => p.isMember);
   const [description, setDescription] = useState(expense?.description ?? "");
+  const { category: categoryMeta } = useI18n();
+  // Follows the description until they pick one.
+  const [picked, setPicked] = useState<Category | null>(expense?.category ?? null);
+  const category: Category = picked ?? guessCategory(description);
   const [amount, setAmount] = useState(expense ? amountText(expense.amountCents) : "");
   const [paidBy, setPaidBy] = useState(expense?.paidBy ?? data.me);
   const home = data.homeCurrency ?? getLocales()[0]?.currencyCode ?? currencyFromLocales(getLocales().map((l) => l.languageTag));
@@ -68,7 +75,7 @@ function ExpenseForm({ tripId, data, expense }: { tripId: Id<"trips">; data: Spl
     if (!reading.split) return Alert.alert(reading.error === "noPeople" ? t("mobileSheets.pickSplit") : t(`split.errors.${reading.error ?? "badValue"}`));
     if (rate.rate == null) return Alert.alert(t("split.errors.needRate"));
     setSaving(true);
-    const fields = { description, amountCents: cents, paidBy, split: reading.split, currency, rate: rate.rate };
+    const fields = { description, amountCents: cents, paidBy, split: reading.split, currency, rate: rate.rate, category };
     try {
       if (expense) await update({ expenseId: expense._id, ...fields });
       else await add({ tripId, ...fields });
@@ -100,6 +107,17 @@ function ExpenseForm({ tripId, data, expense }: { tripId: Id<"trips">; data: Spl
       {expense && <Stack.Screen options={{ title: t("split.editExpense") }} />}
       <Field label={t("split.whatWasIt")} value={description} onChangeText={setDescription} placeholder={t("split.whatPlaceholder")} maxLength={80} autoFocus={!expense} />
       <Field label={t("split.amount", { currency })} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="0.00" />
+      <View className="gap-2">
+        <Text className="text-sm font-semibold text-muted-foreground">{t("budgetOverview.expenseCategory")}</Text>
+        <Chips
+          options={CATEGORIES.map((c) => {
+            const meta = categoryMeta(c);
+            return { value: c, label: `${meta.emoji} ${meta.text}` };
+          })}
+          selected={category}
+          onSelect={(c) => setPicked(c as Category)}
+        />
+      </View>
       <View className="gap-2">
         <Text className="text-sm font-semibold text-muted-foreground">{t("split.currency")}</Text>
         <Chips

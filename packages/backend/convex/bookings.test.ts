@@ -247,6 +247,13 @@ describe("pure helpers", () => {
     });
   });
 
+  test("normalizeBooking keeps a stated price only with a real currency", () => {
+    expect(b({ totalPrice: 1234.56, currency: "usd" })).toMatchObject({ priceCents: 123456, priceCurrency: "USD" });
+    expect(b({ totalPrice: 1234.56 })).not.toHaveProperty("priceCents");
+    expect(b({ totalPrice: -5, currency: "EUR" })).not.toHaveProperty("priceCents");
+    expect(b({ totalPrice: 90, currency: "euros" })).not.toHaveProperty("priceCurrency");
+  });
+
   test("email parsing finds the trip token and readable text", () => {
     const email = parseInboundEmail({ To: '"Trip" <me+trip-0123456789abcdef0123456789abcdef@in.example.com>', html: '<a href="https://x.com/b">Manage</a><br>Seat&nbsp;3A' });
     expect(tokenFrom(email.recipients, "in.example.com")).toBe("0123456789abcdef0123456789abcdef");
