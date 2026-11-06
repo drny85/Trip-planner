@@ -8,6 +8,7 @@ crons.daily("check watched prices", { hourUTC: 13, minuteUTC: 0 }, internal.aler
 
 /** Fares for travelers who haven't booked yet (fares.ts), right after the booking prices. */
 crons.daily("check fare watches", { hourUTC: 13, minuteUTC: 30 }, internal.fares.checkAll, {});
+crons.daily("prune fare cache", { hourUTC: 12, minuteUTC: 0 }, internal.fares.pruneFareCache, {});
 
 /** Flight status. Most runs find nothing due; checks only get frequent close to departure. */
 crons.interval("check flight status", { minutes: 15 }, internal.alerts.checkFlights, {});

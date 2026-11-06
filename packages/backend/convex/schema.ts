@@ -210,10 +210,27 @@ export default defineSchema({
     lastCheckedAt: v.optional(v.number()),
     error: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("booked"), v.literal("ended")),
+    /** Where the last price came from: Travelpayouts' cached fares, a live Google Flights check, or demo data. */
+    source: v.optional(v.union(v.literal("travelpayouts"), v.literal("google"), v.literal("demo"))),
+    /** The last live Google Flights check, run when they tap Book (SerpApi has a small budget). */
+    liveCheckedAt: v.optional(v.number()),
   })
     .index("by_tripId", ["tripId"])
     .index("by_tripId_userId", ["tripId", "userId"])
-    .index("by_status_lastCheckedAt", ["status", "lastCheckedAt"]),
+    .index("by_status_lastCheckedAt", ["status", "lastCheckedAt"])
+    .index("by_liveCheckedAt", ["liveCheckedAt"]),
+
+  /**
+   * Fares looked up for one route and pair of dates, shared by every traveler
+   * watching them, so each search runs at most once a day. Prices are per
+   * passenger, in cents of `currency`. `cents` is absent when nobody had searched it.
+   */
+  fareCache: defineTable({
+    key: v.string(),
+    fetchedAt: v.number(),
+    cents: v.optional(v.number()),
+    offers: v.array(fareOffer),
+  }).index("by_key", ["key"]),
 
   /**
    * Everyone going on a trip. The owner (`trips.userId`) has a row too, so votes

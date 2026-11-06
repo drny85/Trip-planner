@@ -193,15 +193,23 @@ Without keys nothing is called and the bookings list says alerts are off.
 
 ### Flights for travelers who haven't booked yet
 
-The trip page's **Flights** card (`convex/fares.ts`, `convex/lib/fares.ts`, advice in `packages/ui/src/fares.ts`) watches fares from the traveler's home airport (remembered on their profile) for the trip's dates, using the same `SERPAPI_API_KEY`:
+The trip page's **Flights** card (`convex/fares.ts`, `convex/lib/fares.ts`, `convex/lib/travelpayouts.ts`, advice in `packages/ui/src/fares.ts`) watches fares from the traveler's home airport (remembered on their profile) for the trip's dates.
 
-- **Fare watch:** today's cheapest fare, the 3 best options, Google's price level and typical range, and a price trend. The apps turn these into a "good time to book?" hint (book in the last 2 weeks or when it's low, wait when it's falling far out, and so on).
+- **Fare watch:** today's cheapest fare, the 3 best options, a price level and usual range, and a price trend. The apps turn these into a "good time to book?" hint (book in the last 2 weeks or when it's low, wait when it's falling far out, and so on).
 - **Alerts:** only the watcher gets a push, on a real drop (same 5% / 10-unit rule) or once the fare reaches the target they set.
-- **Nearby dates:** on request, the same trip moved ±3 days (6 searches, at most once a day per watch). The organizer can move the whole trip to a cheaper window while nothing is booked.
-- **Book, then track:** "Book" opens Google Flights. Coming back, they're asked "Booked it?" and can add the confirmation through booking import; the flight then gets live status like any other, and the fare watch ends.
+- **Nearby dates:** the same trip moved ±3 days. The organizer can move the whole trip to a cheaper window while nothing is booked.
+- **Book, then track:** "Book" opens Aviasales (or Google Flights without Travelpayouts). Coming back, they're asked "Booked it?" and can add the confirmation through booking import; the flight then gets live status like any other, and the fare watch ends.
 - **Fit the plan:** once flights are on the trip, the organizer can have the AI re-plan day 1 from about 90 minutes after landing, and the last day so they leave for the airport 3 hours before take-off (it reuses the day re-plan).
 
-Fare checks run daily after the booking price checks, at most `FARE_CHECKS_PER_DAY` (default 3). Both share SerpApi's 250 searches a month, so lower `PRICE_CHECKS_PER_DAY` or upgrade the plan if fare watches get busy.
+**Where prices come from.** With `TRAVELPAYOUTS_TOKEN` set, fares come from the free Travelpayouts (Aviasales) Data API: prices Aviasales users found in the last 48 hours, so they're "from" prices. Each check fetches the trip's dates and the ±3 day grid at once (7 searches), and results are cached per route, dates and currency for 20 hours in `fareCache`, shared by every traveler, so a second watch on the same route costs nothing. The price level comes from the grid (25th to 75th percentile). Rarely searched routes may have no fares. When someone taps Book, one live Google Flights check runs through SerpApi (`SERPAPI_API_KEY`), at most `LIVE_FARE_CHECKS_PER_DAY` (default 2) for the whole app, so the 250 free monthly searches are left for booking price watches. Without a Travelpayouts token, everything uses SerpApi as before (`FARE_CHECKS_PER_DAY` default 3).
+
+| Convex env var | |
+| --- | --- |
+| `TRAVELPAYOUTS_TOKEN` | API token (Travelpayouts dashboard, Profile, API token). Turns on Travelpayouts. |
+| `TRAVELPAYOUTS_MARKER` | Your partner ID (marker). Makes Book an affiliate link, so bookings earn commission. |
+| `TRAVELPAYOUTS_MARKET` | Optional market for prices, default `us`. |
+| `FARE_CHECKS_PER_DAY` | Optional, watches checked per day (default 200 with Travelpayouts, 3 with SerpApi). |
+| `LIVE_FARE_CHECKS_PER_DAY` | Optional, live SerpApi checks on Book per day (default 2, 0 turns them off). |
 
 ## Sharing and maps
 

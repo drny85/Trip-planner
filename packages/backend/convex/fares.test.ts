@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
 import { fareAlert, googleFlightsUrl, guessAirport, parseFares, shiftDate } from "./lib/fares";
+import { affiliateUrl, aviasalesUrl, insightsFromGrid, parseTp } from "./lib/travelpayouts";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -59,6 +60,187 @@ describe("reading Google Flights", () => {
     expect(fareAlert({ firstCents: 100000, lastCents: 85000, targetCents: 80000 }, 79000)).toEqual({ kind: "target", wasCents: 85000 });
     expect(fareAlert({ firstCents: 100000, lastCents: 79000, alertedCents: 79000, targetCents: 80000 }, 78000)).toBeNull();
     expect(fareAlert({ firstCents: 100000, lastCents: 79000, alertedCents: 79000, targetCents: 80000 }, 70000)).toEqual({ kind: "target", wasCents: 79000 });
+  });
+});
+
+describe("reading Travelpayouts", () => {
+  const res = {
+    success: true,
+    data: [
+      { price: 640, airline: "UA", flight_number: 837, departure_at: "2027-04-02T10:55:00-07:00", return_at: "2027-04-08T17:00:00+09:00", transfers: 0, duration_to: 690 },
+      { price: 590, airline: "NH", flight_number: "7", departure_at: "2027-04-02T11:40:00-07:00", return_at: "2027-04-08T17:05:00+09:00", transfers: 0, duration_to: 690 },
+      { price: 400, airline: "ZZ", flight_number: 1, departure_at: "2027-04-03T08:00:00-07:00", return_at: "2027-04-08T10:00:00+09:00" },
+    ],
+  };
+  test("cheapest fare for everyone on these exact dates", () => {
+    const found = parseTp(res, { outboundDate: "2027-04-02", returnDate: "2027-04-08", adults: 2 })!;
+    expect(found.cents).toBe(118000);
+    expect(found.offers.map((o) => o.flightNumbers)).toEqual(["NH 7", "UA 837"]);
+    expect(found.offers[0]).toMatchObject({ depTime: "11:40", stops: 0, durationMinutes: 690, cents: 118000, logo: "https://pics.avs.io/60/60/NH.png" });
+    expect(found.offers[0]!.arrTime).toBeUndefined();
+    expect(parseTp({ data: [] }, { outboundDate: "2027-04-02", adults: 1 })).toBeNull();
+  });
+  test("price level from the nearby days", () => {
+    expect(insightsFromGrid(90000, [100000, 110000, 120000, 95000])).toMatchObject({ level: "low", typicalLowCents: 95000, typicalHighCents: 110000 });
+    expect(insightsFromGrid(130000, [100000, 110000, 120000, 95000])!.level).toBe("high");
+    expect(insightsFromGrid(100000, [undefined, 110000])).toBeUndefined();
+  });
+  test("Aviasales links, as affiliate links when there's a marker", () => {
+    const url = aviasalesUrl("SFO", "HND", "2027-04-02", "2027-04-08", 2);
+    expect(url).toBe("https://www.aviasales.com/search/SFO0204HND08042");
+    expect(affiliateUrl(url, undefined)).toBe(url);
+    const aff = new URL(affiliateUrl(url, "12345"));
+    expect(aff.host).toBe("tp.media");
+    expect(aff.searchParams.get("marker")).toBe("12345");
+    expect(aff.searchParams.get("u")).toBe(url);
+  });
+});
+
+describe("fare watch with Travelpayouts (shared cache)", () => {
+  let calls: string[] = [];
+  beforeEach(() => {
+    calls = [];
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2027-02-01T12:00:00Z"));
+    vi.stubEnv("TRAVELPAYOUTS_TOKEN", "tp-token");
+    vi.stubEnv("TRAVELPAYOUTS_MARKER", "777");
+    vi.stubEnv("SERPAPI_API_KEY", "serp-key");
+    vi.stubEnv("LIVE_FARE_CHECKS_PER_DAY", "1");
+    vi.stubEnv("ALERTS_DEMO", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = new URL(String(input));
+        calls.push(url.host);
+        if (url.host === "serpapi.com")
+          return Response.json({ other_flights: [{ flights: [{ departure_airport: { time: `${url.searchParams.get("outbound_date")} 11:40` }, arrival_airport: { time: "2027-04-03 15:10" }, airline: "ANA", flight_number: "NH 7" }], price: 1300 }] });
+        const day = url.searchParams.get("departure_at")!;
+        const ret = url.searchParams.get("return_at")!;
+        const shift = (Date.parse(day) - Date.parse("2027-04-02")) / 86_400_000;
+        return Response.json({ success: true, data: [{ price: 600 + shift * 25, airline: "NH", flight_number: 7, departure_at: `${day}T11:40:00-07:00`, return_at: `${ret}T17:05:00+09:00`, transfers: 0, duration_to: 690 }] });
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  test("one search per route and dates for everyone, the grid comes with it, and Book links to Aviasales", async () => {
+    const t = convexTest(schema, modules);
+    const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+    const tripId = await ana.mutation(api.seed.demoTrip, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const bo = t.withIdentity({ subject: "bo", name: "Bo" });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("tripMembers", { tripId, userId: "bo", role: "member", name: "Bo" });
+    });
+
+    await ana.mutation(api.fares.watch, { tripId, from: "SFO", to: "HND", roundTrip: true, adults: 2 });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(calls.filter((h) => h === "api.travelpayouts.com")).toHaveLength(7);
+    const watch = (await ana.query(api.fares.forTrip, { tripId }))!.watch!;
+    expect(watch).toMatchObject({ source: "travelpayouts", lastCents: 120000, bookSite: "Aviasales" });
+    expect(watch.flex!.cells.map((c) => c.cents)).toEqual([105000, 110000, 115000, 120000, 125000, 130000, 135000]);
+    expect(watch.insights?.level).toBe("typical");
+    expect(new URL(watch.bookUrl).searchParams.get("u")).toContain("aviasales.com/search/SFO0204HND");
+
+    // Bo watches the same route: all from the cache.
+    await bo.mutation(api.fares.watch, { tripId, from: "SFO", to: "HND", roundTrip: true, adults: 1 });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(calls.filter((h) => h === "api.travelpayouts.com")).toHaveLength(7);
+    expect((await bo.query(api.fares.forTrip, { tripId }))!.watch!.lastCents).toBe(60000);
+
+    // Tapping Book runs one live Google Flights check, within the daily budget.
+    await ana.mutation(api.fares.bookStarted, { tripId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(calls.filter((h) => h === "serpapi.com")).toHaveLength(1);
+    // Today's real price shows, but the trend stays with the daily checks.
+    const live = (await ana.query(api.fares.forTrip, { tripId }))!.watch!;
+    expect(live).toMatchObject({ source: "travelpayouts", lastCents: 130000, firstCents: 120000, lowestCents: 120000 });
+    expect(live.history).toHaveLength(1);
+    await bo.mutation(api.fares.bookStarted, { tripId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(calls.filter((h) => h === "serpapi.com")).toHaveLength(1);
+  });
+});
+
+describe("Travelpayouts with no fares on the exact dates", () => {
+  let calls: string[] = [];
+  beforeEach(() => {
+    calls = [];
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2027-02-01T12:00:00Z"));
+    vi.stubEnv("TRAVELPAYOUTS_TOKEN", "tp-token");
+    vi.stubEnv("SERPAPI_API_KEY", "");
+    vi.stubEnv("ALERTS_DEMO", "");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = new URL(String(input));
+        const day = url.searchParams.get("departure_at");
+        if (url.host !== "api.travelpayouts.com" || !day) return Response.json({});
+        calls.push(day);
+        if (day.length > 7) return Response.json({ success: true, data: [] });
+        // The month search: someone looked at Apr 3-7 and Apr 1-5, nobody at the trip's Apr 2-6.
+        return Response.json({
+          success: true,
+          data: [
+            { price: 700, airline: "UA", flight_number: 1, departure_at: "2027-04-01T09:00:00-07:00", return_at: "2027-04-05T09:00:00+09:00" },
+            { price: 650, airline: "NH", flight_number: 7, departure_at: "2027-04-03T11:40:00-07:00", return_at: "2027-04-07T17:05:00+09:00" },
+            { price: 300, airline: "ZZ", flight_number: 9, departure_at: "2027-04-20T11:40:00-07:00", return_at: "2027-04-22T17:05:00+09:00" },
+          ],
+        });
+      }),
+    );
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  test("the month search fills the grid and shows the closest dates, replacing old Google prices", async () => {
+    const t = convexTest(schema, modules);
+    const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+    const tripId = await ana.mutation(api.seed.demoTrip, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    await ana.mutation(api.fares.watch, { tripId, from: "SFO", to: "HND", roundTrip: true, adults: 1 });
+    // The watch had Google prices before Travelpayouts was turned on.
+    await t.run(async (ctx) => {
+      const w = (await ctx.db.query("fareWatches").first())!;
+      await ctx.db.patch("fareWatches", w._id, { source: "google", firstCents: 58400, lastCents: 58400, lowestCents: 58400, history: [{ at: 1, cents: 58400 }], insights: { level: "high", history: [] } });
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(calls.filter((d) => d.length === 7)).toEqual(["2027-04"]);
+
+    const watch = (await ana.query(api.fares.forTrip, { tripId }))!.watch!;
+    expect(watch).toMatchObject({ source: "travelpayouts", lastCents: 65000, firstCents: 65000, lowestCents: 65000 });
+    expect(watch.history).toHaveLength(1);
+    expect(watch.insights).toBeUndefined();
+    expect(watch.offers.map((o) => [o.depDate, o.retDate])).toEqual([
+      ["2027-04-03", "2027-04-07"],
+      ["2027-04-01", "2027-04-05"],
+    ]);
+    expect(watch.flex!.cells.map((c) => c.cents)).toEqual([undefined, undefined, 70000, undefined, 65000, undefined, undefined]);
+  });
+
+  test("nothing at all clears the old Google prices", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ success: true, data: [] })));
+    const t = convexTest(schema, modules);
+    const ana = t.withIdentity({ subject: "ana", name: "Ana" });
+    const tripId = await ana.mutation(api.seed.demoTrip, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    await ana.mutation(api.fares.watch, { tripId, from: "SFO", to: "HND", roundTrip: true, adults: 1 });
+    await t.run(async (ctx) => {
+      const w = (await ctx.db.query("fareWatches").first())!;
+      await ctx.db.patch("fareWatches", w._id, { source: "google", lastCents: 58400, history: [{ at: 1, cents: 58400 }] });
+    });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const watch = (await ana.query(api.fares.forTrip, { tripId }))!.watch!;
+    expect(watch).toMatchObject({ source: "travelpayouts", error: "noResults", offers: [], history: [] });
+    expect(watch.lastCents).toBeUndefined();
   });
 });
 

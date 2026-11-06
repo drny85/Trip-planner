@@ -18,8 +18,11 @@ export const fareOffer = v.object({
   flightNumbers: v.string(),
   depDate: v.string(),
   depTime: v.string(),
-  arrDate: v.string(),
-  arrTime: v.string(),
+  /** Absent when the source only gives the departure (Travelpayouts). */
+  arrDate: v.optional(v.string()),
+  arrTime: v.optional(v.string()),
+  /** The return day, when the fare is for other dates than asked (Travelpayouts' month search). */
+  retDate: v.optional(v.string()),
   stops: v.number(),
   durationMinutes: v.number(),
   cents: v.number(),

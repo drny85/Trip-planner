@@ -55,6 +55,7 @@ import type * as lib_splitDraft from "../lib/splitDraft.js";
 import type * as lib_story from "../lib/story.js";
 import type * as lib_subtree from "../lib/subtree.js";
 import type * as lib_tokens from "../lib/tokens.js";
+import type * as lib_travelpayouts from "../lib/travelpayouts.js";
 import type * as lib_timeZone from "../lib/timeZone.js";
 import type * as lib_tree from "../lib/tree.js";
 import type * as lib_tripSchema from "../lib/tripSchema.js";
@@ -128,6 +129,7 @@ import type * as users from "../users.js";
 "lib/story": typeof lib_story,
 "lib/subtree": typeof lib_subtree,
 "lib/tokens": typeof lib_tokens,
+"lib/travelpayouts": typeof lib_travelpayouts,
 "lib/timeZone": typeof lib_timeZone,
 "lib/tree": typeof lib_tree,
 "lib/tripSchema": typeof lib_tripSchema,
