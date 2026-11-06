@@ -3,7 +3,8 @@
  * chat screen saves where to go and goes back, and the trip screen scrolls there
  * when it comes into focus.
  */
-export type ChatFocus = { tripId: string; target: { subTripId: string } | { ideas: true } };
+export type FocusTarget = { subTripId: string; activityId?: string } | { ideas: true };
+export type ChatFocus = { tripId: string; target: FocusTarget };
 
 let pending: ChatFocus | null = null;
 
@@ -25,3 +26,6 @@ export const setVisibleChat = (tripId: string | null) => {
   visibleChat = tripId;
 };
 export const isChatVisible = (tripId: unknown) => typeof tripId === "string" && tripId === visibleChat;
+
+/** Activity cards on the trip screen by id, so a chat link can scroll to the exact stop. */
+export const activityViews = new Map<string, { measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => void }>();

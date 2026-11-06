@@ -15,7 +15,7 @@ import Animated, { FadeIn, FadeInDown, FadeOutDown } from "react-native-reanimat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/icon";
 import { useCachedQuery } from "@/hooks/use-cached-query";
-import { requestTripFocus, setVisibleChat } from "@/lib/chat-focus";
+import { requestTripFocus, setVisibleChat, type FocusTarget } from "@/lib/chat-focus";
 import { EASE_OUT } from "@/lib/motion";
 
 type ChatData = NonNullable<FunctionReturnType<typeof api.chat.list>>;
@@ -70,7 +70,7 @@ export function TripChatScreen({ tripId, initialLink }: { tripId: Id<"trips">; i
   const rows = useMemo(() => (data ? chatRows(data.messages, divider ?? 0).reverse() : []), [data, divider]);
 
   /** Back to the itinerary, scrolled to what the message points at. */
-  const reveal = (target: { subTripId: string } | { ideas: true }) => {
+  const reveal = (target: FocusTarget) => {
     requestTripFocus({ tripId, target });
     if (router.canGoBack()) router.back();
     else router.replace({ pathname: "/trips/[tripId]", params: { tripId } });
@@ -117,7 +117,13 @@ export function TripChatScreen({ tripId, initialLink }: { tripId: Id<"trips">; i
     );
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={headerHeight}>
+    // The iOS header is translucent and this screen has no scroll view to inset itself,
+    // so the content starts below the header by hand (and the keyboard offset is 0).
+    <KeyboardAvoidingView
+      className="flex-1 bg-background"
+      style={{ paddingTop: Platform.OS === "ios" ? headerHeight : 0 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       {header}
       <View className="border-b border-border bg-card px-4 py-2">
         <Text className="text-center text-xs text-muted-foreground">
@@ -148,7 +154,7 @@ export function TripChatScreen({ tripId, initialLink }: { tripId: Id<"trips">; i
   );
 }
 
-function Row({ row, canDeleteAny, onReveal }: { row: ChatRow<Message>; canDeleteAny: boolean; onReveal: (target: { subTripId: string } | { ideas: true }) => void }) {
+function Row({ row, canDeleteAny, onReveal }: { row: ChatRow<Message>; canDeleteAny: boolean; onReveal: (target: FocusTarget) => void }) {
   const { t, f } = useI18n();
   if (row.kind === "day") {
     const label = dayLabel(row.date);
@@ -182,7 +188,7 @@ function Bubble({
   first: boolean;
   last: boolean;
   canDelete: boolean;
-  onReveal: (target: { subTripId: string } | { ideas: true }) => void;
+  onReveal: (target: FocusTarget) => void;
 }) {
   const remove = useMutation(api.chat.remove);
   const { t, f } = useI18n();
@@ -246,7 +252,7 @@ function Avatar({ name, userId, imageUrl }: { name: string; userId: string; imag
   );
 }
 
-function LinkCard({ link, mine, onReveal }: { link: NonNullable<Message["link"]>; mine: boolean; onReveal: (target: { subTripId: string } | { ideas: true }) => void }) {
+function LinkCard({ link, mine, onReveal }: { link: NonNullable<Message["link"]>; mine: boolean; onReveal: (target: FocusTarget) => void }) {
   const { t } = useI18n();
   const tone = mine ? "bg-white/15" : "bg-muted";
   const text = mine ? "text-primary-foreground" : "text-foreground";
@@ -265,14 +271,14 @@ function LinkCard({ link, mine, onReveal }: { link: NonNullable<Message["link"]>
   const label = link.kind === "activity" ? t("chat.linkedStop", { day: link.dayNumber, title: link.title }) : t("chat.linkedIdea", { title: link.title });
   return (
     <Pressable
-      onPress={() => onReveal(link.kind === "activity" ? { subTripId: link.subTripId } : { ideas: true })}
+      onPress={() => onReveal(link.kind === "activity" ? { subTripId: link.subTripId, activityId: link.id } : { ideas: true })}
       accessibilityRole="link"
       accessibilityLabel={label}
-      className={cn("mt-2 flex-row items-center gap-2 rounded-2xl px-3 py-2 active:opacity-70", tone)}
+      className={cn("mt-2 min-w-56 flex-row items-center gap-2 rounded-2xl px-3 py-2 active:opacity-70", tone)}
     >
       <Text>{link.kind === "activity" ? "📍" : "💡"}</Text>
       <View className="flex-1">
-        <Text className={cn("text-sm font-semibold", text)} numberOfLines={1}>
+        <Text className={cn("text-sm font-semibold", text)} numberOfLines={2}>
           {label}
         </Text>
         {status && <Text className={cn("text-xs opacity-75", text)}>{status}</Text>}

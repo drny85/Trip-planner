@@ -42,7 +42,7 @@ import { DayTabs } from "./day-tabs";
 import { HERO_HEIGHT, TripHero } from "./trip-hero";
 import { TodayBanner } from "./today-banner";
 import { TripLockedBanner } from "@/components/billing";
-import { takeTripFocus } from "@/lib/chat-focus";
+import { activityViews, takeTripFocus } from "@/lib/chat-focus";
 import { ChatHeaderButton } from "./chat-button";
 
 export function TripDetails({ tripId }: { tripId: Id<"trips"> }) {
@@ -153,7 +153,15 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
       const target = takeTripFocus(trip._id);
       if (!target) return;
       const timer = setTimeout(() => {
-        if ("subTripId" in target) jumpTo(target.subTripId);
+        if ("subTripId" in target) {
+          // The stop itself when its card is on the page, else the start of its day.
+          const card = target.activityId ? activityViews.get(target.activityId) : undefined;
+          if (!card) return jumpTo(target.subTripId);
+          card.measureInWindow((_x, y) => {
+            setPastHero(true);
+            scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.get() + y - barHeight - 12), animated: true });
+          });
+        }
         else if (ideasOffset.current != null) {
           setPastHero(true);
           scrollRef.current?.scrollTo({ y: ideasOffset.current - barHeight, animated: true });

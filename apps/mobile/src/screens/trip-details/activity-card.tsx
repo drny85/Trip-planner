@@ -15,6 +15,7 @@ import { Icon } from "@/components/icon";
 import { PressableScale } from "@/components/pressable-scale";
 import { SmartImage } from "@/components/smart-image";
 import { callPhone, openDirections, openInAppBrowser } from "@/lib/open";
+import { activityViews } from "@/lib/chat-focus";
 import { checkPop, CSS_EASE_OUT } from "@/lib/motion";
 import { ActivityNotes } from "./journal";
 import { ActivityPhotos } from "./memories";
@@ -48,7 +49,13 @@ export function ActivityCard({ activity, tripId, isLast, canEdit }: Props) {
   };
 
   return (
-    <View className="flex-row pl-4 pr-4">
+    <View
+      className="flex-row pl-4 pr-4"
+      ref={(node) => {
+        if (node) activityViews.set(activity._id, node);
+        else activityViews.delete(activity._id);
+      }}
+    >
       {/* Timeline rail: start time, completion checkbox and connector */}
       <View className="w-12 items-center">
         <Text className="pt-1 text-[11px] font-bold text-muted-foreground">{f.time(activity.startTime)}</Text>
