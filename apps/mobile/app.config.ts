@@ -72,6 +72,20 @@ const permissionStrings: Record<"en" | "es" | "fr" | "pt" | "de" | "ja", Prompts
   },
 };
 
+/**
+ * The "Next stop" widget's name and description in the iOS widget gallery. The
+ * widget extension reads them from Localizable.strings, keyed by the English text.
+ */
+const widgetGallery = { name: "Next stop", description: "Your next stop, its time and directions on travel days." };
+const widgetStrings: Record<keyof typeof permissionStrings, string[]> = {
+  en: [widgetGallery.name, widgetGallery.description],
+  es: ["Próxima parada", "Tu próxima parada, su hora y cómo llegar los días de viaje."],
+  fr: ["Prochaine étape", "Votre prochaine étape, son heure et l'itinéraire les jours de voyage."],
+  pt: ["Próxima parada", "Sua próxima parada, o horário e como chegar nos dias de viagem."],
+  de: ["Nächster Stopp", "Dein nächster Stopp, die Uhrzeit und der Weg dorthin an Reisetagen."],
+  ja: ["次の目的地", "旅行の日に、次の目的地と時間、行き方を表示します。"],
+};
+
 /** Info.plist usage-description keys for one language. */
 function iosPrompts(p: Prompts) {
   return {
@@ -111,7 +125,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     infoPlist: { CFBundleAllowMixedLocalizations: true },
   },
   // Permission prompts in every app language (written to InfoPlist.strings at prebuild).
-  locales: Object.fromEntries(Object.entries(permissionStrings).map(([lang, p]) => [lang, { ios: iosPrompts(p) }])),
+  // The widget gallery strings go to Localizable.strings, which expo-widgets adds to the widget extension.
+  locales: Object.fromEntries(
+    Object.entries(permissionStrings).map(([lang, p]) => {
+      const [name, description] = widgetStrings[lang as keyof typeof permissionStrings];
+      return [lang, { ios: { ...iosPrompts(p), "Localizable.strings": { [widgetGallery.name]: name, [widgetGallery.description]: description } } }];
+    }),
+  ),
   android: {
     adaptiveIcon: {
       backgroundColor: "#0e7c66",
@@ -133,9 +153,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-splash-screen",
       {
+        // The animated splash (src/components/animated-splash) starts from exactly this
+        // frame: keep the colors and imageWidth in step with its geometry and SPLASH_SIZE.
         backgroundColor: "#0e7c66",
         image: "./assets/images/splash-icon.png",
-        imageWidth: 76,
+        imageWidth: 240,
+        dark: { backgroundColor: "#0b0f14", image: "./assets/images/splash-icon-dark.png" },
       },
     ],
     "@clerk/expo",
@@ -200,6 +223,26 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     "expo-apple-authentication",
     "expo-dev-client",
     "expo-updates",
+    [
+      // iOS home screen and Lock Screen widget, plus the travel-day Live Activity
+      // (registered at runtime in src/widgets, so it needs no entry here).
+      "expo-widgets",
+      {
+        bundleIdentifier: "com.tripplanner.app.ExpoWidgetsTarget",
+        groupIdentifier: "group.com.tripplanner.app",
+        widgets: [
+          {
+            name: "NextStop",
+            displayName: widgetGallery.name,
+            description: widgetGallery.description,
+            ios: {
+              supportedFamilies: ["systemSmall", "systemMedium", "accessoryRectangular", "accessoryInline", "accessoryCircular"],
+              initialLayout: "./src/widgets/next-stop-widget.tsx",
+            },
+          },
+        ],
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

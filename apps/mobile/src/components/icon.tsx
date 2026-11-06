@@ -28,6 +28,8 @@ const icons = {
   photo: { ios: "photo.on.rectangle", android: "image", web: "image" },
   mail: { ios: "envelope.fill", android: "mail", web: "mail" },
   map: { ios: "map.fill", android: "map", web: "map" },
+  lockScreen: { ios: "iphone.badge.play", android: "smartphone", web: "smartphone" },
+  undo: { ios: "arrow.uturn.backward", android: "undo", web: "undo" },
 } satisfies Record<string, ComponentProps<typeof SymbolView>["name"]>;
 
 export type IconName = keyof typeof icons;
