@@ -131,9 +131,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-splash-screen",
       {
+        // The animated splash (src/components/animated-splash) starts from exactly this
+        // frame: keep the colors and imageWidth in step with its geometry and SPLASH_SIZE.
         backgroundColor: "#0e7c66",
         image: "./assets/images/splash-icon.png",
-        imageWidth: 76,
+        imageWidth: 240,
+        dark: { backgroundColor: "#0b0f14", image: "./assets/images/splash-icon-dark.png" },
       },
     ],
     "@clerk/expo",
