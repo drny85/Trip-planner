@@ -40,6 +40,8 @@ export default defineSchema({
     /** Model that generated the trip (picked per request by lib/modelRouter.ts). */
     aiModel: v.optional(v.string()),
     /** Random token for the read-only share link. Absent means the trip is private. */
+    /** IANA time zone of the destination ("America/Santo_Domingo"), found once by timeZones.detect. */
+    timeZone: v.optional(v.string()),
     shareToken: v.optional(v.string()),
     /** Random token for the "join this trip" link. Absent means invites are off. */
     inviteToken: v.optional(v.string()),

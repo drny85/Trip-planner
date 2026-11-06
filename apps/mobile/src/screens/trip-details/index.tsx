@@ -82,7 +82,13 @@ function Itinerary({ trip, isCached }: { trip: TripDetailsData; isCached: boolea
 
   // Re-schedule this trip's local reminders (and calendar events) whenever its times, titles or places change.
   const step = (a: TripDetailsData["subTrips"][number]["activities"][number]) => [a.title, a.startTime, a.durationMinutes, a.address];
-  const reminderKey = JSON.stringify(trip.subTrips.map((d) => [d.date, d.title, d.activities.map((a) => [...step(a), a.children.map(step)])]));
+  const reminderKey = JSON.stringify([trip.timeZone, trip.subTrips.map((d) => [d.date, d.title, d.activities.map((a) => [...step(a), a.children.map(step)])])]);
+
+  // Older trips look up their destination's time zone once, for calendar events.
+  const ensureTimeZone = useMutation(api.timeZones.ensure);
+  useEffect(() => {
+    if (!trip.timeZone && !isCached) void ensureTimeZone({ tripId: trip._id }).catch(() => undefined);
+  }, [trip._id, trip.timeZone, isCached, ensureTimeZone]);
   useEffect(() => {
     void scheduleTripReminders(trip).catch(() => undefined);
     // If the trip was added to the phone's calendar, keep those events in step too.

@@ -105,6 +105,12 @@ function Itinerary({ trip, mode, storyToken }: { trip: PublicTripDetails | TripD
   const activeDay = useActiveDay(trip.subTrips.map((s) => s._id));
   const { t, f } = useI18n();
 
+  // Older trips look up their destination's time zone once, for the calendar export.
+  const ensureTimeZone = useMutation(api.timeZones.ensure);
+  useEffect(() => {
+    if (canCheck && !trip.timeZone) void ensureTimeZone({ tripId: trip._id }).catch(() => undefined);
+  }, [canCheck, trip._id, trip.timeZone, ensureTimeZone]);
+
   const drop = (toSubTripId: Id<"subTrips">, toIndex: number) => {
     if (dragging) void move({ activityId: dragging.activityId, toSubTripId, toIndex });
     setDragging(null);

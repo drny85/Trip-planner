@@ -16,6 +16,8 @@ type CalActivity = {
 type CalTrip = {
   _id: string;
   title: string;
+  /** The destination's IANA zone; without it, times float (the phone's own zone). */
+  timeZone?: string;
   startDate: string;
   subTrips: { _id: string; date?: string; dayNumber: number; title: string; activities: CalActivity[] }[];
 };
@@ -44,6 +46,8 @@ export type TripCalendarEvent = {
   notes: string;
   location: string;
   allDay: boolean;
+  /** The trip's zone the wall-clock times are in, when known. */
+  timeZone?: string;
   /** "YYYY-MM-DD" and, for timed events, "HH:MM". End is exclusive. */
   start: { date: string; time?: string };
   end: { date: string; time?: string };
@@ -67,6 +71,7 @@ export function calendarEvents(trip: CalTrip): TripCalendarEvent[] {
             notes: a.description,
             location: a.address,
             allDay: false,
+            ...(trip.timeZone ? { timeZone: trip.timeZone } : {}),
             start: { date, time: `${pad(Math.floor(startMin / 60))}:${pad(startMin % 60)}` },
             end: { date: addDays(date, Math.floor(endMin / 1440)), time: `${pad(Math.floor(e / 60))}:${pad(e % 60)}` },
           });
@@ -81,13 +86,48 @@ export function calendarEvents(trip: CalTrip): TripCalendarEvent[] {
 
 const stampOf = (p: { date: string; time?: string }) => (p.time ? `${compact(p.date)}T${p.time.replace(":", "")}00` : compact(p.date));
 
+/** A timed event's moment in UTC ("20270402T053000Z") when its zone is known, so every calendar shows the trip's local time. */
+const utcStamp = (p: { date: string; time?: string }, zone: string) => {
+  const ms = zonedTimeToUtc(p.date, p.time!, zone);
+  return ms == null ? stampOf(p) : new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+};
+
+/** Offset of `zone` from UTC at `ms`, in ms (Tokyo -> +9 h). */
+function zoneOffset(ms: number, zone: string) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: zone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .formatToParts(new Date(ms))
+      .map((x) => [x.type, x.value]),
+  );
+  const asUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour) % 24, Number(parts.minute), Number(parts.second));
+  return asUtc - Math.floor(ms / 1000) * 1000;
+}
+
+/**
+ * "2027-04-02" "14:30" in "Asia/Tokyo" -> that moment as epoch ms. Handles DST
+ * (the offset is re-checked at the answer). Null when the zone isn't known here.
+ */
+export function zonedTimeToUtc(date: string, time: string, zone: string): number | null {
+  try {
+    const [y, mo, d] = date.split("-").map(Number);
+    const [h, mi] = time.split(":").map(Number);
+    const wall = Date.UTC(y!, mo! - 1, d!, h!, mi!);
+    const first = wall - zoneOffset(wall, zone);
+    return wall - zoneOffset(first, zone);
+  } catch {
+    return null;
+  }
+}
+
 export function toICS(trip: CalTrip, now = new Date()) {
   const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Trip Planner//EN", "CALSCALE:GREGORIAN", `X-WR-CALNAME:${esc(trip.title)}`];
   for (const e of calendarEvents(trip)) {
     const when = e.allDay
       ? [`DTSTART;VALUE=DATE:${stampOf(e.start)}`, `DTEND;VALUE=DATE:${stampOf(e.end)}`]
-      : [`DTSTART:${stampOf(e.start)}`, `DTEND:${stampOf(e.end)}`];
+      : e.timeZone
+        ? [`DTSTART:${utcStamp(e.start, e.timeZone)}`, `DTEND:${utcStamp(e.end, e.timeZone)}`]
+        : [`DTSTART:${stampOf(e.start)}`, `DTEND:${stampOf(e.end)}`];
     lines.push(
       "BEGIN:VEVENT",
       `UID:${e.key}@tripplanner`,

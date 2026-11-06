@@ -1,4 +1,4 @@
-import { calendarEvents, type TripCalendarEvent } from "@trip/ui";
+import { calendarEvents, zonedTimeToUtc, type TripCalendarEvent } from "@trip/ui";
 import * as Calendar from "expo-calendar";
 import { File, Paths } from "expo-file-system";
 import { Linking, Platform } from "react-native";
@@ -91,7 +91,13 @@ const local = (p: { date: string; time?: string }) => {
 /** All-day events: iOS wants local midnight with an inclusive end; Android wants UTC midnights. */
 function details(e: TripCalendarEvent) {
   const base = { title: e.title, notes: e.notes, location: e.location, allDay: e.allDay };
-  if (!e.allDay) return { ...base, startDate: local(e.start), endDate: local(e.end) };
+  if (!e.allDay) {
+    // In the trip's zone when known, so a 2 PM check-in shows at 2 PM local time there, wherever the phone is set.
+    const zoned = (p: { date: string; time?: string }) => (e.timeZone ? zonedTimeToUtc(p.date, p.time ?? "00:00", e.timeZone) : null);
+    const [start, end] = [zoned(e.start), zoned(e.end)];
+    if (start != null && end != null) return { ...base, startDate: new Date(start), endDate: new Date(end), timeZone: e.timeZone };
+    return { ...base, startDate: local(e.start), endDate: local(e.end) };
+  }
   if (Platform.OS === "android") {
     const utc = (iso: string) => new Date(`${iso}T00:00:00Z`);
     return { ...base, startDate: utc(e.start.date), endDate: utc(e.end.date), timeZone: "UTC" };
